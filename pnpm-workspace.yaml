@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+allowBuilds:
+  esbuild: true
+  argon2: true
+  sharp: true
+  '@swc/core': true
+  '@tailwindcss/oxide': true
+  simple-git-hooks: true
+  '@scarf/scarf': true

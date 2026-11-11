@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+.turbo/
+storybook-static/
+tsconfig.tsbuildinfo
+
+# generated design tokens (emitted from packages/tokens/tokens.json)
+packages/tokens/tokens.css
+apps/web/src/app/tokens.css
+
+# env
+.env
+.env.*
+!.env.example
+
+# tests
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
+temp.txt

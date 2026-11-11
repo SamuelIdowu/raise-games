@@ -1,0 +1,40 @@
+{
+  "name": "raise",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RAISE — competitive gaming challenge platform (monorepo)",
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @raise/api db:migrate",
+    "db:seed": "pnpm --filter @raise/api db:seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "typescript-eslint": "^8.41.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-prettier": "^5.2.6",
+    "prettier": "^3.6.2",
+    "simple-git-hooks": "^2.13.1",
+    "lint-staged": "^16.2.7",
+    "turbo": "^2.6.4",
+    "typescript": "^5.9.3"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

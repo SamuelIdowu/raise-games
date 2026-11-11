@@ -1,0 +1,86 @@
+{
+  "$comment": "PRD: 'Games are configuration, not code'. Games are seeded from here in Sprint 4. Each game defines: id fields, supported formats, result schema, required proof, tiebreak rules. Launch each game with one or two formats only.",
+  "games": [
+    {
+      "key": "efootball",
+      "name": "eFootball",
+      "status": "enabled",
+      "idFields": [{ "key": "konami_id", "label": "Konami ID", "type": "text", "required": true }],
+      "formats": [
+        {
+          "key": "1v1_duel",
+          "name": "1v1 Duel",
+          "resultSchema": {
+            "outcomeOptions": ["win", "loss"],
+            "scoreModel": "goals",
+            "drawAllowed": false
+          },
+          "requiredProof": ["screenshot"],
+          "tiebreakRules": "Higher goals scored wins. If goals equal, match result stands as submitted."
+        }
+      ]
+    },
+    {
+      "key": "codm",
+      "name": "Call of Duty: Mobile",
+      "status": "enabled",
+      "idFields": [
+        { "key": "activision_id", "label": "Activision ID", "type": "text", "required": true }
+      ],
+      "formats": [
+        {
+          "key": "br_duo",
+          "name": "Battle Royale Duo",
+          "resultSchema": {
+            "outcomeOptions": ["win", "loss"],
+            "scoreModel": "placement",
+            "drawAllowed": false
+          },
+          "requiredProof": ["screenshot"],
+          "tiebreakRules": "Better placement wins. If placement equal, match result stands as submitted."
+        },
+        {
+          "key": "mp_duel",
+          "name": "Multiplayer Duel",
+          "resultSchema": {
+            "outcomeOptions": ["win", "loss"],
+            "scoreModel": "kills",
+            "drawAllowed": false
+          },
+          "requiredProof": ["screenshot"],
+          "tiebreakRules": "Higher kills wins. If kills equal, match result stands as submitted."
+        }
+      ]
+    },
+    {
+      "key": "pubg_mobile",
+      "name": "PUBG Mobile",
+      "status": "enabled",
+      "idFields": [{ "key": "pubg_id", "label": "PUBG ID", "type": "text", "required": true }],
+      "formats": [
+        {
+          "key": "br_solo",
+          "name": "Battle Royale Solo",
+          "resultSchema": {
+            "outcomeOptions": ["win", "loss"],
+            "scoreModel": "placement",
+            "drawAllowed": false
+          },
+          "requiredProof": ["screenshot"],
+          "tiebreakRules": "Better placement wins. If placement equal, match result stands as submitted."
+        },
+        {
+          "key": "br_duo",
+          "name": "Battle Royale Duo",
+          "resultSchema": {
+            "outcomeOptions": ["win", "loss"],
+            "scoreModel": "placement",
+            "drawAllowed": false
+          },
+          "requiredProof": ["screenshot"],
+          "tiebreakRules": "Better placement wins. If placement equal, match result stands as submitted."
+        }
+      ]
+    }
+  ]
+}
