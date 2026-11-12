@@ -108,9 +108,9 @@ Real accounts: phone OTP signup and login, session/token lifecycle, roles, conse
 ## Checklist
 
 - [x] F3.1 Request/verify OTP live; codes hashed + expiring + capped; rate limits per phone+IP; audit log entries
-- [x] F3.2 Access/refresh with rotation + reuse detection; logout, logout-all; revocation on suspension
-- [x] F3.3 Guard + roles; sanction gate; consent gate blocks Play
-- [x] F3.4 Turnstile verified server-side; duplicate-account signals recorded
+- [~] F3.2 Access/refresh with rotation + reuse detection; logout, logout-all; revocation on suspension (sanctions table exists, guard check pending)
+- [~] F3.3 Guard + roles; sanction gate (table exists, guard check pending); consent gate blocks Play
+- [~] F3.4 Turnstile verified server-side (throws 400 when secret set & token missing); duplicate-account signals recorded (phone/IP/UA in audit log; device fingerprint pending)
 - [x] F3.5 Jurisdiction state, KYC/age fields, identity tier default present on `users`
 - [ ] F3.6 UI wired: OTP cells + countdown + paste; session expiry prompts; api-client authed calls
 - [x] F3.7 Consent version + record table; re-accept endpoint; gate UI
