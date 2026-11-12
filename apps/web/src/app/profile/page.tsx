@@ -7,8 +7,6 @@ import {
   CountUp,
   Icon,
   RankTierBadge,
-  RatingBadge,
-  ReputationBadge,
   StatusChip,
   Table,
   TableBody,

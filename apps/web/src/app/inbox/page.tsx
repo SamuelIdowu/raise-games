@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Avatar, Banner, Button, EmptyState, Icon, Sheet, StatusChip } from '@/components/ui';
+import { Avatar, Banner, Button, EmptyState, Icon, Sheet } from '@/components/ui';
 import { FEATURE_FLAGS } from '@/lib/feature-flags';
 
 const MOCK_NOTIFICATIONS = [
@@ -91,7 +91,6 @@ export default function InboxPage() {
   const [selectedNotification, setSelectedNotification] = useState<
     (typeof MOCK_NOTIFICATIONS)[0] | null
   >(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <div className="space-y-6">

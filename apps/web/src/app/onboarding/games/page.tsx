@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Avatar, StatusChip, Banner } from '@/components/ui';
+import { Button, StatusChip, Banner } from '@/components/ui';
 
 const GAMES = [
   { id: 'fifa25', label: 'FIFA 25', icon: '⚽' },

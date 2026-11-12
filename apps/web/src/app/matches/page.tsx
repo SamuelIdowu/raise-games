@@ -12,7 +12,6 @@ import {
   RatingBadge,
   ReputationBadge,
   Sheet,
-  Skeleton,
   StatusChip,
 } from '@/components/ui';
 
@@ -173,7 +172,6 @@ export default function MatchesPage() {
             )}
             {sheetMode === 'submit' && (
               <SubmitResultSheet
-                match={selectedMatch}
                 onClose={() => {
                   setSheetMode('detail');
                 }}
@@ -184,7 +182,6 @@ export default function MatchesPage() {
             )}
             {sheetMode === 'dispute' && (
               <DisputeSheet
-                match={selectedMatch}
                 onClose={() => {
                   setSheetMode('detail');
                 }}
@@ -377,15 +374,7 @@ function MatchDetail({
   );
 }
 
-function SubmitResultSheet({
-  match,
-  onClose,
-  onSubmit,
-}: {
-  match: (typeof MOCK_MATCHES)[0];
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
+function SubmitResultSheet({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
   const [outcome, setOutcome] = useState<'won' | 'lost' | 'draw'>('won');
   const [score, setScore] = useState('2-1');
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -492,13 +481,7 @@ function SubmitResultSheet({
   );
 }
 
-function DisputeSheet({
-  match,
-  onClose,
-}: {
-  match: (typeof MOCK_MATCHES)[0];
-  onClose: () => void;
-}) {
+function DisputeSheet({ onClose }: { onClose: () => void }) {
   const [reason, setReason] = useState('');
   const [evidence, setEvidence] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -553,7 +536,9 @@ function DisputeSheet({
             className="flex items-center justify-center gap-2 cursor-pointer"
           >
             <Icon name="upload" size={20} className="text-fg-muted" />
-            <span className="text-body-sm text-fg-muted">Upload evidence</span>
+            <span className="text-body-sm text-fg-muted">
+              {evidence ? evidence.name : 'Upload evidence'}
+            </span>
           </label>
         </div>
       </div>

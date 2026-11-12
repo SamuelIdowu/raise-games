@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode, useState } from 'react';
-import { Banner, Button } from '@/components/ui';
+import { Banner } from '@/components/ui';
 import { FEATURE_FLAGS } from '@/lib/feature-flags';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';

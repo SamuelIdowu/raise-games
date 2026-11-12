@@ -16,6 +16,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 interface GameProfileDto {
   id: string;
+  displayName: string | null;
   gameId: string;
   gameKey: string;
   gameName: string;
@@ -72,10 +73,10 @@ export function ProfileClient() {
     <div className="mx-auto max-w-2xl p-6 space-y-6">
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-card border border-line bg-surface">
         <div className="flex items-center gap-3">
-          <Avatar username={p?.gameName ?? 'Player'} size={64} />
+          <Avatar username={p?.displayName ?? p?.gameName ?? 'Player'} size={64} />
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-h1 font-semibold text-fg">
-              {p?.gameName ?? 'Player'}
+              {p?.displayName ?? p?.gameName ?? 'Player'}
             </h1>
             <p className="text-body-sm text-fg-muted">{p?.city ?? 'Unknown city'}</p>
           </div>

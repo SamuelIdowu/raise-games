@@ -16,6 +16,7 @@ export default function OtpPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('onboarding_phone');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setPhone(stored);
   }, []);
 
