@@ -1,15 +1,13 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
-import { JwtModule } from '@nestjs/jwt';
 import { LoggerModule } from 'nestjs-pino';
-import { HealthController } from './health/health.controller';
-import { AuthController, JwtAuthGuard } from './auth/auth.controller';
-import { AuthService } from './auth/auth.service';
-import { env } from './config/env.instance';
-import { appExceptionFilterFactory } from './shared/global-exception.filter';
-import { parseTtl } from './auth/auth.utils';
+import { AuthModule } from './auth/auth.module';
+import { ConsentModule } from './consent/consent.module';
 import { GamesModule } from './games/games.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { HealthController } from './health/health.controller';
+import { env } from './config/env.instance';
+import { appExceptionFilterFactory } from './shared/global-exception.filter';
 
 @Module({
   imports: [
@@ -34,18 +32,12 @@ import { ProfilesModule } from './profiles/profiles.module';
               ],
             },
     }),
-    JwtModule.register({
-      secret: env.JWT_ACCESS_SECRET,
-      signOptions: { expiresIn: parseTtl(env.JWT_ACCESS_TTL) / 1000 },
-    }),
+    AuthModule,
+    ConsentModule,
     GamesModule,
     ProfilesModule,
   ],
-  controllers: [HealthController, AuthController],
-  providers: [
-    AuthService,
-    JwtAuthGuard,
-    { provide: APP_FILTER, useFactory: appExceptionFilterFactory },
-  ],
+  controllers: [HealthController],
+  providers: [{ provide: APP_FILTER, useFactory: appExceptionFilterFactory }],
 })
 export class AppModule {}

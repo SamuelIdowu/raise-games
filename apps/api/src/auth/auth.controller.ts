@@ -1,65 +1,34 @@
 import {
+  BadRequestException,
   Body,
-  CanActivate,
   Controller,
-  ExecutionContext,
   Get,
   HttpCode,
-  Injectable,
+  Patch,
   Post,
   Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import type { FastifyRequest } from 'fastify';
 import { env } from '../config/env.instance';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
+import { JwtAuthGuard, type AuthedUser } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
 import {
   otpRequestSchema,
   otpVerifySchema,
   refreshSchema,
+  logoutSchema,
+  updateMeSchema,
   type OtpRequest,
   type OtpVerify,
   type RefreshRequest,
+  type LogoutRequest,
+  type UpdateMe,
 } from './auth.schemas';
-
-interface TurnstileResponse {
-  success: boolean;
-  'error-codes'?: string[];
-}
-
-async function verifyTurnstile(token: string): Promise<boolean> {
-  if (!env.TURNSTILE_SECRET_KEY) return true; // Skip in dev
-  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token }),
-  });
-  const data = (await res.json()) as TurnstileResponse;
-  return data.success === true;
-}
-
-@Injectable()
-export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<FastifyRequest>();
-    const header = request.headers['authorization'];
-    if (!header?.startsWith('Bearer ')) throw new UnauthorizedException();
-    try {
-      const payload = await this.jwt.verifyAsync(header.slice('Bearer '.length), {
-        secret: env.JWT_ACCESS_SECRET,
-      });
-      (request as AuthedRequest).user = payload;
-      return true;
-    } catch {
-      throw new UnauthorizedException();
-    }
-  }
-}
+import { verifyTurnstileToken } from './turnstile';
 
 @Controller('auth')
 export class AuthController {
@@ -71,11 +40,19 @@ export class AuthController {
     @Body(new ZodValidationPipe(otpRequestSchema)) body: OtpRequest,
     @Req() req: FastifyRequest,
   ) {
+    const turnstileRequired = !!env.TURNSTILE_SECRET_KEY;
+    const pending = turnstileRequired && (await this.auth.hasPendingOtp(body.phone));
+    if (turnstileRequired && !pending && !body.turnstileToken) {
+      throw new BadRequestException('Complete the security check');
+    }
     if (body.turnstileToken) {
-      const valid = await verifyTurnstile(body.turnstileToken);
+      const valid = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY!, body.turnstileToken);
       if (!valid) throw new UnauthorizedException('Turnstile verification failed');
     }
-    return this.auth.requestOtp(body.phone, req.ip ?? 'unknown');
+    const ua = Array.isArray(req.headers['user-agent'])
+      ? req.headers['user-agent'][0]
+      : req.headers['user-agent'];
+    return this.auth.requestOtp(body.phone, req.ip ?? 'unknown', ua);
   }
 
   @Post('otp/verify')
@@ -84,11 +61,15 @@ export class AuthController {
     @Body(new ZodValidationPipe(otpVerifySchema)) body: OtpVerify,
     @Req() req: FastifyRequest,
   ) {
+    const ua = Array.isArray(req.headers['user-agent'])
+      ? req.headers['user-agent'][0]
+      : req.headers['user-agent'];
     const tokens = await this.auth.verifyOtp(body.phone, body.code, {
-      userAgent: req.headers['user-agent'],
+      userAgent: ua,
       ip: req.ip,
+      deviceId: req.headers['x-device-id'] as string | undefined,
     });
-    if (!tokens) throw new UnauthorizedException('Invalid code');
+    if (!tokens) throw new UnauthorizedException('Invalid or expired code');
     return tokens;
   }
 
@@ -96,24 +77,38 @@ export class AuthController {
   @HttpCode(200)
   async refresh(@Body(new ZodValidationPipe(refreshSchema)) body: RefreshRequest) {
     const tokens = await this.auth.refreshSession(body.refreshToken);
-    if (!tokens) throw new UnauthorizedException('Invalid refresh token');
+    if (!tokens) throw new UnauthorizedException('Invalid or reused refresh token');
     return tokens;
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@Body(new ZodValidationPipe(logoutSchema)) body: LogoutRequest) {
+    // Stateless: the refresh token itself proves ownership; no access token required.
+    await this.auth.logoutByRefreshToken(body.refreshToken);
+    return { ok: true };
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async logoutAll(@CurrentUser() user: AuthedUser) {
+    const count = await this.auth.logoutAll(user.sub);
+    return { ok: true, revoked: count };
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async me(@Req() req: FastifyRequest) {
-    const user = (req as AuthedRequest).user as { sub: string } | undefined;
-    const current = await this.auth.findUserById(user?.sub ?? '');
-    if (!current) throw new UnauthorizedException();
-    return { id: current.id, phone: maskOut(current.phone), createdAt: current.createdAt };
+  async me(@CurrentUser() user: AuthedUser) {
+    return this.auth.me(user.sub);
   }
-}
 
-interface AuthedRequest extends FastifyRequest {
-  user?: unknown;
-}
-
-function maskOut(phone: string): string {
-  return phone.slice(0, 5) + '****' + phone.slice(-2);
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  async updateMe(
+    @CurrentUser() user: AuthedUser,
+    @Body(new ZodValidationPipe(updateMeSchema)) body: UpdateMe,
+  ) {
+    return this.auth.updateMe(user.sub, body);
+  }
 }

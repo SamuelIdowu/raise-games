@@ -37,3 +37,12 @@ export function parseRefreshToken(token: string): { sessionId: string } | null {
   if (!/^[0-9a-fA-F-]{36}$/.test(sessionId)) return null;
   return { sessionId };
 }
+
+export function isSessionExpired(expiresAt: Date, now: Date = new Date()): boolean {
+  return expiresAt.getTime() <= now.getTime();
+}
+
+/** Legacy sessions (created before token families) fall back to their own id. */
+export function resolveFamilyId(session: { id: string; familyId: string | null }): string {
+  return session.familyId ?? session.id;
+}

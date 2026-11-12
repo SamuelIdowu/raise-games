@@ -29,6 +29,12 @@ export const identityTierEnum = pgEnum('identity_tier', [
 ]);
 export const kycStatusEnum = pgEnum('kyc_status', ['none', 'pending', 'verified', 'rejected']);
 export const ageStatusEnum = pgEnum('age_status', ['pending', 'verified', 'rejected']);
+export const sanctionTypeEnum = pgEnum('sanction_type', [
+  'warning',
+  'suspension',
+  'temporary_ban',
+  'permanent_ban',
+]);
 
 export const users = pgTable(
   'users',
@@ -49,6 +55,26 @@ export const users = pgTable(
   (t) => [uniqueIndex('users_phone_uq').on(t.phone)],
 );
 
+export const sanctions = pgTable(
+  'sanctions',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    type: sanctionTypeEnum('type').notNull().default('suspension'),
+    reason: text('reason').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp('ends_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('sanctions_user_idx').on(t.userId),
+    index('sanctions_active_idx').on(t.userId, t.startsAt, t.endsAt, t.revokedAt),
+  ],
+);
+
 export const sessions = pgTable(
   'sessions',
   {
@@ -56,6 +82,8 @@ export const sessions = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id),
+    /** Refresh-token family: every rotation stays in the same chain so reuse can revoke it. */
+    familyId: uuid('family_id'),
     refreshTokenHash: text('refresh_token_hash').notNull(),
     deviceId: text('device_id'),
     userAgent: text('user_agent'),
@@ -67,6 +95,7 @@ export const sessions = pgTable(
   (t) => [
     index('sessions_user_idx').on(t.userId),
     index('sessions_token_idx').on(t.refreshTokenHash),
+    index('sessions_family_idx').on(t.familyId),
   ],
 );
 

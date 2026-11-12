@@ -1,54 +1,43 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  Req,
-  NotFoundException,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/auth.controller';
+import { Controller, Get, Post, Body, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { JwtAuthGuard, type AuthedUser } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { ProfilesService } from './profiles.service';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { upsertProfileSchema, type UpsertProfile } from './profiles.schemas';
-import type { FastifyRequest } from 'fastify';
-
-interface AuthedRequest extends FastifyRequest {
-  user?: { sub: string };
-}
+import { ConsentService } from '../consent/consent.service';
 
 @Controller('profiles')
-@UseGuards(JwtAuthGuard)
 export class ProfilesController {
-  constructor(private readonly profiles: ProfilesService) {}
+  constructor(
+    private readonly profiles: ProfilesService,
+    private readonly consent: ConsentService,
+  ) {}
 
   @Get('me')
-  async listMyProfiles(@Req() req: AuthedRequest) {
-    const userId = req.user?.sub;
-    if (!userId) throw new NotFoundException('User not found');
-    return this.profiles.listMyProfiles(userId);
+  @UseGuards(JwtAuthGuard)
+  async listMyProfiles(@CurrentUser() user: AuthedUser) {
+    return this.profiles.listMyProfiles(user.sub);
   }
 
   @Get('me/:gameKey')
-  async getMyProfile(@Req() req: AuthedRequest, @Param('gameKey') gameKey: string) {
-    const userId = req.user?.sub;
-    if (!userId) throw new NotFoundException('User not found');
-    return this.profiles.getProfile(userId, gameKey);
+  @UseGuards(JwtAuthGuard)
+  async getMyProfile(@CurrentUser() user: AuthedUser, @Param('gameKey') gameKey: string) {
+    return this.profiles.getProfile(user.sub, gameKey);
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   async upsertProfile(
-    @Req() req: AuthedRequest,
+    @CurrentUser() user: AuthedUser,
     @Body(new ZodValidationPipe(upsertProfileSchema)) body: UpsertProfile,
   ) {
-    const userId = req.user?.sub;
-    if (!userId) throw new NotFoundException('User not found');
-    return this.profiles.upsertProfile(userId, body);
+    // Enforce terms acceptance before creating/updating any profile
+    await this.consent.assertTermsAccepted(user.sub);
+    return this.profiles.upsertProfile(user.sub, body);
   }
 
   @Get(':userId')
-  async getPublicProfile(@Param('userId') userId: string) {
+  async getPublicProfile(@Param('userId', new ParseUUIDPipe()) userId: string) {
     return this.profiles.getPublicProfile(userId);
   }
 }

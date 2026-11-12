@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { v7 as uuidv7 } from 'uuid';
 import { db, schema } from '../db/client';
 import { eq, and } from 'drizzle-orm';
 import { GamesService } from '../games/games.service';
@@ -7,6 +8,7 @@ import type { UpsertProfile } from './profiles.schemas';
 export interface GameProfileDto {
   id: string;
   userId: string;
+  displayName: string | null;
   gameId: string;
   gameKey: string;
   gameName: string;
@@ -19,6 +21,7 @@ export interface GameProfileDto {
   draws: number;
   streak: number;
   provisional: boolean;
+  reputation: 'new';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +35,7 @@ export class ProfilesService {
       .select({
         id: schema.gameProfiles.id,
         userId: schema.gameProfiles.userId,
+        displayName: schema.users.displayName,
         gameId: schema.gameProfiles.gameId,
         inGameId: schema.gameProfiles.inGameId,
         city: schema.gameProfiles.city,
@@ -49,6 +53,7 @@ export class ProfilesService {
       })
       .from(schema.gameProfiles)
       .innerJoin(schema.games, eq(schema.gameProfiles.gameId, schema.games.id))
+      .innerJoin(schema.users, eq(schema.gameProfiles.userId, schema.users.id))
       .where(eq(schema.gameProfiles.userId, userId));
 
     return rows.map((r) => this.toDto(r));
@@ -59,6 +64,7 @@ export class ProfilesService {
       .select({
         id: schema.gameProfiles.id,
         userId: schema.gameProfiles.userId,
+        displayName: schema.users.displayName,
         gameId: schema.gameProfiles.gameId,
         inGameId: schema.gameProfiles.inGameId,
         city: schema.gameProfiles.city,
@@ -76,6 +82,7 @@ export class ProfilesService {
       })
       .from(schema.gameProfiles)
       .innerJoin(schema.games, eq(schema.gameProfiles.gameId, schema.games.id))
+      .innerJoin(schema.users, eq(schema.gameProfiles.userId, schema.users.id))
       .where(and(eq(schema.gameProfiles.userId, userId), eq(schema.games.key, gameKey)))
       .limit(1);
 
@@ -89,6 +96,7 @@ export class ProfilesService {
       .select({
         id: schema.gameProfiles.id,
         userId: schema.gameProfiles.userId,
+        displayName: schema.users.displayName,
         gameId: schema.gameProfiles.gameId,
         inGameId: schema.gameProfiles.inGameId,
         city: schema.gameProfiles.city,
@@ -106,6 +114,7 @@ export class ProfilesService {
       })
       .from(schema.gameProfiles)
       .innerJoin(schema.games, eq(schema.gameProfiles.gameId, schema.games.id))
+      .innerJoin(schema.users, eq(schema.gameProfiles.userId, schema.users.id))
       .where(eq(schema.gameProfiles.id, id))
       .limit(1);
 
@@ -143,7 +152,7 @@ export class ProfilesService {
     }
 
     await db.insert(schema.gameProfiles).values({
-      id: crypto.randomUUID(),
+      id: uuidv7(),
       userId,
       gameId: game.id,
       inGameId: data.inGameId,
@@ -163,6 +172,7 @@ export class ProfilesService {
   private toDto(row: {
     id: string;
     userId: string;
+    displayName: string | null;
     gameId: string;
     inGameId: string;
     city: string | null;
@@ -181,6 +191,7 @@ export class ProfilesService {
     return {
       id: row.id,
       userId: row.userId,
+      displayName: row.displayName,
       gameId: row.gameId,
       gameKey: row.gameKey,
       gameName: row.gameName,
@@ -193,6 +204,7 @@ export class ProfilesService {
       draws: row.draws,
       streak: row.streak,
       provisional: row.provisional,
+      reputation: 'new',
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
