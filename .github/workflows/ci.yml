@@ -86,9 +86,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate migrations
-        run: pnpm --filter @raise/api db:generate
-
       - name: Run migrations
         run: pnpm --filter @raise/api db:migrate
         env:

@@ -1,6 +1,12 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lte, gt, or } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import { env } from '../config/env.instance';
 import { db, schema } from '../db/client';
@@ -59,6 +65,25 @@ export class JwtAuthGuard implements CanActivate {
 
     if (!user || user.deletedAt) {
       throw new UnauthorizedException('Account is not active');
+    }
+
+    // Check for active sanction
+    const now = new Date();
+    const [sanction] = await db
+      .select({ id: schema.sanctions.id })
+      .from(schema.sanctions)
+      .where(
+        and(
+          eq(schema.sanctions.userId, user.id),
+          isNull(schema.sanctions.revokedAt),
+          lte(schema.sanctions.startsAt, now),
+          or(isNull(schema.sanctions.endsAt), gt(schema.sanctions.endsAt, now)),
+        ),
+      )
+      .limit(1);
+
+    if (sanction) {
+      throw new ForbiddenException('Account is suspended');
     }
 
     const [session] = await db
