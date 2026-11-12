@@ -7,7 +7,6 @@ import { createRequire } from 'module';
 import { readFileSync } from 'fs';
 import { db, schema } from './client';
 import { v7 as uuidv7 } from 'uuid';
-import { eq, and } from 'drizzle-orm';
 
 interface GameConfig {
   key: string;
