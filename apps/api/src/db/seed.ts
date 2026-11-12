@@ -42,7 +42,7 @@ export async function seed() {
 
   for (const game of gamesJson.games) {
     // Upsert game
-    const [upsertedGame] = await db
+    const result = await db
       .insert(schema.games)
       .values({
         id: uuidv7(),
@@ -60,6 +60,9 @@ export async function seed() {
         },
       })
       .returning({ id: schema.games.id });
+
+    const upsertedGame = result[0];
+    if (!upsertedGame) throw new Error(`Failed to upsert game: ${game.key}`);
 
     const gameId = upsertedGame.id;
 

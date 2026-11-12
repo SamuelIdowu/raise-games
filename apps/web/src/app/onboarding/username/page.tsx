@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, Input, Banner } from '@/components/ui';
+import { authApi } from '@raise/api-client';
 
 export default function UsernamePage() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     const cleaned = username.trim();
@@ -21,10 +24,14 @@ export default function UsernamePage() {
       return;
     }
     setSaving(true);
-    setTimeout(() => {
+    try {
+      await authApi.updateMe({ displayName: cleaned });
+      router.push('/onboarding/games');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save username');
+    } finally {
       setSaving(false);
-      window.location.href = '/onboarding/games';
-    }, 600);
+    }
   };
 
   return (
@@ -47,7 +54,7 @@ export default function UsernamePage() {
         />
 
         <Banner variant="system" className="text-sm">
-          Your username is public and can&apos;t be changed later.
+          You can change this later.
         </Banner>
 
         <Button type="submit" fullWidth loading={saving} className="mt-2">

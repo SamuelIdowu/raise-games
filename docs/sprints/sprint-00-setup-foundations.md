@@ -157,14 +157,14 @@ Per Setup Guide §8/§10.3:
 
 ## Checklist
 
-- [ ] F0.1 Tools verified (`node -v`/`pnpm -v`/`docker --version` output captured); monorepo scaffolded; repo pushed to GitHub
-- [ ] F0.2 Compose up; both services healthy (command output captured)
-- [ ] F0.3 API boots Fastify; spec served at `/docs/openapi.json`; invalid env fails startup with readable error
-- [ ] F0.4 Web shell renders API health at `:3000`; PWA manifest present
-- [ ] F0.5 `.env.example` complete and committed; no real secrets in repo
-- [ ] F0.6 Five packages each `build` via Turbo; tokens/schemas/types importable from web and api
-- [ ] F0.7 Sign-in endpoint creates user + session via mock OTP; refresh rotation works
-- [ ] F0.8 First migration created + applied; all 11 day-one tables exist with UUIDv7/timestamptz/minor-units conventions
+- [x] F0.1 Tools verified (`node -v`/`pnpm -v`/`docker --version` output captured); monorepo scaffolded; repo pushed to GitHub
+- [x] F0.2 Compose up; both services healthy (command output captured)
+- [x] F0.3 API boots Fastify; spec served at `/docs/openapi.json`; invalid env fails startup with readable error
+- [x] F0.4 Web shell renders API health at `:3000`; PWA manifest present
+- [x] F0.5 `.env.example` complete and committed; no real secrets in repo
+- [x] F0.6 Five packages each `build` via Turbo; tokens/schemas/types importable from web and api
+- [x] F0.7 Sign-in endpoint creates user + session via mock OTP; refresh rotation works
+- [x] F0.8 First migration created + applied; all 11 day-one tables exist with UUIDv7/timestamptz/minor-units conventions
 - [ ] F0.9 CI green on `main`; branch protection enforced (github MCP screenshot/dashboard proof)
 - [ ] F0.10 Region latency numbers recorded; hosting provider chosen `[owner decision]` issue closed
 - [ ] F0.11 Staging deployed; Turnstile/Sentry/PostHog/ToS stub live; secrets from manager; OTP mock asserted off

@@ -1,42 +1,73 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 import { Button, Input, Banner } from '@/components/ui';
+import { authApi } from '@raise/api-client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
+
+interface TurnstileGlobal {
+  render: (
+    element: HTMLElement,
+    options: {
+      sitekey: string;
+      callback: (token: string) => void;
+      'expired-callback': () => void;
+    },
+  ) => number;
+  reset: (widgetId: number) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileGlobal;
+  }
+}
 
 export default function PhoneEntryPage() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileReady, setTurnstileReady] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<number | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    interface TurnstileWidget {
-      render: (
-        element: HTMLElement,
-        options: {
-          sitekey: string;
-          callback: (token: string) => void;
-          'expired-callback': () => void;
-        },
-      ) => void;
+  const resetTurnstile = useCallback(() => {
+    if (typeof window !== 'undefined' && window.turnstile && widgetIdRef.current !== null) {
+      window.turnstile.reset(widgetIdRef.current);
+      setTurnstileToken('');
     }
-    const turnstile = (window as Window & { turnstile?: TurnstileWidget }).turnstile;
-    if (typeof window !== 'undefined' && TURNSTILE_SITE_KEY && turnstileRef.current) {
-      if (turnstile) {
-        turnstile.render(turnstileRef.current, {
+  }, []);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+    // Script component handles loading; we just need to know when it's ready.
+    // We'll use a simple interval to check for turnstile global.
+    const interval = setInterval(() => {
+      if (window.turnstile) {
+        setTurnstileReady(true);
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (turnstileReady && TURNSTILE_SITE_KEY && turnstileRef.current) {
+      const turnstile = window.turnstile;
+      if (turnstile && turnstileRef.current) {
+        widgetIdRef.current = turnstile.render(turnstileRef.current, {
           sitekey: TURNSTILE_SITE_KEY,
           callback: (token: string) => setTurnstileToken(token),
           'expired-callback': () => setTurnstileToken(''),
         });
       }
     }
-  }, []);
+  }, [turnstileReady]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,20 +83,15 @@ export default function PhoneEntryPage() {
     }
     setSending(true);
     try {
-      const res = await fetch(`${API_URL}/auth/otp/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleaned, turnstileToken: turnstileToken || undefined }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message ?? 'Failed to send code');
-      }
+      await authApi.requestOtp(cleaned, turnstileToken || undefined);
+      // If turnstile required but not provided, backend will throw error handled below.
       // Store phone for OTP page
       sessionStorage.setItem('onboarding_phone', cleaned);
+      resetTurnstile();
       router.push('/onboarding/otp');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send code');
+      resetTurnstile();
     } finally {
       setSending(false);
     }
@@ -105,7 +131,10 @@ export default function PhoneEntryPage() {
         SMS rates may apply. Standard messaging rates apply.
       </p>
       {TURNSTILE_SITE_KEY && (
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          strategy="afterInteractive"
+        />
       )}
     </div>
   );

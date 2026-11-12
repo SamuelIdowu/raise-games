@@ -89,7 +89,7 @@ Games are configuration, not code (PRD): each game record defines its ID fields,
 - [x] F4.1 Config JSONs for the three games validated by Zod; schema covers id fields/formats/result schema/proof/tiebreak
 - [x] F4.2 games + game_formats tables seeded; public read endpoints (GET /games, /games/:key); adding a 4th game requires zero code edits
 - [x] F4.3 GameProfiles CRUD live; unique per (user, game); rating/stats/provisional defaults correct; city/campus settable
-- [~] F4.4 Profile UI per Design §8 incl. copy toast, tabs, stat grid, recent matches empty state, sticky Challenge (public profile page exists with mock data; not wired to API)
+- [x] F4.4 Profile UI per Design §8 incl. copy toast, tabs, stat grid, recent matches empty state, sticky Challenge (public profile page wired to API with displayName join)
 - [x] F4.5 Reputation placeholder shows "New" for all users (enum + DTO field present)
 - [ ] Testing block green (seed, CRUD, e2e, config-extensibility)
 - [ ] Audit block clean; format decisions recorded `[owner decision]`

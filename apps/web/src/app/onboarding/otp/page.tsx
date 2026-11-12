@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, OtpInput, Banner } from '@/components/ui';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { authApi, setTokens } from '@raise/api-client';
 
 export default function OtpPage() {
   const [otp, setOtp] = useState('');
   const [resendSeconds, setResendSeconds] = useState(30);
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
   const [phone, setPhone] = useState('0801 234 5678');
   const router = useRouter();
 
@@ -39,19 +39,8 @@ export default function OtpPage() {
       if (!phone) {
         throw new Error('Session expired. Please start over.');
       }
-      const res = await fetch(`${API_URL}/auth/otp/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code: otp }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message ?? 'Invalid code');
-      }
-      const data = await res.json();
-      // Store tokens
-      localStorage.setItem('access_token', data.accessToken);
-      localStorage.setItem('refresh_token', data.refreshToken);
+      const data = await authApi.verifyOtp(phone, otp);
+      setTokens(data.accessToken, data.refreshToken);
       // Clear onboarding phone
       sessionStorage.removeItem('onboarding_phone');
       router.push('/onboarding/username');
@@ -71,20 +60,15 @@ export default function OtpPage() {
       setError('Session expired. Please start over.');
       return;
     }
+    setResending(true);
     try {
-      const res = await fetch(`${API_URL}/auth/otp/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message ?? 'Failed to resend code');
-      }
+      await authApi.requestOtp(phone);
       setResendSeconds(30);
       setOtp('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resend code');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -109,7 +93,12 @@ export default function OtpPage() {
         <Button fullWidth loading={verifying} onClick={handleVerify} disabled={otp.length !== 6}>
           Verify code
         </Button>
-        <Button variant="ghost" fullWidth onClick={handleResend} disabled={resendSeconds > 0}>
+        <Button
+          variant="ghost"
+          fullWidth
+          onClick={handleResend}
+          disabled={resendSeconds > 0 || resending}
+        >
           {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : 'Resend code'}
         </Button>
       </div>
