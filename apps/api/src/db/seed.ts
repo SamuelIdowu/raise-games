@@ -7,6 +7,7 @@ import { createRequire } from 'module';
 import { readFileSync } from 'fs';
 import { db, schema } from './client';
 import { v7 as uuidv7 } from 'uuid';
+import { eq, and } from 'drizzle-orm';
 
 interface GameConfig {
   key: string;
@@ -41,7 +42,8 @@ export async function seed() {
   const gamesJson = loadGamesJson();
 
   for (const game of gamesJson.games) {
-    const [inserted] = await db
+    // Upsert game
+    const [upsertedGame] = await db
       .insert(schema.games)
       .values({
         id: uuidv7(),
@@ -50,29 +52,53 @@ export async function seed() {
         idFields: game.idFields,
         status: game.status ?? 'disabled',
       })
+      .onConflictDoUpdate({
+        target: schema.games.key,
+        set: {
+          name: game.name,
+          idFields: game.idFields,
+          status: game.status ?? 'disabled',
+        },
+      })
       .returning({ id: schema.games.id });
 
-    if (!inserted) throw new Error(`Failed to insert game: ${game.key}`);
+    const gameId = upsertedGame.id;
 
+    // Upsert formats
     for (const format of game.formats) {
-      await db.insert(schema.gameFormats).values({
-        id: uuidv7(),
-        gameId: inserted.id,
-        key: format.key,
-        name: format.name,
-        resultSchema: format.resultSchema,
-        requiredProof: format.requiredProof,
-        tiebreakRules: format.tiebreakRules,
-      });
+      await db
+        .insert(schema.gameFormats)
+        .values({
+          id: uuidv7(),
+          gameId,
+          key: format.key,
+          name: format.name,
+          resultSchema: format.resultSchema,
+          requiredProof: format.requiredProof,
+          tiebreakRules: format.tiebreakRules,
+        })
+        .onConflictDoUpdate({
+          target: [schema.gameFormats.gameId, schema.gameFormats.key],
+          set: {
+            name: format.name,
+            resultSchema: format.resultSchema,
+            requiredProof: format.requiredProof,
+            tiebreakRules: format.tiebreakRules,
+          },
+        });
     }
   }
 
-  await db.insert(schema.outboxEvents).values({
-    id: uuidv7(),
-    type: 'seed.completed',
-    subjectId: 'bootstrap',
-    payload: { gamesSeeded: gamesJson.games.length },
-  });
+  // Record seed completion only once (optional: could upsert based on subjectId)
+  await db
+    .insert(schema.outboxEvents)
+    .values({
+      id: uuidv7(),
+      type: 'seed.completed',
+      subjectId: 'bootstrap',
+      payload: { gamesSeeded: gamesJson.games.length },
+    })
+    .onConflictDoNothing();
 }
 
 const invokedDirectly = process.argv[1]?.includes('seed');
