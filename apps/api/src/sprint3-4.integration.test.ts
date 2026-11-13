@@ -9,7 +9,7 @@ import { AuthService } from '../src/auth/auth.service';
 import { ProfilesService } from '../src/profiles/profiles.service';
 import { GamesService } from '../src/games/games.service';
 import { ConsentService } from '../src/consent/consent.service';
-import { db, schema } from '../src/db/client';
+import { db, schema, pool } from '../src/db/client';
 import { env } from '../src/config/env.instance';
 import { redis, ensureRedis } from '../src/cache/redis';
 
@@ -37,6 +37,8 @@ describe('Sprint 3/4 Integration Tests', () => {
 
   afterAll(async () => {
     await moduleRef.close();
+    redis.disconnect();
+    await pool.end();
   });
 
   let phoneCounter = 0;
@@ -699,11 +701,17 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      // Cleanup - delete audit_log first (FK constraint), then sessions, then user
+      // Cleanup in FK-safe order; never let cleanup fail the test.
       if (user) {
-        await db.delete(schema.auditLog).where(eq(schema.auditLog.actorId, user.id));
-        await db.delete(schema.sessions).where(eq(schema.sessions.userId, user.id));
-        await db.delete(schema.users).where(eq(schema.users.id, user.id));
+        try {
+          await db.delete(schema.gameProfiles).where(eq(schema.gameProfiles.userId, user.id));
+          await db.delete(schema.consentRecords).where(eq(schema.consentRecords.userId, user.id));
+          await db.delete(schema.auditLog).where(eq(schema.auditLog.actorId, user.id));
+          await db.delete(schema.sessions).where(eq(schema.sessions.userId, user.id));
+          await db.delete(schema.users).where(eq(schema.users.id, user.id));
+        } catch {
+          // Ignore cleanup errors (e.g. rows created concurrently)
+        }
       }
     }, 15000);
 
