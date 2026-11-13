@@ -24,6 +24,7 @@
     "@nestjs/swagger": "^11.2.2",
     "@raise/game-configs": "workspace:*",
     "@raise/schemas": "workspace:*",
+    "@raise/types": "workspace:*",
     "argon2": "^0.44.0",
     "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.4",

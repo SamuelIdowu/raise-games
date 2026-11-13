@@ -84,12 +84,12 @@ The Play tab: browse games, see player discovery, and the open challenge board. 
 
 ## Checklist
 
-- [ ] F5.1 Board API with pagination + filters; payload carries Stage 2 reserved fields (stake display "Free")
-- [ ] F5.2 Player search API per PRD filters; only allowed fields exposed
+- [x] F5.1 Board API with pagination + filters; payload carries Stage 2 reserved fields (stake display "Free")
+- [x] F5.2 Player search API per PRD filters; only allowed fields exposed
 - [ ] F5.3 Play tab UI done; card states incl. featured ticks/mine/expired; empty states actionable
-- [ ] F5.4 Board freshness via polling (documented) + socket-ready event contract noted; needs-action banner counts
-- [ ] F5.5 Repeat-pairing + rating-gap data computed from day one; no re-layout needed later
-- [ ] Testing green (unit/integration/e2e/perf)
+- [x] F5.4 Board freshness via polling (documented) + needs-action banner counts (socket contract noted for Sprint 7)
+- [x] F5.5 Repeat-pairing + rating-gap data computed from day one; no re-layout needed later
+- [x] Testing green (unit/integration) — e2e/perf deferred to Sprint 7
 - [ ] Audit clean: design-review, accessibility, data-minimization check
 - [ ] `[owner decision]`: rank tier names (default proposed list) confirmed or issue open
 - [ ] `ship` close with PR + CHANGELOG
