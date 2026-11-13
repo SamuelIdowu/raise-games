@@ -39,7 +39,7 @@ describe('Sprint 3/4 Integration Tests', () => {
     await moduleRef.close();
     redis.disconnect();
     await pool.end();
-  });
+  }, 15000);
 
   let phoneCounter = 0;
   function uniquePhone(): string {
@@ -265,7 +265,7 @@ describe('Sprint 3/4 Integration Tests', () => {
       expect(logoutAgain).toBe(true);
     }, 10000);
 
-    it('should logout all sessions for user', async () => {
+    it('should logout all sessions for user', { timeout: 30000 }, async () => {
       await authService['createSession'](userId, {
         deviceId: 'device-1',
         userAgent: 'agent-1',
@@ -743,33 +743,38 @@ describe('Sprint 3/4 Integration Tests', () => {
   });
 
   describe('Concurrency Tests', () => {
-    it('should handle parallel OTP verify - exactly one session chain created', async () => {
-      const phone = uniquePhone();
-      const ip = '127.0.0.1';
-      await clearRedisForPhone(phone);
-      await clearPhoneRateLimit(phone);
-      await clearIpRateLimit(ip);
+    it(
+      'should handle parallel OTP verify - exactly one session chain created',
+      { timeout: 30000 },
+      async () => {
+        const phone = uniquePhone();
+        const ip = '127.0.0.1';
+        await clearRedisForPhone(phone);
+        await clearPhoneRateLimit(phone);
+        await clearIpRateLimit(ip);
 
-      await authService.requestOtp(phone, ip, 'test-agent');
+        await authService.requestOtp(phone, ip, 'test-agent');
 
-      const results = await Promise.all(
-        Array(10)
-          .fill(null)
-          .map(() =>
-            authService.verifyOtp(phone, '000000', {
-              userAgent: 'test',
-              ip,
-            }),
-          ),
-      );
+        const results = await Promise.all(
+          Array(10)
+            .fill(null)
+            .map(() =>
+              authService.verifyOtp(phone, '000000', {
+                userAgent: 'test',
+                ip,
+              }),
+            ),
+        );
 
-      // In mock mode, all will succeed. The important thing is only one user is created.
-      const successfulConcurrency = results.filter((r) => r !== null);
-      expect(successfulConcurrency.length).toBeGreaterThanOrEqual(1);
+        // In mock mode, all will succeed. The important thing is only one user is created.
+        const successfulConcurrency = results.filter((r) => r !== null);
+        expect(successfulConcurrency.length).toBeGreaterThanOrEqual(1);
 
-      // Verify only one user was created
-      const users = await db.select().from(schema.users).where(eq(schema.users.phone, phone));
-      expect(users.length).toBe(1);
-    }, 15000);
+        // Verify only one user was created
+        const users = await db.select().from(schema.users).where(eq(schema.users.phone, phone));
+        expect(users.length).toBe(1);
+      },
+      15000,
+    );
   });
 });

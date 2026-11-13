@@ -234,6 +234,87 @@ export const consentRecords = pgTable(
   ],
 );
 
+export const challengeStatusEnum = pgEnum('challenge_status', [
+  'open',
+  'accepted',
+  'in_progress',
+  'awaiting_result',
+  'awaiting_confirmation',
+  'confirmed',
+  'disputed',
+  'resolved',
+  'cancelled',
+  'expired',
+  'forfeited',
+  'voided',
+]);
+
+export const challenges = pgTable(
+  'challenges',
+  {
+    id: uuid('id').primaryKey(),
+    gameId: uuid('game_id')
+      .notNull()
+      .references(() => games.id),
+    formatId: uuid('format_id')
+      .notNull()
+      .references(() => gameFormats.id),
+    posterId: uuid('poster_id')
+      .notNull()
+      .references(() => users.id),
+    targetPlayerId: uuid('target_player_id').references(() => users.id),
+    status: challengeStatusEnum('status').notNull().default('open'),
+    rules: text('rules').notNull().default(''),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    acceptanceDeadline: timestamp('acceptance_deadline', { withTimezone: true }).notNull(),
+    stakeAmountMinor: integer('stake_amount_minor').notNull().default(0),
+    currency: text('currency').notNull().default('NGN'),
+    feeScheduleVersion: integer('fee_schedule_version').notNull().default(1),
+    ratingGap: integer('rating_gap'),
+    repeatPairCount: integer('repeat_pair_count').notNull().default(0),
+    version: integer('version').notNull().default(1),
+    acceptedById: uuid('accepted_by_id').references(() => users.id),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    expiredAt: timestamp('expired_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('challenges_board_idx').on(t.status, t.createdAt, t.id),
+    index('challenges_game_board_idx').on(t.gameId, t.status, t.createdAt, t.id),
+    index('challenges_poster_idx').on(t.posterId, t.createdAt),
+    index('challenges_target_idx').on(t.targetPlayerId, t.status),
+    index('challenges_deadline_idx').on(t.status, t.acceptanceDeadline),
+  ],
+);
+
+export const pairingCounters = pgTable(
+  'pairing_counters',
+  {
+    id: uuid('id').primaryKey(),
+    gameId: uuid('game_id')
+      .notNull()
+      .references(() => games.id),
+    userAId: uuid('user_a_id')
+      .notNull()
+      .references(() => users.id),
+    userBId: uuid('user_b_id')
+      .notNull()
+      .references(() => users.id),
+    count: integer('count').notNull().default(0),
+    lastPairingAt: timestamp('last_pairing_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('pairing_counters_game_pair_uq').on(t.gameId, t.userAId, t.userBId),
+    index('pairing_counters_a_idx').on(t.userAId),
+    index('pairing_counters_b_idx').on(t.userBId),
+  ],
+);
+
 export const gameProfiles = pgTable(
   'game_profiles',
   {
