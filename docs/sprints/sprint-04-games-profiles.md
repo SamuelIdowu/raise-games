@@ -91,6 +91,6 @@ Games are configuration, not code (PRD): each game record defines its ID fields,
 - [x] F4.3 GameProfiles CRUD live; unique per (user, game); rating/stats/provisional defaults correct; city/campus settable
 - [x] F4.4 Profile UI per Design §8 incl. copy toast, tabs, stat grid, recent matches empty state, sticky Challenge (public profile page wired to API with displayName join)
 - [x] F4.5 Reputation placeholder shows "New" for all users (enum + DTO field present)
-- [ ] Testing block green (seed, CRUD, e2e, config-extensibility)
+- [x] Testing block green (seed, CRUD, e2e, config-extensibility) — integration tests pass in CI
 - [ ] Audit block clean; format decisions recorded `[owner decision]`
 - [ ] `ship` close with PR + CHANGELOG

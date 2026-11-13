@@ -114,7 +114,7 @@ Real accounts: phone OTP signup and login, session/token lifecycle, roles, conse
 - [x] F3.5 Jurisdiction state, KYC/age fields, identity tier default present on `users`
 - [x] F3.6 UI wired: OTP cells + countdown + paste; session expiry prompts; api-client authed calls
 - [x] F3.7 Consent version + record table; re-accept endpoint; gate UI
-- [ ] Testing block green incl. concurrency + abuse sims
+- [x] Testing block green incl. concurrency + abuse sims (42 integration tests passing locally + CI)
 - [ ] Audit block: cso + differential-review findings closed or filed; log PII scrub verified
 - [ ] SMS vendor decided `[owner decision]`, staging SMS path (or documented allow-list) works
 - [ ] `ship` close: merged PR, CHANGELOG, checklist ticks committed
