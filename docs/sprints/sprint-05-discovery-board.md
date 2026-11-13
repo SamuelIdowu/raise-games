@@ -91,5 +91,5 @@ The Play tab: browse games, see player discovery, and the open challenge board. 
 - [x] F5.5 Repeat-pairing + rating-gap data computed from day one; no re-layout needed later
 - [x] Testing green (unit/integration) — e2e/perf deferred to Sprint 7
 - [ ] Audit clean: design-review, accessibility, data-minimization check
-- [ ] `[owner decision]`: rank tier names (default proposed list) confirmed or issue open
+- [x] `[owner decision]`: rank tier names confirmed (Rookie→Challenger→Contender→Elite→Champion)
 - [ ] `ship` close with PR + CHANGELOG
