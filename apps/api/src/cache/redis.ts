@@ -2,12 +2,23 @@ import Redis from 'ioredis';
 import { env } from '../config/env.instance';
 
 /**
- * Shared Redis connection. Lazy so the API still boots when Redis is unavailable;
+ * Shared Redis connection for general cache use. Lazy so the API still boots when Redis is unavailable;
  * endpoints that need it surface a 503 rather than hanging.
  */
 export const redis = new Redis(env.REDIS_URL, {
   lazyConnect: true,
   maxRetriesPerRequest: 1,
+  enableOfflineQueue: false,
+  connectTimeout: 2000,
+});
+
+/**
+ * Redis connection for BullMQ. BullMQ requires maxRetriesPerRequest to be null.
+ * This connection is only used by BullMQ workers and queues.
+ */
+export const redisForBullMQ = new Redis(env.REDIS_URL, {
+  lazyConnect: true,
+  maxRetriesPerRequest: null,
   enableOfflineQueue: false,
   connectTimeout: 2000,
 });

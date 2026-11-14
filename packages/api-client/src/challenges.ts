@@ -48,6 +48,16 @@ export interface BoardResponse {
   needsActionCount: number;
 }
 
+export interface CreateChallengeRequest {
+  gameKey: string;
+  formatKey: string;
+  rules?: string;
+  startsAt: string;
+  endsAt: string;
+  targetPlayerId?: string;
+  idempotencyKey?: string;
+}
+
 export const challengesApi = {
   list: (query: BoardQuery = {}) => {
     const params = new URLSearchParams();
@@ -58,4 +68,27 @@ export const challengesApi = {
     });
     return apiFetch<BoardResponse>(`/challenges?${params.toString()}`);
   },
+
+  get: (id: string) => apiFetch<ChallengeCard>(`/challenges/${id}`),
+
+  create: (data: CreateChallengeRequest) =>
+    apiFetch<{ id: string }>('/challenges', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  accept: (id: string) =>
+    apiFetch<{ matchId: string }>(`/challenges/${id}/accept`, {
+      method: 'PATCH',
+    }),
+
+  decline: (id: string) =>
+    apiFetch<{ success: boolean }>(`/challenges/${id}/decline`, {
+      method: 'PATCH',
+    }),
+
+  cancel: (id: string) =>
+    apiFetch<{ success: boolean }>(`/challenges/${id}/cancel`, {
+      method: 'PATCH',
+    }),
 };

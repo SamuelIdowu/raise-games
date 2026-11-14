@@ -55,6 +55,16 @@ export interface ChallengeCardDto {
   };
   ratingGap: null;
   isMine: boolean;
+  /** Present in detail view for direct challenges. */
+  target?: {
+    userId: string;
+    username: string;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    provisional: boolean;
+  } | null;
 }
 
 function displayStatus(status: string, acceptanceDeadline: Date, now: Date): string {

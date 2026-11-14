@@ -274,6 +274,7 @@ export const challenges = pgTable(
     ratingGap: integer('rating_gap'),
     repeatPairCount: integer('repeat_pair_count').notNull().default(0),
     version: integer('version').notNull().default(1),
+    idempotencyKey: uuid('idempotency_key').unique(),
     acceptedById: uuid('accepted_by_id').references(() => users.id),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
@@ -312,6 +313,171 @@ export const pairingCounters = pgTable(
     uniqueIndex('pairing_counters_game_pair_uq').on(t.gameId, t.userAId, t.userBId),
     index('pairing_counters_a_idx').on(t.userAId),
     index('pairing_counters_b_idx').on(t.userBId),
+  ],
+);
+
+export const matchStateEnum = pgEnum('match_state', [
+  'open',
+  'accepted',
+  'in_progress',
+  'awaiting_result',
+  'awaiting_confirmation',
+  'confirmed',
+  'disputed',
+  'resolved',
+  'cancelled',
+  'expired',
+  'forfeited',
+  'voided',
+]);
+
+export const matches = pgTable(
+  'matches',
+  {
+    id: uuid('id').primaryKey(),
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    status: matchStateEnum('status').notNull().default('accepted'),
+    version: integer('version').notNull().default(1),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull().defaultNow(),
+    inProgressAt: timestamp('in_progress_at', { withTimezone: true }),
+    resultSubmittedAt: timestamp('result_submitted_at', { withTimezone: true }),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    disputedAt: timestamp('disputed_at', { withTimezone: true }),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    expiredAt: timestamp('expired_at', { withTimezone: true }),
+    forfeitedAt: timestamp('forfeited_at', { withTimezone: true }),
+    voidedAt: timestamp('voided_at', { withTimezone: true }),
+    roomCode: text('room_code'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('matches_challenge_id_uq').on(t.challengeId),
+    index('matches_status_idx').on(t.status),
+    index('matches_deadline_idx').on(t.status, t.updatedAt),
+  ],
+);
+
+export const matchSides = pgTable(
+  'match_sides',
+  {
+    id: uuid('id').primaryKey(),
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    gameProfileId: uuid('game_profile_id')
+      .notNull()
+      .references(() => gameProfiles.id),
+    side: integer('side').notNull(),
+    isPoster: boolean('is_poster').notNull().default(false),
+    isAcceptor: boolean('is_acceptor').notNull().default(false),
+    result: text('result'),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    disputedAt: timestamp('disputed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('match_sides_match_side_uq').on(t.matchId, t.side),
+    uniqueIndex('match_sides_match_user_uq').on(t.matchId, t.userId),
+    index('match_sides_user_idx').on(t.userId),
+  ],
+);
+
+export const matchParticipants = pgTable(
+  'match_participants',
+  {
+    id: uuid('id').primaryKey(),
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    gameProfileId: uuid('game_profile_id')
+      .notNull()
+      .references(() => gameProfiles.id),
+    isReady: boolean('is_ready').notNull().default(false),
+    readyAt: timestamp('ready_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('match_participants_match_user_uq').on(t.matchId, t.userId),
+    index('match_participants_user_idx').on(t.userId),
+  ],
+);
+
+export const resultSubmissions = pgTable(
+  'result_submissions',
+  {
+    id: uuid('id').primaryKey(),
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    submitterId: uuid('submitter_id')
+      .notNull()
+      .references(() => users.id),
+    matchSideId: uuid('match_side_id')
+      .notNull()
+      .references(() => matchSides.id),
+    result: text('result').notNull(),
+    score: jsonb('score').notNull(),
+    proof: jsonb('proof'),
+    note: text('note'),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('result_submissions_match_idx').on(t.matchId),
+    index('result_submissions_submitter_idx').on(t.submitterId),
+  ],
+);
+
+export const disputes = pgTable(
+  'disputes',
+  {
+    id: uuid('id').primaryKey(),
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    raisedById: uuid('raised_by_id')
+      .notNull()
+      .references(() => users.id),
+    reason: text('reason').notNull(),
+    evidence: jsonb('evidence'),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('disputes_match_idx').on(t.matchId),
+    index('disputes_raised_by_idx').on(t.raisedById),
+  ],
+);
+
+export const rulings = pgTable(
+  'rulings',
+  {
+    id: uuid('id').primaryKey(),
+    disputeId: uuid('dispute_id')
+      .notNull()
+      .references(() => disputes.id, { onDelete: 'cascade' }),
+    moderatorId: uuid('moderator_id')
+      .notNull()
+      .references(() => users.id),
+    ruling: text('ruling').notNull(),
+    justification: text('justification').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('rulings_dispute_id_uq').on(t.disputeId),
+    index('rulings_moderator_idx').on(t.moderatorId),
   ],
 );
 
