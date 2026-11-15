@@ -43,6 +43,13 @@
       "when": 1794744508546,
       "tag": "0005_state_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794745921795,
+      "tag": "0006_sprint7_messaging",
+      "breakpoints": true
     }
   ]
 }

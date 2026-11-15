@@ -22,7 +22,8 @@ function clearTokens() {
   localStorage.removeItem('refresh_token');
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+/** Rotates the refresh token. Exported so the WebSocket can re-auth after expiry. */
+export async function refreshAccessToken(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
 

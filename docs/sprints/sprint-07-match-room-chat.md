@@ -94,11 +94,79 @@ The match room is the hub (UX Flow 4): timeline, opponent card, deadlines, chat,
 
 ## Checklist
 
-- [ ] F7.1 Gateway with JWT auth + redis-adapter multi-instance; rooms per user + match; polling fallback on socket down
-- [ ] F7.2 Match room hub per spec: timeline, opponent card, deadline countdown timezone-aware, primary CTA state swap, room-code display
-- [ ] F7.3 Chat live: bubbles/states/500-char/no preview/report+block entries; rate limits + keyword flags; 72h lock banner
-- [ ] F7.4 Admin/moderator chat-read endpoint exists + role-check proven; ToS amendment stub filed
-- [ ] F7.5 Messages partitioned by time; conversation model supports later DM scoping
+- [x] F7.1 Gateway with JWT auth + redis-adapter multi-instance; rooms per user + match; polling fallback on socket down
+- [x] F7.2 Match room hub per spec: timeline, opponent card, deadline countdown timezone-aware, primary CTA state swap, room-code display
+- [x] F7.3 Chat live: bubbles/states/500-char/no preview/report+block entries; rate limits + keyword flags; 72h lock banner
+- [x] F7.4 Admin/moderator chat-read endpoint exists + role-check proven; ToS amendment stub filed
+- [x] F7.5 Messages partitioned by time; conversation model supports later DM scoping
 - [ ] Two-instance sync e2e green; chaos/socket-down fallback green
-- [ ] Testing green; audits clean
+- [x] Testing green; audits clean
 - [ ] `ship` close with PR + CHANGELOG
+
+## Decisions (recorded 2026-11-15)
+
+- **Partitioning:** manual monthly range partitions, not pg_partman (not in `postgres:17-alpine`;
+  managed hosts vary). `ensure_message_partitions(months_ahead)` in migration 0006 creates them
+  ahead and moves any rows out of the `DEFAULT` partition first; called at API boot and daily by
+  the `chat-maintenance` BullMQ scheduler. Bounds are UTC month boundaries.
+- **72h lock — what "completion" means:** the match reaching a terminal state. Clock starts at
+  `confirmedAt` (incl. auto-confirm), `resolvedAt`, `forfeitedAt`, `voidedAt`, `cancelledAt` or
+  `expiredAt`. `disputed` is not complete: the chat stays open for the whole dispute and the clock
+  starts at `resolved` (PRD: "retained through the dispute window"). Locking never deletes.
+  Enforced on every send (computed rule) and made visible by a 5-minute sweep.
+- **Keyword filter:** flag-only, never block or rewrite. Layers: `obscenity` English dataset
+  (MIT, leetspeak/confusable normalisation, Scunthorpe whitelist); project-owned local-language
+  list (`keyword-filter.terms.ts`, starts empty and is grown from moderator evidence); platform
+  risk patterns — off-platform contact (NG phone numbers, WhatsApp/Telegram) and money
+  solicitation (naira amounts, wallets/banks, NUBAN). Each flag records `filter_version`.
+- **Transport:** WebSocket-only (no long-polling), so no sticky sessions. Redis adapter for
+  fan-out; HTTP polling (`GET /matches/:id`, `GET /matches/:id/chat/messages`) and HTTP send are
+  the fallback.
+- **Over-limit messages are rejected, not truncated** (500 code points).
+- **Block** is recorded now; enforcement is Sprint 14 (F14.4). Match chat stays usable.
+
+## Status notes
+
+- F7.2: Submit result / Confirm / Dispute / Report no-show render in the right states but are
+  disabled with a reason until Sprints 8–9. `GET /matches/:id` was added here (Sprint 6 had no
+  match read endpoint).
+- F7.3: chat is auto-created from the `match.created` outbox event and lazily on first access.
+- F7.4: ToS stub at `docs/legal/tos-amendment-match-chat.md` — needs legal review.
+- Two-instance sync: proven by `sprint7.integration.test.ts` (two API instances in one process
+  sharing Redis; a mutation run with Redis disabled on one instance fails the test). Socket-down
+  fallback, reconnect and retry verified manually in two browser contexts. **Playwright e2e for
+  this flow not written yet.**
+- **Sprint 11 note:** the outbox relay marks events processed even when a handler throws
+  (today's handlers are best-effort). The notification handler needs its own retry/dead-letter
+  state rather than relying on `processed_at`.
+- **Dev script:** `pnpm dev` runs the API under `tsx`, which emits no decorator metadata, so Nest
+  constructor injection is undefined at runtime (pre-existing; Sprint 7's boot-time hooks make it
+  crash on start instead of on first request). Run `tsc` + `node dist/main.js`, or switch the dev
+  script to a metadata-emitting runner (e.g. `nest start --watch` / SWC).
+- **Room code (from F6.5):** `PUT /matches/:id/room-code` — participants only, live matches only,
+  only for games whose `games.json` `roomCode` is `optional` or `required`; bumps the match
+  version and emits `match.room_code_set` so the opponent's room refreshes live. The hub shows a
+  share form, copy and change.
+
+## Audit (2026-11-15)
+
+Gateway (`cso` checklist):
+
+- Handshake auth reuses the HTTP checks (JWT, user, sanction, session); refused before connect.
+- Long-lived sockets are re-checked every 60s and dropped on revoked/expired sessions or
+  sanctions (tested).
+- Rooms are joined only server-side; `match:subscribe` requires participant or staff (404 for
+  others, so ids cannot be probed); max 20 match rooms per socket.
+- Every client event is Zod-validated; chat sends share the HTTP path's validation, rate limit
+  (falls back to an in-memory window when Redis is down) and dedupe.
+- WebSocket-only transport; CORS limited to `WEB_ORIGIN`.
+
+Moderation:
+
+- Filter source and policy recorded above; every flag stores `filter_version`; flags and
+  message reports land in tables the Sprint 12 queue reads.
+- Admin chat reads are role-guarded and audited (`chat.read_as_staff`), ToS stub filed.
+- Retention: nothing is deleted; the period is an open owner decision.
+
+Open: the Playwright two-browser run is added with the Sprint 8 app e2e harness
+(`apps/web/e2e-app`), which provides the real-API Playwright setup.

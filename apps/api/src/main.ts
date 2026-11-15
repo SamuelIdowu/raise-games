@@ -4,6 +4,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './realtime/redis-io.adapter';
 import { env } from './config/env.instance';
 
 process.on('unhandledRejection', (reason) => {
@@ -21,6 +22,11 @@ async function bootstrap() {
     origin: env.WEB_ORIGIN.split(',').filter(Boolean),
     credentials: true,
   });
+
+  // WebSocket gateway with Redis fan-out across instances (Sprint 7, F7.1).
+  const ioAdapter = new RedisIoAdapter(app);
+  await ioAdapter.connectToRedis();
+  app.useWebSocketAdapter(ioAdapter);
 
   const swagger = await import('@nestjs/swagger');
   const config = new swagger.DocumentBuilder()

@@ -4,6 +4,20 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 7 — Match room, real-time gateway & match chat
+
+- One WebSocket per user (socket.io, WebSocket-only) for chat, live match state and in-app
+  notifications; Redis adapter fans out across API instances; HTTP polling fallback.
+- Socket auth reuses the HTTP session checks; connected sockets are re-checked every minute.
+- Outbox relay: events written with each change are pushed to both players live.
+- Match room at `/matches/[id]`: timeline, opponent card with game ID copy, deadline countdown in
+  the player's timezone, room code (share/copy/change for room-code games), rules, chat, and a
+  primary action that follows the match state.
+- Match chat: delivery states with retry, 500-character limit, rate limits, report and block,
+  keyword flags for moderators (never blocks), locks 72 hours after the final outcome (disputes
+  stay open), monthly-partitioned message storage.
+- Moderators can read match chats as dispute evidence; every read is audited. ToS amendment draft.
+
 ### Sprint 6 — Challenge lifecycle & match state machine
 
 - Match and challenge state machines: one transition table in `@raise/types`, enforced in the

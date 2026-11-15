@@ -18,6 +18,7 @@ import {
   index,
   uniqueIndex,
   pgEnum,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['player', 'moderator', 'admin']);
@@ -535,5 +536,144 @@ export const reports = pgTable(
   (t) => [
     uniqueIndex('reports_reporter_subject_uq').on(t.reporterId, t.subjectType, t.subjectId),
     index('reports_status_idx').on(t.status, t.createdAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Messaging — Sprint 7 (F7.3, F7.5)
+// Conversations are scoped: one per match now, DM pairs later (Sprint 14).
+// ---------------------------------------------------------------------------
+
+export const conversationScopeEnum = pgEnum('conversation_scope', ['match', 'dm']);
+
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey(),
+    scope: conversationScopeEnum('scope').notNull(),
+    /** Set when scope = 'match'. One conversation per match. */
+    matchId: uuid('match_id').references(() => matches.id, { onDelete: 'cascade' }),
+    /** Canonical (sorted) user pair key when scope = 'dm'. Reserved for Sprint 14. */
+    dmPairKey: text('dm_pair_key'),
+    /** Written by the lock sweeper once the 72h window has passed; reads also compute it. */
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('conversations_match_uq').on(t.matchId),
+    uniqueIndex('conversations_dm_pair_uq').on(t.dmPairKey),
+  ],
+);
+
+export const conversationParticipants = pgTable(
+  'conversation_participants',
+  {
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    /** Per-conversation mute (Sprint 14 enforcement; stored now). */
+    mutedAt: timestamp('muted_at', { withTimezone: true }),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.conversationId, t.userId] }),
+    index('conversation_participants_user_idx').on(t.userId),
+  ],
+);
+
+export const messageKindEnum = pgEnum('message_kind', ['user', 'system']);
+
+/**
+ * Range-partitioned by created_at (monthly). drizzle-kit cannot emit PARTITION BY, so
+ * migration 0006 is hand-edited; the primary key must include the partition column.
+ * Retried sends are deduplicated under an advisory lock on (sender, client_msg_id),
+ * since a unique index cannot span partitions without created_at.
+ */
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').notNull(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    /** Null for system messages. */
+    senderId: uuid('sender_id').references(() => users.id),
+    kind: messageKindEnum('kind').notNull().default('user'),
+    body: text('body').notNull(),
+    clientMsgId: uuid('client_msg_id'),
+    flagged: boolean('flagged').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.createdAt, t.id] }),
+    index('messages_conversation_created_idx').on(t.conversationId, t.createdAt, t.id),
+    index('messages_sender_client_idx').on(t.senderId, t.clientMsgId),
+  ],
+);
+
+export const messageReports = pgTable(
+  'message_reports',
+  {
+    id: uuid('id').primaryKey(),
+    messageId: uuid('message_id').notNull(),
+    /** Partition key of the reported message, so the row can be found without a scan. */
+    messageCreatedAt: timestamp('message_created_at', { withTimezone: true }).notNull(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    reporterId: uuid('reporter_id')
+      .notNull()
+      .references(() => users.id),
+    reason: text('reason').notNull(),
+    note: text('note'),
+    /** Body at report time, so later edits/retention cannot change the evidence. */
+    bodySnapshot: text('body_snapshot').notNull(),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('message_reports_message_reporter_uq').on(t.messageId, t.reporterId),
+    index('message_reports_status_idx').on(t.status, t.createdAt),
+  ],
+);
+
+export const chatFlags = pgTable(
+  'chat_flags',
+  {
+    id: uuid('id').primaryKey(),
+    messageId: uuid('message_id').notNull(),
+    messageCreatedAt: timestamp('message_created_at', { withTimezone: true }).notNull(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    /** Filter categories that matched, e.g. ['profanity', 'off_platform_contact']. */
+    categories: jsonb('categories').notNull(),
+    /** Normalised terms that matched (never the full message — that stays in messages). */
+    terms: jsonb('terms').notNull(),
+    filterVersion: text('filter_version').notNull(),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('chat_flags_status_idx').on(t.status, t.createdAt)],
+);
+
+export const userBlocks = pgTable(
+  'user_blocks',
+  {
+    blockerId: uuid('blocker_id')
+      .notNull()
+      .references(() => users.id),
+    blockedId: uuid('blocked_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.blockerId, t.blockedId] }),
+    index('user_blocks_blocked_idx').on(t.blockedId),
   ],
 );

@@ -6,6 +6,7 @@ export {
   getRefreshToken,
   setTokens,
   clearTokens,
+  refreshAccessToken,
 } from './fetch';
 export { authApi } from './auth';
 export { consentApi } from './consent';
@@ -14,6 +15,9 @@ export { profilesApi } from './profiles';
 export { challengesApi } from './challenges';
 export { playersApi } from './players';
 export { reportsApi } from './reports';
+export { matchesApi } from './matches';
+export { chatApi } from './chat';
+export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
 export type { Game, GameFormat, IdField } from './games';
@@ -26,3 +30,6 @@ export type {
 } from './challenges';
 export type { PlayerCard, PlayerSearchQuery, PlayerSearchResponse } from './players';
 export type { ReportSubjectType, ReportReasonCode } from './reports';
+export type { MatchView, MatchPlayer, MatchStatus, DeadlineKind } from './matches';
+export type { ChatMessage, MessagePage, SendResult, ReportReason } from './chat';
+export type { MatchStateEvent, ChatLockedEvent, NotificationEvent, Ack } from './realtime';
