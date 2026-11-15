@@ -26,6 +26,7 @@
     "@raise/schemas": "workspace:*",
     "@raise/types": "workspace:*",
     "argon2": "^0.44.0",
+    "bullmq": "^6.7.6",
     "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.2.1",

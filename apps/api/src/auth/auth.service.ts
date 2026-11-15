@@ -313,7 +313,21 @@ export class AuthService {
     if (existing?.deletedAt) return null; // banned/removed accounts cannot log in
 
     const id = uuidv7();
-    await db.insert(schema.users).values({ id, phone });
+    // Two verifications for the same new phone can race here. The unique phone index
+    // picks one winner; the loser reads the winner's row instead of failing with a 500.
+    const inserted = await db
+      .insert(schema.users)
+      .values({ id, phone })
+      .onConflictDoNothing({ target: schema.users.phone })
+      .returning({ id: schema.users.id });
+    if (inserted.length === 0) {
+      const [winner] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.phone, phone))
+        .limit(1);
+      return winner && !winner.deletedAt ? winner : null;
+    }
     await this.audit('identity.user_created', {
       actorId: id,
       objectId: id,

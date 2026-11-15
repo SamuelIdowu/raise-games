@@ -24,6 +24,7 @@ export interface ChallengeCardRow {
   losses: number;
   draws: number;
   provisional: boolean;
+  targetPlayerId?: string | null;
 }
 
 export interface ChallengeCardDto {
@@ -55,6 +56,20 @@ export interface ChallengeCardDto {
   };
   ratingGap: null;
   isMine: boolean;
+  /** A direct challenge addressed to the viewer: they can accept or decline it. */
+  isForMe: boolean;
+  /** Present in the detail view. */
+  rules?: string;
+  /** Present in detail view for direct challenges. */
+  target?: {
+    userId: string;
+    username: string;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    provisional: boolean;
+  } | null;
 }
 
 function displayStatus(status: string, acceptanceDeadline: Date, now: Date): string {
@@ -102,5 +117,6 @@ export function toChallengeCard(
     },
     ratingGap: null,
     isMine: row.posterId === viewerId,
+    isForMe: Boolean(row.targetPlayerId) && row.targetPlayerId === viewerId,
   };
 }

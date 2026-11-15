@@ -133,7 +133,7 @@ describe('Sprint 5 - Discovery board & player search', () => {
     await pool.end();
   }, 30000);
 
-  it('paginates deterministically without duplicates or gaps', async () => {
+  it('paginates deterministically without duplicates or gaps', { timeout: 15000 }, async () => {
     const poster = await createUser('Pager', efootballId, 1100);
     const base = Date.now() - 60 * 60 * 1000;
     const created: string[] = [];

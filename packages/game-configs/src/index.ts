@@ -30,6 +30,12 @@ export const gameConfigSchema = z.object({
   status: z.enum(['enabled', 'disabled']).default('enabled'),
   idFields: z.array(idFieldSchema).min(1),
   formats: z.array(gameFormatSchema).min(1),
+  /**
+   * Room-code exchange for custom-room games (Sprint 6, F6.5). 'required': the match room
+   * asks a player to share a room code before the start; 'optional': a code can be shared;
+   * 'none': players join each other by game ID.
+   */
+  roomCode: z.enum(['none', 'optional', 'required']).default('none'),
 });
 
 export type GameConfig = z.infer<typeof gameConfigSchema>;
