@@ -72,7 +72,10 @@ test.describe('Sprint 8 — result verification (two browsers)', () => {
     await expect(pageA.getByText('Win', { exact: true })).toBeVisible();
     // Signature moment: rating rendered through the count-up (aria-live polite).
     await expect(pageA.locator('[aria-live="polite"].tabular').first()).toBeVisible();
-    await expect(pageA.getByRole('img', { name: /^Rank / })).toBeVisible();
+    // The viewer's rank in the summary (the opponent card in the room has its own badge).
+    await expect(
+      pageA.getByRole('region', { name: 'Result confirmed' }).getByRole('img', { name: /^Rank / }),
+    ).toBeVisible();
   });
 
   test('opponent confirms with one tap', async ({ browser }) => {
