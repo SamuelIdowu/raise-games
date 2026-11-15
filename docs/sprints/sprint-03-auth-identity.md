@@ -115,6 +115,17 @@ Real accounts: phone OTP signup and login, session/token lifecycle, roles, conse
 - [x] F3.6 UI wired: OTP cells + countdown + paste; session expiry prompts; api-client authed calls
 - [x] F3.7 Consent version + record table; re-accept endpoint; gate UI
 - [x] Testing block green incl. concurrency + abuse sims (42 integration tests passing locally + CI)
-- [ ] Audit block: cso + differential-review findings closed or filed; log PII scrub verified
+- [x] Audit block: cso + differential-review findings closed or filed; log PII scrub verified
 - [ ] SMS vendor decided `[owner decision]`, staging SMS path (or documented allow-list) works
 - [ ] `ship` close: merged PR, CHANGELOG, checklist ticks committed
+
+## Audit (2026-11-15)
+
+- Differential review while closing Sprints 6–8 found one Sprint 3 defect: two OTP verifications
+  for the same new phone raced on user creation and the loser returned 500. Fixed with an upsert
+  (`auth.service.ts` `findOrCreateUser`), covered by the existing parallel-verify test.
+- The Sprint 3/4 suite reused phone numbers across runs (counter reset, users never deleted), which
+  made unrelated tests fail intermittently. Phones are now unique per run; 3 consecutive green runs.
+- Log PII scrub verified: the request logger redacts `authorization`, `cookie`, `body.phone` and
+  `body.code`; the only other console output is the boot line and seed errors.
+- Still open (owner): SMS vendor decision.

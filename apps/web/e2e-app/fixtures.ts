@@ -2,6 +2,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import pg from 'pg';
 import type { BrowserContext } from '@playwright/test';
+import { clearOtpIpLimit } from './otp-limit';
 
 const API = process.env.E2E_API_URL ?? 'http://localhost:3001';
 const DATABASE_URL =
@@ -30,6 +31,8 @@ async function api<T>(path: string, init: RequestInit & { token?: string } = {})
 /** Signs up through the real OTP flow (mock code), accepts terms, adds an eFootball profile. */
 export async function createPlayer(prefix: string): Promise<Player> {
   const phone = `+234809${randomInt(0, 9_999_999).toString().padStart(7, '0')}`;
+  // All signups share one IP; keep the per-IP OTP limit from tripping mid-suite.
+  await clearOtpIpLimit();
   await api('/auth/otp/request', { method: 'POST', body: JSON.stringify({ phone }) });
   const session = await api<{ accessToken: string; refreshToken: string }>('/auth/otp/verify', {
     method: 'POST',

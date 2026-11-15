@@ -58,8 +58,10 @@ export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: S
             <Icon name="x" size={20} />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-        {footer ? <footer className="border-t border-line p-4">{footer}</footer> : null}
+        {/* Content only while open: a closed sheet should not leave duplicate text, inputs
+            or focusable controls in the page (screen readers, find-in-page, tests). */}
+        <div className="flex-1 overflow-y-auto p-4">{open ? children : null}</div>
+        {open && footer ? <footer className="border-t border-line p-4">{footer}</footer> : null}
       </div>
     </dialog>
   );
