@@ -3,11 +3,14 @@ import { APP_FILTER } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
 import { ChallengesModule } from './challenges/challenges.module';
+import { ChatModule } from './chat/chat.module';
 import { ConsentModule } from './consent/consent.module';
 import { GamesModule } from './games/games.module';
+import { MatchesModule } from './matches/matches.module';
 import { PlayersModule } from './players/players.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { ReportsModule } from './reports/reports.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { HealthController } from './health/health.controller';
 import { env } from './config/env.instance';
 import { appExceptionFilterFactory } from './shared/global-exception.filter';
@@ -42,6 +45,9 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     ChallengesModule,
     PlayersModule,
     ReportsModule,
+    MatchesModule,
+    ChatModule,
+    RealtimeModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useFactory: appExceptionFilterFactory }],
