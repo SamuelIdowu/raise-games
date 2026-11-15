@@ -41,9 +41,12 @@ describe('Sprint 3/4 Integration Tests', () => {
     await pool.end();
   }, 15000);
 
+  // Unique per run: users are not deleted between runs, so a counter that restarts at 0
+  // would hand later runs phones that already have users and sessions (flaky failures).
+  const runNonce = Date.now().toString().slice(-4);
   let phoneCounter = 0;
   function uniquePhone(): string {
-    const suffix = `${(phoneCounter++).toString().padStart(8, '0')}`;
+    const suffix = `${runNonce}${(phoneCounter++).toString().padStart(4, '0')}`;
     return `${basePhone}${suffix}`;
   }
 
