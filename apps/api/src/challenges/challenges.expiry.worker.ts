@@ -5,6 +5,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { redisForBullMQ } from '../cache/redis';
 import { db, schema } from '../db/client';
 import { challengeExpiryQueueName, type ChallengeExpiryJobData } from './challenges.queue';
+import { startDueMatches } from '../matches/match-start';
 
 /** How often the DB sweeper looks for open challenges past their deadline. */
 const SWEEP_INTERVAL_MS = 30_000;
@@ -79,12 +80,16 @@ export class ChallengeExpiryWorker implements OnModuleInit, OnModuleDestroy {
     this.sweepTimer.unref();
   }
 
-  private async sweep() {
+  /** Public for tests. */
+  async sweep() {
     if (this.sweeping) return;
     this.sweeping = true;
     try {
       const ids = await expireDueChallenges();
       if (ids.length > 0) this.logger.log(`Sweeper expired ${ids.length} challenge(s)`);
+      // Same sweep moves matches to in_progress at their agreed start (F6.5).
+      const started = await startDueMatches();
+      if (started.length > 0) this.logger.log(`Sweeper started ${started.length} match(es)`);
     } catch (err) {
       this.logger.error(`Challenge expiry sweep failed: ${String(err)}`);
     } finally {

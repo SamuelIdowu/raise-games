@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Avatar,
   Banner,
@@ -8,705 +9,461 @@ import {
   EmptyState,
   RatingBadge,
   ReputationBadge,
-  Sheet,
-  StatusChip,
+  Select,
+  SkeletonCard,
+  useToast,
 } from '@/components/ui';
-import { challengesApi, type ChallengeCard, type BoardQuery } from '@raise/api-client';
-import { gamesApi, type Game } from '@raise/api-client';
-import { playersApi, type PlayerSearchQuery, type PlayerCard } from '@raise/api-client';
+import { ChallengeCard } from '@/components/challenge/challenge-card';
+import { useNow } from '@/lib/use-now';
+import { ChallengeDetailSheet } from '@/components/challenge/challenge-detail-sheet';
+import {
+  CreateChallengeSheet,
+  type DirectTarget,
+} from '@/components/challenge/create-challenge-sheet';
+import {
+  challengesApi,
+  gamesApi,
+  playersApi,
+  type BoardQuery,
+  type ChallengeCard as ChallengeCardData,
+  type Game,
+  type PlayerCard as PlayerCardData,
+  type PlayerSearchQuery,
+} from '@raise/api-client';
 
-const SELECT_ARROW =
-  'bg-[url(\'data:image/svg+xml;charset=utf-8,<svg xmlns%3D"http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width%3D"24" height%3D"24" viewBox%3D"0%200%2024%2024" fill%3D"none" stroke%3D"%25236B7788" stroke-width%3D"1.5" stroke-linecap%3D"square" stroke-linejoin%3D"miter"><path d%3D"M6%209l6%206%206-6"/></svg>\')]';
+const POLL_INTERVAL_MS = 20_000;
+const RANKS = [
+  { value: '', label: 'All ranks' },
+  { value: 'rookie', label: 'Rookie' },
+  { value: 'challenger', label: 'Challenger' },
+  { value: 'contender', label: 'Contender' },
+  { value: 'elite', label: 'Elite' },
+  { value: 'champion', label: 'Champion' },
+];
 
-const selectClass =
-  'h-11 w-full rounded-control border border-line bg-raised px-3 py-2 text-body text-fg focus:border-accent focus:outline-none appearance-none bg-no-repeat bg-right-3 bg-center pr-10 ' +
-  SELECT_ARROW;
-
-const POLL_INTERVAL_MS = 20000;
-
+/**
+ * Play tab (UX Flow 2–3; Sprint 5 F5.3 + Sprint 6 F6.4): game switcher, open challenge
+ * board, challenges sent to the viewer, player search with a Challenge action, create
+ * and detail sheets. Accepting goes straight to the match room.
+ */
 export default function PlayPage() {
-  const [games, setGames] = useState<{ id: string; key: string; name: string }[]>([]);
-  const [selectedGame, setSelectedGame] = useState<string>('all');
+  const router = useRouter();
+  const { toast } = useToast();
+  const [games, setGames] = useState<Game[]>([]);
+  const [selectedGame, setSelectedGame] = useState('all');
   const [view, setView] = useState<'board' | 'players'>('board');
-  const [challenges, setChallenges] = useState<ChallengeCard[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
+
+  const [challenges, setChallenges] = useState<ChallengeCardData[]>([]);
+  const [forMe, setForMe] = useState<ChallengeCardData[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [needsActionCount, setNeedsActionCount] = useState(0);
 
-  const [players, setPlayers] = useState<PlayerCard[]>([]);
-  const [playersCursor, setPlayersCursor] = useState<string | null>(null);
-  const [playersHasMore, setPlayersHasMore] = useState(false);
-  const [playersLoading, setPlayersLoading] = useState(false);
-  const [playersError, setPlayersError] = useState<string | null>(null);
-  const [playerSearch, setPlayerSearch] = useState<PlayerSearchQuery>({});
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<'create' | 'detail'>('create');
-  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeCard | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState<{ target?: DirectTarget } | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const requestSeq = useRef(0);
+  const now = useNow();
 
   useEffect(() => {
-    gamesApi.list().then((data) => {
-      setGames(data.map((g) => ({ id: g.id, key: g.key, name: g.name })));
-    });
+    gamesApi
+      .list()
+      .then(setGames)
+      .catch(() => setGames([]));
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    let interval: ReturnType<typeof setInterval>;
-
-    async function loadBoard() {
-      if (!mounted) return;
-      setLoading(true);
+  /** First page of the board plus direct challenges for me. Polls; never auto-pages. */
+  const loadFirstPage = useCallback(async () => {
+    const seq = ++requestSeq.current;
+    const q: BoardQuery = { limit: 20 };
+    if (selectedGame !== 'all') q.game = selectedGame;
+    try {
+      const [board, mine] = await Promise.all([
+        challengesApi.list(q),
+        challengesApi.list({ ...q, forMe: 'true' }),
+      ]);
+      if (seq !== requestSeq.current) return; // a newer request (game switch) won
+      setChallenges(board.items);
+      setForMe(mine.items);
+      setNextCursor(board.nextCursor);
       setError(null);
-      try {
-        const q: BoardQuery = { limit: 20 };
-        if (selectedGame !== 'all') q.game = selectedGame;
-        if (cursor) q.cursor = cursor;
-        const res = await challengesApi.list(q);
-        if (!mounted) return;
-        if (cursor) {
-          setChallenges((prev: ChallengeCard[]) => [...prev, ...res.items]);
-        } else {
-          setChallenges(res.items);
-        }
-        setCursor(res.nextCursor);
-        setHasMore(!!res.nextCursor);
-        setNeedsActionCount(res.needsActionCount);
-      } catch (e: unknown) {
-        if (!mounted) return;
-        setError(e instanceof Error ? e.message : 'Failed to load challenges');
-      } finally {
-        if (mounted) setLoading(false);
-      }
+    } catch (e) {
+      if (seq === requestSeq.current)
+        setError(e instanceof Error ? e.message : 'Could not load challenges');
+    } finally {
+      if (seq === requestSeq.current) setLoading(false);
     }
-
-    loadBoard();
-    interval = setInterval(loadBoard, POLL_INTERVAL_MS);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [selectedGame, cursor]);
+  }, [selectedGame]);
 
   useEffect(() => {
-    if (view !== 'players') return;
-    let mounted = true;
+    // loadFirstPage sets state only after its fetch resolves; the rule cannot see past the await.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadFirstPage();
+    const id = setInterval(() => void loadFirstPage(), POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [loadFirstPage]);
 
-    async function loadPlayers() {
-      if (!mounted) return;
-      setPlayersLoading(true);
-      setPlayersError(null);
-      try {
-        const q: PlayerSearchQuery = { ...playerSearch, limit: 20 };
-        if (playersCursor) q.cursor = playersCursor;
-        if (selectedGame !== 'all') q.game = selectedGame;
-        const res = await playersApi.search(q);
-        if (!mounted) return;
-        if (playersCursor) {
-          setPlayers((prev: PlayerCard[]) => [...prev, ...res.items]);
-        } else {
-          setPlayers(res.items);
-        }
-        setPlayersCursor(res.nextCursor);
-        setPlayersHasMore(!!res.nextCursor);
-      } catch (e: unknown) {
-        if (!mounted) return;
-        setPlayersError(e instanceof Error ? e.message : 'Failed to load players');
-      } finally {
-        if (mounted) setPlayersLoading(false);
-      }
-    }
-
-    loadPlayers();
-  }, [view, playerSearch, selectedGame, playersCursor]);
-
-  const filtered = challenges.filter((c) => {
-    if (view === 'board') {
-      if (selectedGame !== 'all' && c.game.key !== selectedGame) return false;
-    }
-    return true;
-  });
-
-  const handleAccept = async (challenge: ChallengeCard) => {
-    setActionLoading(challenge.id);
+  const loadMore = async () => {
+    if (!nextCursor) return;
+    setLoadingMore(true);
     try {
-      await challengesApi.accept(challenge.id);
-      setChallenges((prev: ChallengeCard[]) =>
-        prev.map((c) => (c.id === challenge.id ? { ...c, status: 'accepted', isMine: false } : c)),
-      );
-      setSheetOpen(false);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to accept challenge');
+      const q: BoardQuery = { limit: 20, cursor: nextCursor };
+      if (selectedGame !== 'all') q.game = selectedGame;
+      const page = await challengesApi.list(q);
+      setChallenges((prev) => [
+        ...prev,
+        ...page.items.filter((c) => !prev.some((p) => p.id === c.id)),
+      ]);
+      setNextCursor(page.nextCursor);
+    } catch (e) {
+      toast({ title: 'Could not load more', description: (e as Error).message, variant: 'error' });
     } finally {
-      setActionLoading(null);
+      setLoadingMore(false);
     }
   };
 
-  const handleDecline = async (challenge: ChallengeCard) => {
-    setActionLoading(challenge.id);
+  const all = [...forMe, ...challenges];
+  const findChallenge = (id: string) => all.find((c) => c.id === id);
+
+  const accept = async (c: ChallengeCardData) => {
+    setPendingId(c.id);
     try {
-      await challengesApi.decline(challenge.id);
-      setChallenges((prev) => prev.filter((c) => c.id !== challenge.id));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to decline challenge');
+      const { matchId } = await challengesApi.accept(c.id);
+      toast({
+        title: 'Challenge accepted',
+        description: 'Opening the match room.',
+        variant: 'status',
+      });
+      router.push(`/matches/${matchId}`);
+    } catch (e) {
+      toast({ title: 'Could not accept', description: (e as Error).message, variant: 'error' });
+      void loadFirstPage();
     } finally {
-      setActionLoading(null);
+      setPendingId(null);
     }
   };
 
-  const handleCancel = async (challenge: ChallengeCard) => {
-    setActionLoading(challenge.id);
+  const decline = async (c: ChallengeCardData) => {
+    setPendingId(c.id);
     try {
-      await challengesApi.cancel(challenge.id);
-      setChallenges((prev) =>
-        prev.map((c) => (c.id === challenge.id ? { ...c, status: 'cancelled' } : c)),
-      );
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to cancel challenge');
+      await challengesApi.decline(c.id);
+      setForMe((prev) => prev.filter((x) => x.id !== c.id));
+      setDetailId(null);
+      toast({ title: 'Challenge declined', variant: 'status' });
+    } catch (e) {
+      toast({ title: 'Could not decline', description: (e as Error).message, variant: 'error' });
     } finally {
-      setActionLoading(null);
+      setPendingId(null);
     }
   };
+
+  const cancel = async (c: ChallengeCardData) => {
+    setPendingId(c.id);
+    try {
+      await challengesApi.cancel(c.id);
+      setChallenges((prev) => prev.filter((x) => x.id !== c.id));
+      toast({ title: 'Challenge cancelled', variant: 'status' });
+    } catch (e) {
+      toast({ title: 'Could not cancel', description: (e as Error).message, variant: 'error' });
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  const detail = detailId ? findChallenge(detailId) : undefined;
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-3">
         <h1 className="font-display text-h1 font-semibold text-fg">Play</h1>
-        <Button
-          onClick={() => {
-            setSheetMode('create');
-            setSheetOpen(true);
-          }}
-        >
+        <Button onClick={() => setCreateOpen({})} disabled={games.length === 0}>
           Create challenge
         </Button>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        <select
-          value={selectedGame}
-          onChange={(e) => {
-            setSelectedGame(e.target.value);
-            setCursor(null);
-            setPlayersCursor(null);
-          }}
-          className={selectClass}
-        >
-          <option value="all">All games</option>
-          {games.map((g) => (
-            <option key={g.key} value={g.key}>
-              {g.name}
-            </option>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-48 flex-1 sm:flex-none">
+          <Select
+            label="Game"
+            value={selectedGame}
+            options={[
+              { value: 'all', label: 'All games' },
+              ...games.map((g) => ({ value: g.key, label: g.name })),
+            ]}
+            onChange={(v) => {
+              setSelectedGame(v);
+              setLoading(true);
+            }}
+          />
+        </div>
+        <div role="tablist" aria-label="Play views" className="flex gap-2">
+          {(['board', 'players'] as const).map((v) => (
+            <Button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              variant={view === v ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setView(v)}
+            >
+              {v === 'board' ? 'Board' : 'Players'}
+            </Button>
           ))}
-        </select>
-
-        <div className="flex gap-2">
-          <Button
-            variant={view === 'board' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setView('board')}
-          >
-            Board
-          </Button>
-          <Button
-            variant={view === 'players' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setView('players')}
-          >
-            Players
-          </Button>
         </div>
       </div>
 
       {view === 'board' ? (
-        <BoardView
-          challenges={challenges}
-          loading={loading}
-          error={error}
-          hasMore={hasMore}
-          onLoadMore={() => setCursor(cursor)}
-          onAccept={handleAccept}
-          onDecline={handleDecline}
-          onCancel={handleCancel}
-          selectedGame={selectedGame}
-          actionLoading={actionLoading}
-        />
+        <div className="space-y-6">
+          {forMe.length > 0 ? (
+            <section aria-labelledby="for-me-heading" className="space-y-3">
+              <h2 id="for-me-heading" className="label-caps text-accent">
+                Challenges for you · {forMe.length}
+              </h2>
+              {forMe.map((c) => (
+                <ChallengeCard
+                  key={c.id}
+                  challenge={c}
+                  pending={pendingId === c.id}
+                  onAccept={() => accept(c)}
+                  onDecline={() => decline(c)}
+                  onCancel={() => setDetailId(c.id)}
+                  onDetails={() => setDetailId(c.id)}
+                  now={now}
+                />
+              ))}
+            </section>
+          ) : null}
+
+          <section aria-labelledby="board-heading" className="space-y-3">
+            <h2 id="board-heading" className="sr-only">
+              Open challenges
+            </h2>
+            {loading && challenges.length === 0 ? (
+              <div className="space-y-3" aria-busy="true" aria-label="Loading challenges">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : error && challenges.length === 0 ? (
+              <Banner
+                variant="offline"
+                action={
+                  <Button size="sm" variant="secondary" onClick={() => void loadFirstPage()}>
+                    Try again
+                  </Button>
+                }
+              >
+                Could not load the board. {error}
+              </Banner>
+            ) : challenges.length === 0 ? (
+              <EmptyState
+                icon="trophy"
+                title="No open challenges"
+                description={
+                  selectedGame === 'all'
+                    ? 'Be the first: post a challenge and someone will pick it up.'
+                    : 'Nobody has posted for this game yet. Post the first one.'
+                }
+                action={<Button onClick={() => setCreateOpen({})}>Create challenge</Button>}
+              />
+            ) : (
+              <>
+                {challenges.map((c) => (
+                  <ChallengeCard
+                    key={c.id}
+                    challenge={c}
+                    pending={pendingId === c.id}
+                    onAccept={() => accept(c)}
+                    onDecline={() => decline(c)}
+                    onCancel={() => setDetailId(c.id)}
+                    onDetails={() => setDetailId(c.id)}
+                    now={now}
+                  />
+                ))}
+                {nextCursor ? (
+                  <div className="py-2 text-center">
+                    <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
+                      Load more
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </section>
+        </div>
       ) : (
         <PlayersView
-          players={players}
-          loading={playersLoading}
-          error={playersError}
-          hasMore={playersHasMore}
-          onLoadMore={() => setPlayersCursor(playersCursor)}
-          search={playerSearch}
-          onSearchChange={setPlayerSearch}
+          selectedGame={selectedGame}
+          onChallenge={(p) =>
+            setCreateOpen({
+              target: { userId: p.userId, username: p.username, gameKey: p.game.key },
+            })
+          }
         />
       )}
 
-      <Sheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        title={sheetMode === 'create' ? 'Create challenge' : 'Challenge details'}
-        size="lg"
-      >
-        {sheetMode === 'create' ? (
-          <CreateChallengeSheet onClose={() => setSheetOpen(false)} games={games} />
-        ) : (
-          <ChallengeDetailSheet
-            challenge={selectedChallenge!}
-            onClose={() => setSheetOpen(false)}
-            onAccept={() => {
-              if (selectedChallenge) handleAccept(selectedChallenge);
-            }}
-            onDecline={() => {
-              if (selectedChallenge) handleDecline(selectedChallenge);
-            }}
-            onCancel={() => {
-              if (selectedChallenge) handleCancel(selectedChallenge);
-            }}
-          />
-        )}
-      </Sheet>
-    </div>
-  );
-}
-
-function BoardView({
-  challenges,
-  loading,
-  error,
-  hasMore,
-  onLoadMore,
-  onAccept,
-  onDecline,
-  onCancel,
-  selectedGame,
-  actionLoading,
-}: {
-  challenges: ChallengeCard[];
-  loading: boolean;
-  error: string | null;
-  hasMore: boolean;
-  onLoadMore: () => void;
-  onAccept: (challenge: ChallengeCard) => void;
-  onDecline: (challenge: ChallengeCard) => void;
-  onCancel: (challenge: ChallengeCard) => void;
-  selectedGame: string;
-  actionLoading: string | null;
-}) {
-  if (loading && challenges.length === 0) {
-    return (
-      <div className="space-y-3" role="status" aria-label="Loading challenges">
-        Loading…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Banner variant="offline" className="mx-auto max-w-[480px]">
-        <p className="font-display text-body-sm font-semibold text-fg">Failed to load board</p>
-        <p className="text-caption text-fg-muted">{error}</p>
-      </Banner>
-    );
-  }
-
-  if (challenges.length === 0) {
-    return (
-      <EmptyState
-        icon="trophy"
-        title="No challenges yet"
-        description={
-          selectedGame === 'all'
-            ? 'No open challenges right now — check back later'
-            : 'No open challenges for this game yet. Create one.'
-        }
-        action={
-          <Button
-            onClick={() => {
-              // setSheetMode('create'); setSheetOpen(true);
-            }}
-          >
-            Create challenge
-          </Button>
-        }
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {challenges.map((challenge) => (
-        <ChallengeCard
-          key={challenge.id}
-          challenge={challenge}
-          onAccept={() => onAccept(challenge)}
-          onDecline={() => onDecline(challenge)}
-          onCancel={() => onCancel(challenge)}
-          isLoading={actionLoading === challenge.id}
+      {createOpen ? (
+        <CreateChallengeSheet
+          open
+          games={games}
+          initialGameKey={selectedGame}
+          target={createOpen.target}
+          onClose={() => setCreateOpen(null)}
+          onCreated={() => {
+            setCreateOpen(null);
+            void loadFirstPage();
+          }}
         />
-      ))}
-      {hasMore && (
-        <div className="text-center py-4">
-          <Button variant="secondary" onClick={onLoadMore}>
-            Load more
-          </Button>
-        </div>
-      )}
+      ) : null}
+
+      {detailId ? (
+        <ChallengeDetailSheet
+          challengeId={detailId}
+          summary={detail}
+          pending={pendingId === detailId}
+          onClose={() => setDetailId(null)}
+          onAccept={() => detail && accept(detail)}
+          onDecline={() => detail && decline(detail)}
+          onCancel={async () => {
+            if (detail) await cancel(detail);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
 function PlayersView({
-  players,
-  loading,
-  error,
-  hasMore,
-  onLoadMore,
-  search,
-  onSearchChange,
+  selectedGame,
+  onChallenge,
 }: {
-  players: PlayerCard[];
-  loading: boolean;
-  error: string | null;
-  hasMore: boolean;
-  onLoadMore: () => void;
-  search: PlayerSearchQuery;
-  onSearchChange: React.Dispatch<React.SetStateAction<PlayerSearchQuery>>;
+  selectedGame: string;
+  onChallenge: (player: PlayerCardData) => void;
 }) {
-  const rankOptions = [
-    { value: 'rookie', label: 'Rookie' },
-    { value: 'challenger', label: 'Challenger' },
-    { value: 'contender', label: 'Contender' },
-    { value: 'elite', label: 'Elite' },
-    { value: 'champion', label: 'Champion' },
-  ];
+  const [search, setSearch] = useState<PlayerSearchQuery>({});
+  const [players, setPlayers] = useState<PlayerCardData[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const seq = useRef(0);
 
-  if (loading && players.length === 0) {
-    return (
-      <div className="space-y-3" role="status" aria-label="Loading players">
-        Loading…
-      </div>
-    );
-  }
+  useEffect(() => {
+    const mine = ++seq.current;
+    const q: PlayerSearchQuery = { ...search, limit: 20 };
+    if (selectedGame !== 'all') q.game = selectedGame;
+    const t = setTimeout(() => {
+      playersApi
+        .search(q)
+        .then((res) => {
+          if (mine !== seq.current) return;
+          setPlayers(res.items);
+          setNextCursor(res.nextCursor);
+          setError(null);
+        })
+        .catch((e: Error) => mine === seq.current && setError(e.message))
+        .finally(() => mine === seq.current && setLoading(false));
+    }, 250); // debounce typing in campus/city
+    return () => clearTimeout(t);
+  }, [search, selectedGame]);
 
-  if (error) {
-    return (
-      <Banner variant="offline" className="mx-auto max-w-[480px]">
-        <p className="font-display text-body-sm font-semibold text-fg">Failed to load players</p>
-        <p className="text-caption text-fg-muted">{error}</p>
-      </Banner>
-    );
-  }
+  const loadMore = async () => {
+    if (!nextCursor) return;
+    const q: PlayerSearchQuery = { ...search, limit: 20, cursor: nextCursor };
+    if (selectedGame !== 'all') q.game = selectedGame;
+    const res = await playersApi.search(q);
+    setPlayers((prev) => [...prev, ...res.items]);
+    setNextCursor(res.nextCursor);
+  };
+
+  const inputClass =
+    'h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none';
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <select
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Select
+          label="Rank"
           value={search.rank ?? ''}
-          onChange={(e) =>
-            onSearchChange((prev: PlayerSearchQuery) => ({
-              ...prev,
-              rank: e.target.value ? (e.target.value as PlayerSearchQuery['rank']) : undefined,
-            }))
+          options={RANKS}
+          onChange={(v) =>
+            setSearch((s) => ({ ...s, rank: (v || undefined) as PlayerSearchQuery['rank'] }))
           }
-          className={selectClass}
-        >
-          <option value="">All ranks</option>
-          {rankOptions.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Campus"
-          value={search.campus ?? ''}
-          onChange={(e) =>
-            onSearchChange((prev: PlayerSearchQuery) => ({
-              ...prev,
-              campus: e.target.value || undefined,
-            }))
-          }
-          className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
         />
-        <input
-          type="text"
-          placeholder="City"
-          value={search.city ?? ''}
-          onChange={(e) =>
-            onSearchChange((prev: PlayerSearchQuery) => ({
-              ...prev,
-              city: e.target.value || undefined,
-            }))
-          }
-          className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
-        />
+        <label className="block">
+          <span className="mb-1 block text-body-sm text-fg">Campus</span>
+          <input
+            className={inputClass}
+            value={search.campus ?? ''}
+            placeholder="e.g. UNILAG"
+            onChange={(e) => setSearch((s) => ({ ...s, campus: e.target.value || undefined }))}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-body-sm text-fg">City</span>
+          <input
+            className={inputClass}
+            value={search.city ?? ''}
+            placeholder="e.g. Lagos"
+            onChange={(e) => setSearch((s) => ({ ...s, city: e.target.value || undefined }))}
+          />
+        </label>
       </div>
 
-      {players.length === 0 ? (
+      {loading && players.length === 0 ? (
+        <div className="space-y-3" aria-busy="true" aria-label="Loading players">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      ) : error ? (
+        <Banner variant="offline">Could not load players. {error}</Banner>
+      ) : players.length === 0 ? (
         <EmptyState
           icon="user"
-          title="No players found"
-          description="Try adjusting your filters or check back later"
+          title="No players match"
+          description="Clear a filter, or pick another game."
+          action={
+            <Button variant="secondary" onClick={() => setSearch({})}>
+              Clear filters
+            </Button>
+          }
         />
       ) : (
-        <>
-          <div className="space-y-3">
-            {players.map((player) => (
-              <PlayerCard key={player.userId} player={player} />
-            ))}
-          </div>
-          {hasMore && (
-            <div className="text-center py-4">
-              <Button variant="secondary" onClick={onLoadMore}>
+        <div className="space-y-3">
+          {players.map((p) => (
+            <article
+              key={`${p.userId}-${p.game.key}`}
+              className="flex items-center gap-3 rounded-card border border-line bg-surface p-4"
+            >
+              <Avatar username={p.username} size={32} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-body font-semibold text-fg">
+                  {p.username}
+                </p>
+                <p className="text-caption text-fg-muted">
+                  {p.game.name} · {p.rankLabel}
+                  {p.city ? ` · ${p.city}` : ''}
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <RatingBadge value={p.rating} provisional={p.provisional} />
+                  <span className="text-caption text-fg-muted tabular">{p.record}</span>
+                  <ReputationBadge level={p.reputation} />
+                </div>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => onChallenge(p)}>
+                Challenge
+              </Button>
+            </article>
+          ))}
+          {nextCursor ? (
+            <div className="py-2 text-center">
+              <Button variant="secondary" onClick={() => void loadMore()}>
                 Load more
               </Button>
             </div>
-          )}
-        </>
+          ) : null}
+        </div>
       )}
-    </div>
-  );
-}
-
-function ChallengeCard({
-  challenge,
-  onAccept,
-  onDecline,
-  onCancel,
-  isLoading,
-}: {
-  challenge: ChallengeCard;
-  onAccept: () => void;
-  onDecline: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}) {
-  const { game, format, stake, poster, timeWindow, expiresAt, isMine, status } = challenge;
-
-  const base = 'rounded-card border p-4 transition-colors';
-  const isExpired =
-    status === 'expired' || (status === 'open' && new Date(expiresAt).getTime() <= Date.now());
-  const stateStyles = isMine
-    ? 'border-accent bg-accent-subtle'
-    : isExpired
-      ? 'border-line bg-surface opacity-60'
-      : 'border-line bg-surface hover:border-line-strong active:bg-overlay';
-
-  return (
-    <article className={`${base} ${stateStyles}`} aria-label={`Challenge ${challenge.id}`}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-h3 font-semibold text-fg">{game.name}</span>
-          <StatusChip label={format.name} variant="neutral" />
-        </div>
-        <div className="text-right shrink-0">
-          <p className="font-display text-h3 font-semibold text-accent">{stake.display}</p>
-          <p className="text-caption text-fg-muted">Stage 1</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 mb-3 p-3 rounded-card bg-raised border border-line">
-        <Avatar username={poster.username} size={32} />
-        <div className="flex-1 min-w-0">
-          <p className="font-display text-body font-semibold text-fg truncate">{poster.username}</p>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <RatingBadge value={poster.rating} />
-            <span className="text-caption text-fg-muted">{poster.record}</span>
-            <ReputationBadge level={poster.reputation} />
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="font-display text-stat-md font-semibold text-fg tabular">Rating gap</p>
-          <p className="text-caption text-fg-muted">—</p>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between text-caption text-fg-muted mb-3">
-        <span>
-          {timeWindow.startsAt} – {timeWindow.endsAt}
-        </span>
-        <span className={isExpired ? 'text-loss' : 'text-accent'}>
-          {isMine ? 'Your challenge' : `Expires ${expiresAt}`}
-        </span>
-      </div>
-
-      <div className="flex gap-2">
-        {isMine ? (
-          <>
-            <Button variant="secondary" fullWidth onClick={onCancel} disabled={isLoading}>
-              Cancel challenge
-            </Button>
-          </>
-        ) : isExpired ? (
-          <Button variant="secondary" fullWidth disabled>
-            Expired
-          </Button>
-        ) : (
-          <>
-            <Button variant="ghost" onClick={() => {}} className="flex-1" disabled={isLoading}>
-              Details
-            </Button>
-            <Button fullWidth onClick={onAccept} disabled={isLoading}>
-              Accept
-            </Button>
-          </>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function PlayerCard({ player }: { player: PlayerCard }) {
-  return (
-    <article className="rounded-card border border-line bg-surface p-4 hover:border-line-strong transition-colors">
-      <div className="flex items-center gap-3">
-        <Avatar username={player.username} size={32} />
-        <div className="flex-1 min-w-0">
-          <p className="font-display text-body font-semibold text-fg truncate">{player.username}</p>
-          <p className="text-caption text-fg-muted">{player.inGameId}</p>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <RatingBadge value={player.rating} />
-            <span className="text-caption text-fg-muted">{player.record}</span>
-            <ReputationBadge level={player.reputation} />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-caption text-fg-muted">
-          <span className="text-caption text-fg-muted">{player.game.name}</span>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function CreateChallengeSheet({
-  onClose,
-  games,
-}: {
-  onClose: () => void;
-  games: { id: string; key: string; name: string }[];
-}) {
-  return (
-    <div className="space-y-4">
-      <p className="text-body text-fg-muted">Create a new challenge for other players to accept.</p>
-      <div className="space-y-3">
-        <select className={selectClass}>
-          {games.map((g) => (
-            <option key={g.key} value={g.key}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-        <select className={selectClass}>
-          <option value="1v1_duel">1v1 Duel</option>
-          <option value="br_duo">Battle Royale Duo</option>
-          <option value="br_solo">Battle Royale Solo</option>
-          <option value="mp_duel">Multiplayer Duel</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Time window (e.g. Today, 6–10 PM)"
-          className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
-        />
-        <input
-          type="text"
-          placeholder="Stake (Free in Stage 1)"
-          className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
-          value="Free"
-          readOnly
-        />
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Cancel
-        </Button>
-        <Button fullWidth disabled>
-          Create challenge
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ChallengeDetailSheet({
-  challenge,
-  onClose,
-  onAccept,
-  onDecline,
-  onCancel,
-}: {
-  challenge: ChallengeCard;
-  onClose: () => void;
-  onAccept: () => void;
-  onDecline: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-card border border-line bg-surface p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-display text-h3 font-semibold text-fg">{challenge.game.name}</span>
-          <span className="font-display text-h3 font-semibold text-accent">
-            {challenge.stake.display}
-          </span>
-        </div>
-        <p className="text-body-sm text-fg-muted">{challenge.format.name}</p>
-      </div>
-
-      <div className="rounded-card border border-line bg-surface p-4">
-        <h3 className="label-caps mb-3 text-fg-muted">Opponent</h3>
-        <div className="flex items-center gap-3">
-          <Avatar username={challenge.poster.username} size={32} />
-          <div>
-            <p className="font-display text-body font-semibold text-fg">
-              {challenge.poster.username}
-            </p>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <RatingBadge value={challenge.poster.rating} />
-              <span className="text-caption text-fg-muted">{challenge.poster.record}</span>
-              <ReputationBadge level={challenge.poster.reputation} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2 text-body-sm">
-        <div className="flex justify-between">
-          <span className="text-fg-muted">Time window</span>
-          <span className="text-fg">
-            {challenge.timeWindow.startsAt} – {challenge.timeWindow.endsAt}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-fg-muted">Expires</span>
-          <span className="text-accent font-semibold">{challenge.expiresAt}</span>
-        </div>
-      </div>
-
-      <Banner variant="system" className="text-sm">
-        By accepting, you agree to the match rules. Results must be submitted within 30 minutes of
-        match end.
-      </Banner>
-
-      <div className="flex gap-2">
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Decline
-        </Button>
-        <Button
-          fullWidth
-          onClick={() => {
-            onAccept();
-            onClose();
-          }}
-        >
-          Accept challenge
-        </Button>
-      </div>
     </div>
   );
 }

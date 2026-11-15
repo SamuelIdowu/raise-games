@@ -341,6 +341,8 @@ export const matches = pgTable(
     status: matchStateEnum('status').notNull().default('accepted'),
     version: integer('version').notNull().default(1),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Agreed start, copied from the challenge; the sweeper moves accepted → in_progress at it. */
+    scheduledStartAt: timestamp('scheduled_start_at', { withTimezone: true }),
     inProgressAt: timestamp('in_progress_at', { withTimezone: true }),
     resultSubmittedAt: timestamp('result_submitted_at', { withTimezone: true }),
     confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
@@ -358,6 +360,7 @@ export const matches = pgTable(
     uniqueIndex('matches_challenge_id_uq').on(t.challengeId),
     index('matches_status_idx').on(t.status),
     index('matches_deadline_idx').on(t.status, t.updatedAt),
+    index('matches_start_idx').on(t.status, t.scheduledStartAt),
   ],
 );
 
@@ -507,5 +510,30 @@ export const gameProfiles = pgTable(
     uniqueIndex('game_profiles_user_game_uq').on(t.userId, t.gameId),
     index('game_profiles_user_idx').on(t.userId),
     index('game_profiles_game_idx').on(t.gameId),
+  ],
+);
+
+/**
+ * Generic user reports (TA Identity: Report). Sprint 6 writes them from the challenge
+ * detail and player surfaces; Sprint 12 builds the triage queue and enforcement.
+ * Chat messages have their own report table (with a body snapshot) in Sprint 7.
+ */
+export const reports = pgTable(
+  'reports',
+  {
+    id: uuid('id').primaryKey(),
+    reporterId: uuid('reporter_id')
+      .notNull()
+      .references(() => users.id),
+    subjectType: text('subject_type').notNull(),
+    subjectId: uuid('subject_id').notNull(),
+    reason: text('reason').notNull(),
+    note: text('note'),
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('reports_reporter_subject_uq').on(t.reporterId, t.subjectType, t.subjectId),
+    index('reports_status_idx').on(t.status, t.createdAt),
   ],
 );

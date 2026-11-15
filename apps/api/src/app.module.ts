@@ -7,6 +7,7 @@ import { ConsentModule } from './consent/consent.module';
 import { GamesModule } from './games/games.module';
 import { PlayersModule } from './players/players.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { ReportsModule } from './reports/reports.module';
 import { HealthController } from './health/health.controller';
 import { env } from './config/env.instance';
 import { appExceptionFilterFactory } from './shared/global-exception.filter';
@@ -40,6 +41,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     ProfilesModule,
     ChallengesModule,
     PlayersModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useFactory: appExceptionFilterFactory }],

@@ -4,6 +4,8 @@ export const boardQuerySchema = z.object({
   game: z.string().min(1).max(64).optional(),
   status: z.enum(['open', 'all']).default('open'),
   mine: z.enum(['true', 'false']).optional(),
+  /** Direct challenges addressed to the viewer (F6.4 needs-action list). */
+  forMe: z.enum(['true', 'false']).optional(),
   campus: z.string().min(1).max(64).optional(),
   city: z.string().min(1).max(64).optional(),
   cursor: z.string().min(1).optional(),

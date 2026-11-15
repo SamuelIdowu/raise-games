@@ -29,12 +29,27 @@ export interface ChallengeCard {
   };
   ratingGap: null;
   isMine: boolean;
+  /** A direct challenge addressed to the viewer. */
+  isForMe: boolean;
+  /** Detail view only. */
+  rules?: string;
+  /** Detail view, direct challenges only. */
+  target?: {
+    userId: string;
+    username: string;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    provisional: boolean;
+  } | null;
 }
 
 export interface BoardQuery {
   game?: string;
   status?: 'open' | 'all';
   mine?: 'true' | 'false';
+  forMe?: 'true' | 'false';
   campus?: string;
   city?: string;
   cursor?: string;

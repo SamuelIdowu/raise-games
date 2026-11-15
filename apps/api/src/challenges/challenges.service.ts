@@ -5,7 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { and, desc, eq, gt, ilike, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
@@ -29,6 +29,11 @@ export interface BoardResult {
 const NEEDS_ACTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ACCEPTANCE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
 
+function isUniqueViolation(error: unknown): boolean {
+  const e = error as { code?: string; cause?: { code?: string } };
+  return e?.code === '23505' || e?.cause?.code === '23505';
+}
+
 @Injectable()
 export class ChallengesService {
   async listBoard(viewerId: string, query: BoardQuery): Promise<BoardResult> {
@@ -40,6 +45,8 @@ export class ChallengesService {
     if (query.game) conditions.push(eq(schema.games.key, query.game));
     if (mine) {
       conditions.push(eq(schema.challenges.posterId, viewerId));
+    } else if (query.forMe === 'true') {
+      conditions.push(eq(schema.challenges.targetPlayerId, viewerId));
     } else {
       conditions.push(isNull(schema.challenges.targetPlayerId));
     }
@@ -88,6 +95,7 @@ export class ChallengesService {
         losses: schema.gameProfiles.losses,
         draws: schema.gameProfiles.draws,
         provisional: schema.gameProfiles.provisional,
+        targetPlayerId: schema.challenges.targetPlayerId,
       })
       .from(schema.challenges)
       .innerJoin(schema.games, eq(schema.challenges.gameId, schema.games.id))
@@ -238,42 +246,57 @@ export class ChallengesService {
     const acceptanceDeadline = new Date(Date.now() + ACCEPTANCE_WINDOW_MS);
     const id = uuidv7();
 
-    await db.insert(schema.challenges).values({
-      id,
-      gameId: game[0].id,
-      formatId: format[0].id,
-      posterId,
-      targetPlayerId,
-      status: 'open',
-      rules: input.rules ?? '',
-      startsAt: startsAt,
-      endsAt: endsAt,
-      acceptanceDeadline,
-      stakeAmountMinor: 0,
-      currency: 'NGN',
-      feeScheduleVersion: 1,
-      ratingGap: null,
-      repeatPairCount: 0,
-      version: 1,
-      idempotencyKey: input.idempotencyKey ?? null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Emit outbox event for challenge created
-    await db.insert(schema.outboxEvents).values({
-      id: uuidv7(),
-      type: 'challenge.created',
-      subjectId: id,
-      payload: {
-        challengeId: id,
-        posterId,
-        gameId: game[0].id,
-        formatId: format[0].id,
-        isDirect: !!targetPlayerId,
-        targetPlayerId,
-      },
-    });
+    try {
+      // The row and its outbox event commit together (transactional outbox).
+      await db.transaction(async (tx) => {
+        await tx.insert(schema.challenges).values({
+          id,
+          gameId: game[0]!.id,
+          formatId: format[0]!.id,
+          posterId,
+          targetPlayerId,
+          status: 'open',
+          rules: input.rules ?? '',
+          startsAt: startsAt,
+          endsAt: endsAt,
+          acceptanceDeadline,
+          stakeAmountMinor: 0,
+          currency: 'NGN',
+          feeScheduleVersion: 1,
+          ratingGap: null,
+          repeatPairCount: 0,
+          version: 1,
+          idempotencyKey: input.idempotencyKey ?? null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(schema.outboxEvents).values({
+          id: uuidv7(),
+          type: 'challenge.created',
+          subjectId: id,
+          payload: {
+            challengeId: id,
+            posterId,
+            gameId: game[0]!.id,
+            formatId: format[0]!.id,
+            isDirect: !!targetPlayerId,
+            targetPlayerId,
+          },
+        });
+      });
+    } catch (error) {
+      // Two concurrent retries with the same idempotency key: the loser of the unique
+      // index returns the winner's challenge instead of a 500.
+      if (input.idempotencyKey && isUniqueViolation(error)) {
+        const [existing] = await db
+          .select({ id: schema.challenges.id })
+          .from(schema.challenges)
+          .where(eq(schema.challenges.idempotencyKey, input.idempotencyKey))
+          .limit(1);
+        if (existing) return { id: existing.id };
+      }
+      throw error;
+    }
 
     // Schedule expiry job
     await scheduleChallengeExpiry(id, acceptanceDeadline);
@@ -308,6 +331,7 @@ export class ChallengesService {
         draws: schema.gameProfiles.draws,
         provisional: schema.gameProfiles.provisional,
         targetPlayerId: schema.challenges.targetPlayerId,
+        rules: schema.challenges.rules,
       })
       .from(schema.challenges)
       .innerJoin(schema.games, eq(schema.challenges.gameId, schema.games.id))
@@ -368,184 +392,209 @@ export class ChallengesService {
     const card = toChallengeCard(row, viewerId ?? '', now);
     return {
       ...card,
+      rules: row.rules,
       target: targetInfo,
     };
   }
 
+  /**
+   * Atomic accept (F6.3). One conditional UPDATE … WHERE status = 'open' AND the deadline
+   * has not passed decides the winner: concurrent accepts serialise on the row lock and
+   * every loser re-evaluates the WHERE, matches nothing, and gets 409. The match, sides,
+   * participants, pairing counter and outbox events are written in the same transaction,
+   * so a failure leaves no half-created match.
+   *
+   * Idempotent for the winner: a retry by the player who already accepted returns the
+   * same match instead of 409.
+   */
   async acceptChallenge(challengeId: string, acceptorId: string): Promise<{ matchId: string }> {
-    // Fetch challenge with lock
-    const challenge = await db
+    const [c] = await db
       .select({
         id: schema.challenges.id,
         status: schema.challenges.status,
-        version: schema.challenges.version,
         posterId: schema.challenges.posterId,
         targetPlayerId: schema.challenges.targetPlayerId,
+        acceptedById: schema.challenges.acceptedById,
         gameId: schema.challenges.gameId,
-        formatId: schema.challenges.formatId,
+        startsAt: schema.challenges.startsAt,
         acceptanceDeadline: schema.challenges.acceptanceDeadline,
       })
       .from(schema.challenges)
       .where(eq(schema.challenges.id, challengeId))
       .limit(1);
 
-    if (!challenge[0]) throw new NotFoundException('Challenge not found');
-    const c = challenge[0];
-
-    if (c.status !== 'open') throw new ConflictException('Challenge is not open');
-    if (c.acceptanceDeadline < new Date()) throw new ConflictException('Challenge has expired');
-    if (c.targetPlayerId && c.targetPlayerId !== acceptorId) {
-      throw new ForbiddenException('This challenge is for a specific player');
+    if (!c) throw new NotFoundException('Challenge not found');
+    if (c.status === 'accepted' && c.acceptedById === acceptorId) {
+      return { matchId: await this.matchIdFor(challengeId) };
     }
     if (c.posterId === acceptorId)
       throw new BadRequestException('Cannot accept your own challenge');
+    if (c.targetPlayerId && c.targetPlayerId !== acceptorId) {
+      throw new ForbiddenException('This challenge is for a specific player');
+    }
+    if (c.status !== 'open') throw new ConflictException('Challenge is not open');
+    if (c.acceptanceDeadline <= new Date()) throw new ConflictException('Challenge has expired');
 
-    // Check acceptor has game profile
-    const acceptorProfile = await db
-      .select({ id: schema.gameProfiles.id, rating: schema.gameProfiles.rating })
+    const profiles = await db
+      .select({ id: schema.gameProfiles.id, userId: schema.gameProfiles.userId })
       .from(schema.gameProfiles)
       .where(
-        and(eq(schema.gameProfiles.userId, acceptorId), eq(schema.gameProfiles.gameId, c.gameId)),
-      )
-      .limit(1);
-    if (!acceptorProfile[0])
+        and(
+          eq(schema.gameProfiles.gameId, c.gameId),
+          or(
+            eq(schema.gameProfiles.userId, c.posterId),
+            eq(schema.gameProfiles.userId, acceptorId),
+          ),
+        ),
+      );
+    const posterProfile = profiles.find((p) => p.userId === c.posterId);
+    const acceptorProfile = profiles.find((p) => p.userId === acceptorId);
+    if (!acceptorProfile) {
       throw new BadRequestException('Acceptor must have a game profile for this game');
+    }
+    if (!posterProfile) throw new ConflictException('Poster no longer has a profile for this game');
 
-    // Atomic accept with version check
-    const result = await db
-      .update(schema.challenges)
-      .set({
-        status: 'accepted',
-        acceptedById: acceptorId,
-        acceptedAt: new Date(),
-        version: c.version + 1,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(schema.challenges.id, challengeId), eq(schema.challenges.version, c.version)))
-      .returning({ id: schema.challenges.id, version: schema.challenges.version });
-
-    if (!result[0]) throw new ConflictException('Challenge was modified by another request');
-
-    // Create match
+    const now = new Date();
     const matchId = uuidv7();
-    await db.insert(schema.matches).values({
-      id: matchId,
-      challengeId: c.id,
-      status: 'accepted',
-      version: 1,
-      acceptedAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const won = await db.transaction(async (tx) => {
+      const claimed = await tx
+        .update(schema.challenges)
+        .set({
+          status: 'accepted',
+          acceptedById: acceptorId,
+          acceptedAt: now,
+          version: sql`${schema.challenges.version} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(schema.challenges.id, challengeId),
+            eq(schema.challenges.status, 'open'),
+            gt(schema.challenges.acceptanceDeadline, now),
+          ),
+        )
+        .returning({ id: schema.challenges.id });
+      if (claimed.length === 0) return false;
+
+      await tx.insert(schema.matches).values({
+        id: matchId,
+        challengeId,
+        status: 'accepted',
+        version: 1,
+        acceptedAt: now,
+        scheduledStartAt: c.startsAt,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await tx.insert(schema.matchSides).values([
+        {
+          id: uuidv7(),
+          matchId,
+          userId: c.posterId,
+          gameProfileId: posterProfile.id,
+          side: 0,
+          isPoster: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: uuidv7(),
+          matchId,
+          userId: acceptorId,
+          gameProfileId: acceptorProfile.id,
+          side: 1,
+          isAcceptor: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]);
+      await tx.insert(schema.matchParticipants).values([
+        {
+          id: uuidv7(),
+          matchId,
+          userId: c.posterId,
+          gameProfileId: posterProfile.id,
+          createdAt: now,
+        },
+        {
+          id: uuidv7(),
+          matchId,
+          userId: acceptorId,
+          gameProfileId: acceptorProfile.id,
+          createdAt: now,
+        },
+      ]);
+
+      const { userAId, userBId } = canonicalPair(c.posterId, acceptorId);
+      await tx
+        .insert(schema.pairingCounters)
+        .values({ id: uuidv7(), gameId: c.gameId, userAId, userBId, count: 1, lastPairingAt: now })
+        .onConflictDoUpdate({
+          target: [
+            schema.pairingCounters.gameId,
+            schema.pairingCounters.userAId,
+            schema.pairingCounters.userBId,
+          ],
+          set: {
+            count: sql`${schema.pairingCounters.count} + 1`,
+            lastPairingAt: now,
+            updatedAt: now,
+          },
+        });
+
+      await tx.insert(schema.outboxEvents).values([
+        {
+          id: uuidv7(),
+          type: 'challenge.accepted',
+          subjectId: challengeId,
+          payload: { challengeId, acceptorId, matchId },
+        },
+        {
+          id: uuidv7(),
+          type: 'match.created',
+          subjectId: matchId,
+          payload: { matchId, challengeId, participants: [c.posterId, acceptorId] },
+        },
+      ]);
+      return true;
     });
 
-    // Create match sides
-    const posterProfile = await db
-      .select({ id: schema.gameProfiles.id })
-      .from(schema.gameProfiles)
-      .where(
-        and(eq(schema.gameProfiles.userId, c.posterId), eq(schema.gameProfiles.gameId, c.gameId)),
-      )
-      .limit(1);
-    if (!posterProfile[0]) throw new BadRequestException('Poster profile not found');
-    const acceptorProfileForMatch = await db
-      .select({ id: schema.gameProfiles.id })
-      .from(schema.gameProfiles)
-      .where(
-        and(eq(schema.gameProfiles.userId, acceptorId), eq(schema.gameProfiles.gameId, c.gameId)),
-      )
-      .limit(1);
-    if (!acceptorProfileForMatch[0]) throw new BadRequestException('Acceptor profile not found');
+    if (!won) {
+      // Lost the race (or the deadline passed between read and write). A concurrent
+      // retry by the player who did win still gets the match.
+      const [latest] = await db
+        .select({ status: schema.challenges.status, acceptedById: schema.challenges.acceptedById })
+        .from(schema.challenges)
+        .where(eq(schema.challenges.id, challengeId))
+        .limit(1);
+      if (latest?.status === 'accepted' && latest.acceptedById === acceptorId) {
+        return { matchId: await this.matchIdFor(challengeId) };
+      }
+      throw new ConflictException(
+        latest?.status === 'open' ? 'Challenge has expired' : 'Challenge is no longer open',
+      );
+    }
 
-    await db.insert(schema.matchSides).values([
-      {
-        id: uuidv7(),
-        matchId,
-        userId: c.posterId,
-        gameProfileId: posterProfile[0].id,
-        side: 0,
-        isPoster: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: uuidv7(),
-        matchId,
-        userId: acceptorId,
-        gameProfileId: acceptorProfileForMatch[0].id,
-        side: 1,
-        isAcceptor: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ]);
-
-    // Create match participants
-    await db.insert(schema.matchParticipants).values([
-      {
-        id: uuidv7(),
-        matchId,
-        userId: c.posterId,
-        gameProfileId: posterProfile[0].id,
-        createdAt: new Date(),
-      },
-      {
-        id: uuidv7(),
-        matchId,
-        userId: acceptorId,
-        gameProfileId: acceptorProfileForMatch[0].id,
-        createdAt: new Date(),
-      },
-    ]);
-
-    // Update pairing counter
-    const { userAId, userBId } = canonicalPair(c.posterId, acceptorId);
-    await db
-      .insert(schema.pairingCounters)
-      .values({
-        id: uuidv7(),
-        gameId: c.gameId,
-        userAId,
-        userBId,
-        count: 1,
-        lastPairingAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [
-          schema.pairingCounters.gameId,
-          schema.pairingCounters.userAId,
-          schema.pairingCounters.userBId,
-        ],
-        set: {
-          count: sql`${schema.pairingCounters.count} + 1`,
-          lastPairingAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-    // Emit outbox events
-    await db.insert(schema.outboxEvents).values([
-      {
-        id: uuidv7(),
-        type: 'challenge.accepted',
-        subjectId: challengeId,
-        payload: { challengeId, acceptorId, matchId },
-      },
-      {
-        id: uuidv7(),
-        type: 'match.created',
-        subjectId: matchId,
-        payload: { matchId, challengeId, participants: [c.posterId, acceptorId] },
-      },
-    ]);
-
-    // Cancel the expiry job since challenge is no longer open
     await cancelChallengeExpiry(challengeId);
-
     return { matchId };
   }
 
+  private async matchIdFor(challengeId: string): Promise<string> {
+    const [m] = await db
+      .select({ id: schema.matches.id })
+      .from(schema.matches)
+      .where(eq(schema.matches.challengeId, challengeId))
+      .limit(1);
+    if (!m) throw new ConflictException('Challenge is no longer open');
+    return m.id;
+  }
+
+  /**
+   * Decline (F6.3). A direct challenge closes (cancelled). An open-board challenge stays
+   * open for others; the decline is only recorded as an event.
+   */
   async declineChallenge(challengeId: string, userId: string): Promise<void> {
-    const challenge = await db
+    const [c] = await db
       .select({
         id: schema.challenges.id,
         status: schema.challenges.status,
@@ -556,79 +605,138 @@ export class ChallengesService {
       .where(eq(schema.challenges.id, challengeId))
       .limit(1);
 
-    if (!challenge[0]) throw new NotFoundException('Challenge not found');
-    const c = challenge[0];
-
-    if (c.status !== 'open') throw new ConflictException('Challenge is not open');
+    if (!c) throw new NotFoundException('Challenge not found');
+    if (c.posterId === userId) throw new BadRequestException('Cannot decline your own challenge');
     if (c.targetPlayerId && c.targetPlayerId !== userId)
       throw new ForbiddenException('Not authorized');
-    if (c.posterId === userId) throw new BadRequestException('Cannot decline your own challenge');
+    // A retried decline of a direct challenge that is already closed is a no-op.
+    if (c.targetPlayerId && c.status === 'cancelled') return;
+    if (c.status !== 'open') throw new ConflictException('Challenge is not open');
 
-    const newStatus = c.targetPlayerId ? 'cancelled' : 'open';
-    const declined = await db
-      .update(schema.challenges)
-      .set({ status: newStatus, updatedAt: new Date() })
-      .where(and(eq(schema.challenges.id, challengeId), eq(schema.challenges.status, 'open')))
-      .returning({ id: schema.challenges.id });
-    if (!declined[0]) throw new ConflictException('Challenge is not open');
-
-    await db.insert(schema.outboxEvents).values({
-      id: uuidv7(),
-      type: 'challenge.declined',
-      subjectId: challengeId,
-      payload: { challengeId, declinedBy: userId },
+    const closes = Boolean(c.targetPlayerId);
+    await db.transaction(async (tx) => {
+      if (closes) {
+        const declined = await tx
+          .update(schema.challenges)
+          .set({
+            status: 'cancelled',
+            cancelledAt: new Date(),
+            version: sql`${schema.challenges.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(schema.challenges.id, challengeId), eq(schema.challenges.status, 'open')))
+          .returning({ id: schema.challenges.id });
+        if (declined.length === 0) throw new ConflictException('Challenge is not open');
+      }
+      await tx.insert(schema.outboxEvents).values({
+        id: uuidv7(),
+        type: 'challenge.declined',
+        subjectId: challengeId,
+        payload: { challengeId, declinedBy: userId, closed: closes },
+      });
     });
 
-    // Only a direct challenge leaves 'open' on decline; an open-board challenge keeps its expiry.
-    if (newStatus !== 'open') await cancelChallengeExpiry(challengeId);
+    if (closes) await cancelChallengeExpiry(challengeId);
   }
 
+  /**
+   * Cancel by the poster (F6.3). Free before acceptance. After acceptance it is a late
+   * cancel: the match is cancelled too and a reputation-debt event is recorded for the
+   * Sprint 12 reputation engine. Once a result has been submitted the match can no longer
+   * be cancelled; that is a dispute or a no-show report instead.
+   */
   async cancelChallenge(challengeId: string, userId: string): Promise<void> {
-    const challenge = await db
+    const [c] = await db
       .select({
         id: schema.challenges.id,
         status: schema.challenges.status,
         posterId: schema.challenges.posterId,
-        acceptedById: schema.challenges.acceptedById,
       })
       .from(schema.challenges)
       .where(eq(schema.challenges.id, challengeId))
       .limit(1);
 
-    if (!challenge[0]) throw new NotFoundException('Challenge not found');
-    const c = challenge[0];
-
+    if (!c) throw new NotFoundException('Challenge not found');
     if (c.posterId !== userId) throw new ForbiddenException('Only the poster can cancel');
-    if (c.status !== 'open' && c.status !== 'accepted')
+    if (c.status === 'cancelled') return; // retried cancel
+    if (c.status !== 'open' && c.status !== 'accepted') {
       throw new ConflictException('Can only cancel open or accepted challenges');
+    }
 
-    const isLateCancel = c.status === 'accepted';
-    const cancelled = await db
-      .update(schema.challenges)
-      .set({ status: 'cancelled', cancelledAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(schema.challenges.id, challengeId), eq(schema.challenges.status, c.status)))
-      .returning({ id: schema.challenges.id });
-    if (!cancelled[0]) throw new ConflictException('Challenge was modified by another request');
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ status: schema.challenges.status })
+        .from(schema.challenges)
+        .where(eq(schema.challenges.id, challengeId))
+        .for('update');
+      if (!locked || (locked.status !== 'open' && locked.status !== 'accepted')) {
+        throw new ConflictException('Challenge was modified by another request');
+      }
+      const isLateCancel = locked.status === 'accepted';
 
-    await db.insert(schema.outboxEvents).values({
-      id: uuidv7(),
-      type: 'challenge.cancelled',
-      subjectId: challengeId,
-      payload: { challengeId, cancelledBy: userId, lateCancel: isLateCancel },
+      let matchId: string | null = null;
+      if (isLateCancel) {
+        const cancelledMatch = await tx
+          .update(schema.matches)
+          .set({
+            status: 'cancelled',
+            cancelledAt: now,
+            version: sql`${schema.matches.version} + 1`,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(schema.matches.challengeId, challengeId),
+              inArray(schema.matches.status, ['accepted', 'in_progress']),
+            ),
+          )
+          .returning({ id: schema.matches.id });
+        if (cancelledMatch.length === 0) {
+          throw new ConflictException(
+            'The match is already being played. Report a no-show or open a dispute instead.',
+          );
+        }
+        matchId = cancelledMatch[0]!.id;
+      }
+
+      await tx
+        .update(schema.challenges)
+        .set({
+          status: 'cancelled',
+          cancelledAt: now,
+          version: sql`${schema.challenges.version} + 1`,
+          updatedAt: now,
+        })
+        .where(eq(schema.challenges.id, challengeId));
+
+      await tx.insert(schema.outboxEvents).values([
+        {
+          id: uuidv7(),
+          type: 'challenge.cancelled',
+          subjectId: challengeId,
+          payload: { challengeId, cancelledBy: userId, lateCancel: isLateCancel, matchId },
+        },
+        ...(matchId
+          ? [
+              {
+                id: uuidv7(),
+                type: 'match.cancelled',
+                subjectId: matchId,
+                payload: { matchId, challengeId, cancelledBy: userId },
+              },
+              {
+                id: uuidv7(),
+                type: 'reputation.debt',
+                subjectId: userId,
+                payload: { userId, reason: 'late_cancel', challengeId, matchId },
+              },
+            ]
+          : []),
+      ]);
     });
 
-    // Cancel the expiry job since challenge is no longer open
     await cancelChallengeExpiry(challengeId);
-
-    if (isLateCancel) {
-      // Emit reputation debt event for late cancellation
-      await db.insert(schema.outboxEvents).values({
-        id: uuidv7(),
-        type: 'reputation.debt',
-        subjectId: userId,
-        payload: { userId, reason: 'late_cancel', challengeId },
-      });
-    }
   }
 
   async computeFairnessSignals(input: {
