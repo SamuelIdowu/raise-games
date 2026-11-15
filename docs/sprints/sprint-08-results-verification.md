@@ -97,12 +97,38 @@ Two-sided result submission with screenshot proof, matching auto-confirm, confli
 
 ## Checklist
 
-- [ ] F8.1 Result submission endpoint append-only + per-game schema validation + active-submission side rule
-- [ ] F8.2 Upload pipeline: client compression, presign to private bucket, MIME/size/EXIF/hash checks, resumable where practical; signed-read-only views; Procfile/host notes
+- [x] F8.1 Result submission endpoint append-only + per-game schema validation + active-submission side rule
+- [x] F8.2 Upload pipeline: client compression, presign to private bucket, MIME/size/EXIF/hash checks, resumable where practical; signed-read-only views; Procfile/host notes
 - [ ] F8.3 Sheet UI complete with offline/failed/retry/submitted states + doc-correct error copy
-- [ ] F8.4 Matching auto-confirm ≤5s incl. rating event handoff; conflict → dispute auto-open; silent-24h auto-confirm timer proven
-- [ ] F8.5 No-show (20-min gate, proof required), forfeit + ratings/reputation-debt records; voided reserved for admin
-- [ ] Anti-fraud test matrix green (reuse-hash, mismatch, wrong score forced bounds)
+- [x] F8.4 Matching auto-confirm ≤5s incl. rating event handoff; conflict → dispute auto-open; silent-24h auto-confirm timer proven
+- [x] F8.5 No-show (20-min gate, proof required), forfeit + ratings/reputation-debt records; voided reserved for admin
+- [x] Anti-fraud test matrix green (reuse-hash, mismatch, wrong score forced bounds)
 - [ ] Testing green incl. two-browser e2e suite
-- [ ] Audits pass (cso/differential) with zero open critical findings
+- [x] Audits pass (cso/differential) with zero open critical findings
 - [ ] `ship` close with PR + CHANGELOG
+
+## Integration with Sprints 6–7 (2026-11-15)
+
+Sprint 8 was started before Sprint 7 landed; it was rebased onto Sprints 6 and 7:
+
+- **One match view.** `GET /matches/:id` returns the Sprint 7 hub view extended with the result
+  fields this sprint needs (format result schema and proof, deadlines, per-player submission,
+  `nextAction`, outcome). The result write path lives in `ResultsService`
+  (`apps/api/src/matches/results.service.ts`); `MatchesService` owns reads and the room code.
+- **Chat tables.** The minimal `conversations`/`messages` tables this sprint created are replaced
+  by Sprint 7's (partitioned messages); `postSystemMessage` writes into those. The room re-reads
+  chat on every state change, so the dispute system message appears live.
+- **Match room.** The thin `/matches/[matchId]` room is removed; its result actions (submit,
+  no-show, confirm, waiting, disputed, confirmed summary) now render inside the Sprint 7 hub at
+  `/matches/[id]` (`components/match/result-actions.tsx`).
+- **Migrations.** Renumbered to `0007_sprint8_results` (after `0005_state_guards` and
+  `0006_sprint7_messaging`), keeping the hand-written append-only trigger and value checks.
+- **State guards.** All transitions here are legal under the Sprint 6 DB transition guard.
+- **Fixed while integrating:** the shared `Sheet` hard-coded `id="sheet-title"`, so with the nav
+  drawer mounted every sheet was announced as "Navigation"; `@raise/game-configs` did not export
+  `games.json`, which broke `db:seed` once the package gained an `exports` map.
+
+## Status notes
+
+- Two-browser e2e (`apps/web/e2e-app`, results + match-room specs) now runs in CI (`E2E` job);
+  the local machine could not hold the full stack in memory, so the suite is proven there.

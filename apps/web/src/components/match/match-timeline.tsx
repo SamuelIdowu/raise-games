@@ -50,7 +50,7 @@ const MARKER: Record<StepState, { icon: IconName | null; className: string; srLa
   },
 };
 
-type TimelineView = Pick<MatchView, 'status' | 'deadline' | 'me' | 'viewerRole'>;
+type TimelineView = Pick<MatchView, 'status' | 'deadline' | 'me' | 'viewerRole' | 'nextAction'>;
 
 function deadlineLabel(view: TimelineView): string {
   return view.deadline?.kind === 'confirm_result' ? 'Confirm by' : 'Submit by';

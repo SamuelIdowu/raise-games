@@ -6,7 +6,8 @@ import { Banner, EmptyState, Icon, SkeletonCard, StatusChip } from '@/components
 import { MatchChat } from '@/components/match/match-chat';
 import { MatchTimeline } from '@/components/match/match-timeline';
 import { OpponentCard } from '@/components/match/opponent-card';
-import { PrimaryAction } from '@/components/match/primary-action';
+import { ResultActions, needsActionCopy } from '@/components/match/result-actions';
+import { isParticipantView } from '@raise/api-client';
 import { RoomCodePanel } from '@/components/match/room-code-panel';
 import { statusDisplay } from '@/lib/match-status';
 import { useMatchRoom } from '@/lib/use-match-room';
@@ -79,8 +80,8 @@ function MatchRoom({ id }: { id: string }) {
       {connection === 'polling' ? (
         <Banner variant="offline">Live updates paused. Refreshing every few seconds.</Banner>
       ) : null}
-      {display.viewerMustAct ? (
-        <Banner variant="needs-action">It is your turn: {display.label.toLowerCase()}.</Banner>
+      {display.viewerMustAct && needsActionCopy(view) ? (
+        <Banner variant="needs-action">{needsActionCopy(view)}</Banner>
       ) : null}
       {isStaff ? <Banner variant="system">Viewing as staff. This view is audited.</Banner> : null}
 
@@ -109,7 +110,14 @@ function MatchRoom({ id }: { id: string }) {
             </section>
           ) : null}
 
-          <PrimaryAction view={view} />
+          {isParticipantView(view) ? (
+            <ResultActions
+              match={view}
+              onChanged={() => {
+                void refreshView();
+              }}
+            />
+          ) : null}
         </div>
 
         <MatchChat

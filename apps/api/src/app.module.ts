@@ -7,6 +7,8 @@ import { ChatModule } from './chat/chat.module';
 import { ConsentModule } from './consent/consent.module';
 import { GamesModule } from './games/games.module';
 import { MatchesModule } from './matches/matches.module';
+import { StorageModule } from './storage/storage.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { PlayersModule } from './players/players.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { ReportsModule } from './reports/reports.module';
@@ -45,6 +47,8 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     ChallengesModule,
     PlayersModule,
     ReportsModule,
+    StorageModule,
+    UploadsModule,
     MatchesModule,
     ChatModule,
     RealtimeModule,

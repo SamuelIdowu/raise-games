@@ -16,6 +16,11 @@ const me = {
   side: 0,
   isPoster: true,
   submittedAt: null,
+  inGameId: 'alice_efb',
+  wins: 3,
+  losses: 1,
+  draws: 0,
+  submission: null,
 };
 
 function viewFor(status: MatchStatus) {
@@ -25,7 +30,15 @@ function viewFor(status: MatchStatus) {
       : ['accepted', 'in_progress', 'awaiting_result'].includes(status)
         ? { kind: 'submit_result' as const, at: new Date(NOW + 42 * 60_000).toISOString() }
         : null;
-  return { status, deadline, me, viewerRole: 'participant' as const };
+  const nextAction =
+    status === 'awaiting_confirmation'
+      ? ('waiting_for_opponent' as const)
+      : ['accepted', 'in_progress', 'awaiting_result'].includes(status)
+        ? ('submit_result' as const)
+        : status === 'disputed'
+          ? ('disputed' as const)
+          : ('done' as const);
+  return { status, deadline, me, viewerRole: 'participant' as const, nextAction };
 }
 
 const meta = {

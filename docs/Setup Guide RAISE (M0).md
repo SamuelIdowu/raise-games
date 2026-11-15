@@ -447,11 +447,16 @@ EMAIL_API_KEY=
 EMAIL_FROM="RAISE <hello@yourdomain.com>"
 
 # ---- File storage (R2, S3-compatible) ----
+# Sprint 8: the bucket must stay PRIVATE (no public access, no R2 public URL).
+# Screenshots are only ever served through 60-second signed URLs from the API.
+# Add a lifecycle rule: delete objects under quarantine/ after 1 day (abandoned uploads).
+# Add a CORS rule allowing PUT from the web origin (browsers upload to presigned URLs).
+# Locally, docker compose runs an S3-compatible store; see .env.example for STORAGE_* values.
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET=raise-proof-screenshots
-R2_PUBLIC_BASE_URL=
+STORAGE_ENDPOINT=              # leave empty in prod; derived from R2_ACCOUNT_ID
 
 # ---- Cloudflare Turnstile ----
 TURNSTILE_SITE_KEY=

@@ -354,6 +354,14 @@ export const matches = pgTable(
     forfeitedAt: timestamp('forfeited_at', { withTimezone: true }),
     voidedAt: timestamp('voided_at', { withTimezone: true }),
     roomCode: text('room_code'),
+    /** Sprint 8: first result must land before this (agreed start + 24h, PRD). */
+    resultDeadline: timestamp('result_deadline', { withTimezone: true }),
+    /** Sprint 8: opponent confirmation window end (first submission + 24h, PRD). */
+    confirmationDeadline: timestamp('confirmation_deadline', { withTimezone: true }),
+    /** 0 or 1 (match_sides.side) once decided; null for draws and unresolved matches. */
+    winnerSide: integer('winner_side'),
+    /** How the match was decided: agreement | auto_timeout | no_show_conceded | no_show_timeout. */
+    decidedVia: text('decided_via'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -362,6 +370,7 @@ export const matches = pgTable(
     index('matches_status_idx').on(t.status),
     index('matches_deadline_idx').on(t.status, t.updatedAt),
     index('matches_start_idx').on(t.status, t.scheduledStartAt),
+    index('matches_confirmation_deadline_idx').on(t.status, t.confirmationDeadline),
   ],
 );
 
@@ -431,15 +440,24 @@ export const resultSubmissions = pgTable(
     matchSideId: uuid('match_side_id')
       .notNull()
       .references(() => matchSides.id),
+    /** result | no_show | confirmation (spec §3). */
+    kind: text('kind').notNull().default('result'),
+    /** win | loss | draw | no_show, from the submitter's point of view. */
     result: text('result').notNull(),
+    /** { self, opponent } from the submitter's point of view; {} for no_show. */
     score: jsonb('score').notNull(),
     proof: jsonb('proof'),
+    uploadId: uuid('upload_id').references(() => uploads.id),
     note: text('note'),
+    /** 1 in Sprint 8; corrections under the Sprint 9 dispute flow use 2+. */
+    revision: integer('revision').notNull().default(1),
+    idempotencyKey: uuid('idempotency_key').unique(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index('result_submissions_match_idx').on(t.matchId),
     index('result_submissions_submitter_idx').on(t.submitterId),
+    uniqueIndex('result_submissions_side_revision_uq').on(t.matchSideId, t.revision),
   ],
 );
 
@@ -450,9 +468,10 @@ export const disputes = pgTable(
     matchId: uuid('match_id')
       .notNull()
       .references(() => matches.id, { onDelete: 'cascade' }),
-    raisedById: uuid('raised_by_id')
-      .notNull()
-      .references(() => users.id),
+    /** Null when the system opened the dispute (conflicting submissions). */
+    raisedById: uuid('raised_by_id').references(() => users.id),
+    /** auto_conflict | player (Sprint 9) | no_show_contested */
+    source: text('source').notNull().default('player'),
     reason: text('reason').notNull(),
     evidence: jsonb('evidence'),
     status: text('status').notNull().default('open'),
@@ -675,5 +694,53 @@ export const userBlocks = pgTable(
   (t) => [
     primaryKey({ columns: [t.blockerId, t.blockedId] }),
     index('user_blocks_blocked_idx').on(t.blockedId),
+  ],
+);
+
+/**
+ * Sprint 8 (F8.2): every user-supplied file. Screenshots are untrusted content
+ * (Design §6): EXIF stripped on write, hashed, read through signed URLs only.
+ */
+export const uploads = pgTable(
+  'uploads',
+  {
+    id: uuid('id').primaryKey(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id),
+    matchId: uuid('match_id').references(() => matches.id),
+    /** result_proof | no_show_proof */
+    purpose: text('purpose').notNull(),
+    /** pending | ready | rejected */
+    status: text('status').notNull().default('pending'),
+    declaredMime: text('declared_mime').notNull(),
+    declaredSize: integer('declared_size').notNull(),
+    quarantineKey: text('quarantine_key').notNull(),
+    storageKey: text('storage_key'),
+    thumbKey: text('thumb_key'),
+    mime: text('mime'),
+    sizeBytes: integer('size_bytes'),
+    width: integer('width'),
+    height: integer('height'),
+    /** SHA-256 of the bytes as uploaded (exact-reuse detection). */
+    sha256: text('sha256'),
+    /** SHA-256 of the stored, EXIF-stripped bytes. */
+    storedSha256: text('stored_sha256'),
+    /** 64-bit DCT perceptual hash, 16 hex chars. */
+    phash: text('phash'),
+    /** Exact-hash match on another match (upload rejected). */
+    reusedUploadId: uuid('reused_upload_id'),
+    /** Nearest perceptual match within threshold (accepted, flagged for review). */
+    similarUploadId: uuid('similar_upload_id'),
+    similarDistance: integer('similar_distance'),
+    rejectReason: text('reject_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('uploads_owner_idx').on(t.ownerId, t.createdAt),
+    index('uploads_match_idx').on(t.matchId),
+    index('uploads_sha256_idx').on(t.sha256),
+    index('uploads_phash_idx').on(t.phash),
   ],
 );

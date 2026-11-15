@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Ban,
+  Camera,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -12,16 +13,20 @@ import {
   Flag,
   Gamepad2,
   Home,
+  ImageIcon,
   Hourglass,
   Info,
   Loader2,
   Lock,
   Mail,
   Menu,
+  Minus,
   Play,
   Plus,
+  RefreshCw,
   ShieldCheck,
   Star,
+  Trash2,
   Trophy,
   Undo2,
   Upload,
@@ -61,7 +66,12 @@ export type IconName =
   | 'user'
   | 'star'
   | 'upload'
-  | 'lock';
+  | 'lock'
+  | 'minus'
+  | 'camera'
+  | 'image'
+  | 'refresh'
+  | 'trash';
 
 const ICONS: Record<IconName, LucideIcon> = {
   circle: Circle,
@@ -93,6 +103,11 @@ const ICONS: Record<IconName, LucideIcon> = {
   star: Star,
   upload: Upload,
   lock: Lock,
+  minus: Minus,
+  camera: Camera,
+  image: ImageIcon,
+  refresh: RefreshCw,
+  trash: Trash2,
 };
 
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {

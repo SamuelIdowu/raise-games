@@ -4,6 +4,19 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 8 — Result submission & verification
+
+- Submit result, report no-show and one-tap confirm from the match room; result sheet with
+  outcome, score steppers driven by the game config, screenshot proof and note.
+- Screenshot uploads: client compression, presigned upload to a private bucket, server-side type
+  sniffing, EXIF stripping, exact and perceptual hashing to catch reused screenshots, signed reads.
+- Matching results confirm in seconds; conflicting results open a dispute with a chat system
+  message; a silent opponent auto-confirms after 24 hours (BullMQ + sweeper).
+- No-show claims open 20 minutes after the start, need proof of attempt, and forfeit after the
+  window unless contested.
+- Result submissions are append-only at the database level.
+- Sprint 7 and 8 share one match view; the match room hosts the result actions.
+
 ### Sprint 7 — Match room, real-time gateway & match chat
 
 - One WebSocket per user (socket.io, WebSocket-only) for chat, live match state and in-app

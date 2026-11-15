@@ -12,10 +12,12 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots"
+    "test:visual:update": "playwright test --update-snapshots",
+    "test:e2e": "playwright test -c playwright.app.config.ts"
   },
   "dependencies": {
     "@raise/api-client": "workspace:*",
+    "@raise/game-configs": "workspace:*",
     "@raise/schemas": "workspace:*",
     "@raise/tokens": "workspace:*",
     "lucide-react": "^1.70.0",
@@ -33,11 +35,13 @@
     "@tailwindcss/turbopack": "^4",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
     "http-server": "^14.1.1",
+    "pg": "^8.23.1",
     "storybook": "^10.6.6",
     "tailwindcss": "^4",
     "typescript": "^5",
