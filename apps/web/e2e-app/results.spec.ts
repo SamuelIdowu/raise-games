@@ -21,7 +21,11 @@ async function submitResult(
   self: number,
   opponent: number,
 ) {
-  await page.getByRole('button', { name: 'Submit result' }).first().click();
+  // First submitter sees "Submit result"; the opponent (confirm state) sees "Submit a different result".
+  await page
+    .getByRole('button', { name: /^Submit (a different )?result$/ })
+    .first()
+    .click();
   const sheet = page.getByRole('dialog', { name: 'Submit result' });
   await sheet.getByText(outcome, { exact: true }).click();
   await setStepper(sheet.getByRole('group', { name: 'You' }), self);
