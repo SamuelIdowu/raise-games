@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/cn';
 import { formatAbsolute, formatDuration } from '@/lib/time';
 
@@ -22,16 +23,13 @@ export function DeadlineCountdown({
   now?: number;
   className?: string;
 }) {
-  const [now, setNow] = useState(() => fixedNow ?? Date.now());
+  // Tick every second under an hour, every 30s above (no clock read during render).
+  const coarse = useNow(30_000);
+  const fine = useNow(1000);
+  const live = new Date(at).getTime() - coarse > 3600_000 ? coarse : fine;
+  const now = fixedNow ?? live;
   const [absolute, setAbsolute] = useState(false);
   const remaining = new Date(at).getTime() - now;
-
-  useEffect(() => {
-    if (fixedNow !== undefined) return;
-    const step = remaining > 3600_000 ? 30_000 : 1000;
-    const id = setInterval(() => setNow(Date.now()), step);
-    return () => clearInterval(id);
-  }, [fixedNow, remaining > 3600_000]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const relative = formatDuration(remaining);
   const absoluteText = formatAbsolute(at);
