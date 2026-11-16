@@ -9,6 +9,8 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { roomCodeModeFor } from '../games/room-code-mode';
 import { db, schema } from '../db/client';
+import { ReputationService } from '../ratings/reputation.service';
+import type { ReputationLevel } from '../ratings/reputation';
 import type { AuthedUser } from '../auth/jwt-auth.guard';
 import { rankTierForRating, rankTierLabel } from '../shared/ranks';
 import {
@@ -49,7 +51,7 @@ export interface MatchPlayerDto {
   provisional: boolean;
   record: string;
   /** Reputation scoring lands in Sprint 10; every player reads "new" until then. */
-  reputation: 'new';
+  reputation: ReputationLevel;
   gameId: string;
   /** Same as gameId (Sprint 8 components read this name). */
   inGameId: string;
@@ -122,6 +124,8 @@ export interface MatchAccess {
 
 @Injectable()
 export class MatchesService {
+  constructor(private readonly reputation: ReputationService) {}
+
   /**
    * Loads a match and decides whether the viewer may see it. Participants always may;
    * moderators and admins may as staff (dispute evidence, F7.4). Everyone else gets 404
@@ -244,6 +248,24 @@ export class MatchesService {
       )
       .orderBy(asc(schema.resultSubmissions.submittedAt));
 
+    // Sprint 10: the viewer's net rating change per match (apply + any reversal), and
+    // live reputation badges for both players.
+    const deltaRows = await db
+      .select({
+        matchId: schema.ratingEvents.matchId,
+        delta: sql<number>`sum(${schema.ratingEvents.delta})::int`,
+      })
+      .from(schema.ratingEvents)
+      .where(
+        and(
+          inArray(schema.ratingEvents.matchId, matchIds),
+          eq(schema.ratingEvents.userId, viewer.sub),
+        ),
+      )
+      .groupBy(schema.ratingEvents.matchId);
+    const deltas = new Map(deltaRows.map((d) => [d.matchId, Number(d.delta)]));
+    const reputations = await this.reputation.forUsers(sideRows.map((r) => r.userId));
+
     const byId = new Map(matches.map((m) => [m.id, m]));
     const views: MatchViewDto[] = [];
     // Preserve the caller's order (the list is sorted by recent activity).
@@ -260,6 +282,8 @@ export class MatchesService {
           viewer,
           isParticipantOf(matchId),
           now,
+          deltas.get(matchId) ?? null,
+          reputations,
         ),
       );
     }
@@ -297,6 +321,8 @@ export class MatchesService {
     viewer: AuthedUser,
     isParticipant: boolean,
     now: Date,
+    ratingDelta: number | null,
+    reputations: Map<string, ReputationLevel>,
   ): MatchViewDto {
     const players: MatchPlayerDto[] = rows
       .sort((a, b) => a.side - b.side)
@@ -310,7 +336,7 @@ export class MatchesService {
           rankLabel: rankTierLabel(tier),
           provisional: r.provisional,
           record: `${r.wins}–${r.losses}–${r.draws}`,
-          reputation: 'new' as const,
+          reputation: reputations.get(r.userId) ?? 'new',
           gameId: r.inGameId,
           inGameId: r.inGameId,
           wins: r.wins,
@@ -388,7 +414,7 @@ export class MatchesService {
         resultDeadline,
         now,
       }),
-      ratingDelta: null,
+      ratingDelta,
       confirmedAt: (match.confirmedAt ?? match.forfeitedAt)?.toISOString() ?? null,
       roomCode: canSeeRoomCode(isParticipant, status) ? match.roomCode : null,
       roomCodeMode,

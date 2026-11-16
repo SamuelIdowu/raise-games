@@ -16,6 +16,7 @@ export { challengesApi } from './challenges';
 export { playersApi } from './players';
 export { reportsApi } from './reports';
 export { matchesApi, isParticipantView } from './matches';
+export { leaderboardsApi } from './leaderboards';
 export { chatApi } from './chat';
 export { uploadsApi } from './uploads';
 export { disputesApi } from './disputes';
@@ -59,3 +60,9 @@ export type {
   DisputeView,
   RulingOutcome,
 } from './disputes';
+export type {
+  LeaderboardPage,
+  LeaderboardQuery,
+  LeaderboardRow,
+  ReputationLevel,
+} from './leaderboards';

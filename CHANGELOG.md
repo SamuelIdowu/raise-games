@@ -4,6 +4,14 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 10 — Elo ratings, leaderboards & profile stats
+
+- Per-game Elo per the PRD: start 1000, K 32 then 20 after 20 matches, provisional until 10, and diminishing gains after 3 matches against the same opponent in 7 days (decision 0004).
+- Append-only rating event log; every rating is recomputable from it (`pnpm --filter @raise/api ratings:verify`), proven by 10,000-event fuzz tests.
+- Ratings update from confirmed results, forfeits and dispute rulings, including exact reversal when an appeal changes or voids a result, within the 5-second budget.
+- Leaderboards per game: confirmed results only, campus and city filters, your own row pinned, top-three notch, 7-day trend.
+- Profiles show rank tier, rating with the provisional marker, record, streak and a live reputation badge; the confirmed summary counts up the real rating change.
+
 ### Audit fixes — Sprints 0–8 (2026-11-16)
 
 - Security: `fastify` raised to ^5.12.8 (auth and validation-bypass advisories) and `@fastify/static` to ^10.1.11 (path traversal); `pnpm audit --prod` is clean. The web app now sends a Content-Security-Policy and standard security headers.

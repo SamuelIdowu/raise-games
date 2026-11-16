@@ -86,11 +86,26 @@ Per-game Elo with an append-only event log as source of truth, leaderboards per 
 
 ## Checklist
 
-- [ ] F10.1 RatingEvent log + pure Elo module with PRD rules implemented; provisional marking; per-game isolation
-- [ ] F10.2 Events from confirmed results/rulings/forfeits all produce correct rating events; 5s budget measured
-- [ ] F10.3 Leaderboard API: per-game, confirmed-only, campus/city filters, cursor paging, cache-fresh
-- [ ] F10.4 UI per Design §8: rows, pinned own row, top-3 notches, badges, profile stat grid, count-up live with reduced-motion respect
-- [ ] Recompute-equality property test green (fuzz + spot archives) — acceptance criterion met
-- [ ] `[owner decision]`: Elo numeric parameters + reputation thresholds (or working-default per PRD with issue)
+- [x] F10.1 RatingEvent log + pure Elo module with PRD rules implemented; provisional marking; per-game isolation
+- [x] F10.2 Events from confirmed results/rulings/forfeits all produce correct rating events; 5s budget measured (integration test prints outbox → rating time)
+- [x] F10.3 Leaderboard API: per-game, confirmed-only, campus/city filters, cursor paging, cache-fresh (`version` stamp)
+- [x] F10.4 UI per Design §8: rows, pinned own row, top-3 notches, badges, profile stat grid, count-up live with reduced-motion respect
+- [x] Recompute-equality property test green (fuzz + spot archives) — acceptance criterion met (10,000-event pure fuzz ×3 seeds; 120-step fuzz through the real consumer; `ratings:verify` CLI)
+- [x] `[owner decision]`: Elo numeric parameters + reputation thresholds (decisions 0004 and 0003)
 - [ ] Testing green; audits clean
 - [ ] `ship` close with PR + CHANGELOG
+
+## Implementation notes (2026-11-17)
+
+- **Log:** `rating_events` is append-only (trigger). One row per player per application, with the inputs and outputs replay needs; `seq` is the processing order. The rating consumer is an outbox consumer (`ratings`) with its own delivery state, and the relay's per-consumer advisory lock serialises applications, which is what makes `seq` order the computation order.
+- **Events consumed:** `match.confirmed` (result), `match.forfeited` (forfeit: loss for the forfeiting side), `dispute.ruled` (`apply`, `reverse_and_apply`, `reverse`, `none`, per Sprint 9's contract). All are idempotent on a source key.
+- **Reversals** undo an application exactly and keep `rated_matches` (K depends on matches played). W/L/D and streak are rebuilt from effective applications, so the record corrects too.
+- **Leaderboard:** players appear after their first rated match, so pending and disputed matches never count. Competition ranking ("1, 2, 2, 4"); provisional players are flagged, not hidden; 7-day trend; `version` = latest rating event for the game.
+- **Reputation:** computed per decision 0003 over the last 50 matches; shown on profiles, leaderboard rows and in the match room.
+- **Match view:** `ratingDelta` is the viewer's net change for the match, so the confirmed summary's count-up shows the real change.
+
+## Audit (2026-11-17)
+
+- **Rating math against the PRD, verbatim:** tests pin start 1000, K 32 → 20 at the 21st match, the 7-day window, provisional at 10, draws, and symmetric deltas (the two players' deltas sum to 0 ±1 rounding).
+- **Fairness:** a forfeit is rated exactly like a loss for the forfeiting side and a win for the claimant. A void never rates; voiding a rated match reverses both players exactly. Repeat-opponent dampening applies to gains only, so it can never push a loser down further than a normal loss.
+- **Snapshot safety:** every application and reversal writes `rating.applied` / `rating.reversed` to the audit log with per-player deltas, and a `rating.updated` outbox event (rank-change notifications in Sprint 11). The Sprint 12 evidence view can read both.

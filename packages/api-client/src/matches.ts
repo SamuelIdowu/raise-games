@@ -41,7 +41,7 @@ export interface MatchPlayer {
   rankLabel: string;
   provisional: boolean;
   record: string;
-  reputation: 'new';
+  reputation: import('./leaderboards').ReputationLevel;
   gameId: string;
   /** Same as gameId. */
   inGameId: string;

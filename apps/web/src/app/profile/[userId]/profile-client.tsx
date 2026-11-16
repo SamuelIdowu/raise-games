@@ -7,9 +7,13 @@ import {
   Button,
   CountUp,
   Icon,
+  RankTierBadge,
+  RatingBadge,
   ReputationBadge,
   StatusChip,
   useToast,
+  type ReputationLevel,
+  type TierLevel,
 } from '@/components/ui';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -29,6 +33,25 @@ interface GameProfileDto {
   draws: number;
   streak: number;
   provisional: boolean;
+  ratedMatches: number;
+  rankTier: string;
+  rankLabel: string;
+  reputation: ReputationLevel;
+}
+
+const TIER: Record<string, TierLevel> = {
+  rookie: 1,
+  challenger: 2,
+  contender: 3,
+  elite: 4,
+  champion: 5,
+};
+
+/** "W3", "L2" or "—": streak sign carries win/loss, the letter keeps it readable. */
+function streakLabel(streak: number): { text: string; sr: string } {
+  if (streak > 0) return { text: `W${streak}`, sr: `${streak} win streak` };
+  if (streak < 0) return { text: `L${-streak}`, sr: `${-streak} loss streak` };
+  return { text: '—', sr: 'No streak' };
 }
 
 async function fetchProfile(userId: string): Promise<GameProfileDto[]> {
@@ -152,26 +175,50 @@ export function ProfileClient() {
         id={`${tabsId}-panel`}
         role={profiles.length > 1 ? 'tabpanel' : undefined}
         aria-labelledby={profiles.length > 1 ? `${tabsId}-tab-${selected}` : undefined}
-        className="flex flex-col md:grid md:grid-cols-3 gap-4"
+        className="grid grid-cols-2 gap-4 md:grid-cols-3"
       >
-        <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps text-fg-muted">Rating</p>
-          <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
-            {p?.rating ?? 1000}
-          </p>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps text-fg-muted">Record</p>
-          <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
-            {p?.wins ?? 0}-{p?.losses ?? 0}-{p?.draws ?? 0}
-          </p>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps text-fg-muted">Streak</p>
-          <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
-            W{p?.streak ?? 0}
-          </p>
-        </div>
+        {/* Stat grid (Design §8 player profile header): rank, rating, record, streak, reputation. */}
+        <dl className="contents">
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Rank</dt>
+            <dd className="mt-2">
+              <RankTierBadge tier={TIER[p?.rankTier ?? 'challenger'] ?? 2} label={p?.rankLabel} />
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Rating</dt>
+            <dd className="mt-1">
+              <RatingBadge value={p?.rating ?? 1000} provisional={p?.provisional ?? true} />
+              {p?.provisional ? (
+                <span className="mt-1 block text-caption text-fg-muted">
+                  Provisional · {p.ratedMatches} of 10 rated matches
+                </span>
+              ) : null}
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Record</dt>
+            <dd
+              className="mt-1 font-display text-stat-md font-semibold text-fg tabular"
+              aria-label={`${p?.wins ?? 0} wins, ${p?.losses ?? 0} losses, ${p?.draws ?? 0} draws`}
+            >
+              {p?.wins ?? 0}–{p?.losses ?? 0}–{p?.draws ?? 0}
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Streak</dt>
+            <dd className="mt-1 font-display text-stat-md font-semibold text-fg tabular">
+              <span aria-hidden>{streakLabel(p?.streak ?? 0).text}</span>
+              <span className="sr-only">{streakLabel(p?.streak ?? 0).sr}</span>
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Reputation</dt>
+            <dd className="mt-2">
+              <ReputationBadge level={p?.reputation ?? 'new'} />
+            </dd>
+          </div>
+        </dl>
       </div>
 
       <div className="space-y-4">
@@ -208,7 +255,6 @@ export function ProfileClient() {
                 >
                   <Icon name="copy" size={14} /> Copy
                 </button>
-                <ReputationBadge level="new" />
               </div>
             </div>
           ))}
