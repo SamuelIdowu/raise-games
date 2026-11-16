@@ -73,6 +73,8 @@ export default function LeaderboardPage() {
   );
 
   useEffect(() => {
+    // Intentional reset when the game/filter changes, before the fresh load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(null);
     versionRef.current = null;
     void load();
