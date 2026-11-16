@@ -8,6 +8,7 @@ import { ConsentModule } from './consent/consent.module';
 import { DisputesModule } from './disputes/disputes.controller';
 import { GamesModule } from './games/games.module';
 import { MatchesModule } from './matches/matches.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { StorageModule } from './storage/storage.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { PlayersModule } from './players/players.module';
@@ -55,6 +56,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     ChatModule,
     DisputesModule,
     RatingsModule,
+    NotificationsModule,
     RealtimeModule,
   ],
   controllers: [HealthController],

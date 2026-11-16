@@ -4,6 +4,18 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 11 — Notifications & Inbox
+
+- Every Stage 1 notification type is live: challenges (received, accepted, declined, expiring),
+  results (needs confirmation, auto-confirmed), no-shows, disputes (opened, ruled), new messages
+  (batched per chat) and account actions.
+- Delivered in-app instantly to every open tab, plus web push and email by preference, with
+  retries, quiet hours, and critical types that always get through.
+- Inbox: notifications grouped by day with unread dots and deep links; match chats in Messages;
+  a preferences screen for channels, quiet hours, email and push on this device.
+- Real badges: Inbox unread and Matches needing your action, kept in sync live; the needs-action
+  banner now shows real matches.
+
 ### Sprint 10 — Elo ratings, leaderboards & profile stats
 
 - Per-game Elo per the PRD: start 1000, K 32 then 20 after 20 matches, provisional until 10, and diminishing gains after 3 matches against the same opponent in 7 days (decision 0004).

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { Button, Icon, Sheet } from '@/components/ui';
-import { NAV_ITEMS, type NavItem } from './BottomNav';
+import { NAV_ITEMS, NavBadge, useNavBadges, type NavItem } from './BottomNav';
 
 export function Sidebar() {
+  const badges = useNavBadges();
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -70,11 +71,13 @@ export function Sidebar() {
                 collapsed ? 'justify-center' : ''
               }`}
             >
-              <Icon
-                name={item.icon as import('@/components/ui').IconName}
-                size={24}
-                className="shrink-0"
-              />
+              <span className="relative shrink-0">
+                <Icon name={item.icon as import('@/components/ui').IconName} size={24} />
+                <NavBadge
+                  count={badges[item.href] ?? 0}
+                  label={item.href === '/inbox' ? 'unread' : 'need your action'}
+                />
+              </span>
               {!collapsed && (
                 <span className="font-display text-body-sm truncate">{item.label}</span>
               )}

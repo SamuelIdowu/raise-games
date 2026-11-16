@@ -45,6 +45,8 @@ export const users = pgTable(
     id: uuid('id').primaryKey(),
     phone: text('phone').notNull(),
     displayName: text('display_name'),
+    /** Optional; notification email channel (Sprint 11). Never shown to other players. */
+    email: text('email'),
     jurisdictionState: text('jurisdiction_state'),
     identityTier: identityTierEnum('identity_tier').notNull().default('tier1_phone_verified'),
     kycStatus: kycStatusEnum('kyc_status').notNull().default('none'),
@@ -895,5 +897,106 @@ export const ratingEvents = pgTable(
     index('rating_events_match_idx').on(t.matchId),
     index('rating_events_apply_idx').on(t.applyId),
     index('rating_events_reverses_idx').on(t.reversesApplyId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Notifications — Sprint 11 (F11.1–F11.5)
+// ---------------------------------------------------------------------------
+
+/** One row per (recipient, source event, type): the source of record, created before any delivery. */
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Catalog type, e.g. challenge_received, result_needs_confirmation (notifications/catalog.ts). */
+    type: text('type').notNull(),
+    /** Dedupe key: the outbox event id, or a synthetic key for timers (e.g. expiring:<challengeId>). */
+    sourceKey: text('source_key').notNull(),
+    /** Template params; the client re-renders with the same catalog (i18n). */
+    params: jsonb('params').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    /** In-app deep link to the related object (Design §8: tapping opens it). */
+    link: text('link').notNull(),
+    /** Batching: messages in the same conversation fold into one unread item. */
+    groupKey: text('group_key'),
+    groupCount: integer('group_count').notNull().default(1),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('notifications_dedupe_uq').on(t.userId, t.sourceKey, t.type),
+    index('notifications_user_created_idx').on(t.userId, t.createdAt),
+    index('notifications_user_unread_idx').on(t.userId, t.readAt),
+  ],
+);
+
+/** Per-type channel switches. Missing row = catalog defaults. In-app is always on. */
+export const notificationPreferences = pgTable(
+  'notification_preferences',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    push: boolean('push').notNull(),
+    email: boolean('email').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.type] })],
+);
+
+/** Quiet hours (minutes from local midnight) and timezone, per user. */
+export const notificationSettings = pgTable('notification_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  quietStartMinute: integer('quiet_start_minute'),
+  quietEndMinute: integer('quiet_end_minute'),
+  timeZone: text('time_zone').notNull().default('Africa/Lagos'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Every attempt to deliver a notification on a channel (ops alert on failures, M4). */
+export const deliveryAttempts = pgTable(
+  'delivery_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    notificationId: uuid('notification_id')
+      .notNull()
+      .references(() => notifications.id, { onDelete: 'cascade' }),
+    /** in_app | push | email */
+    channel: text('channel').notNull(),
+    /** sent | failed | skipped | deferred */
+    status: text('status').notNull(),
+    attempt: integer('attempt').notNull().default(1),
+    detail: text('detail'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('delivery_attempts_notification_idx').on(t.notificationId),
+    index('delivery_attempts_status_idx').on(t.status, t.createdAt),
+  ],
+);
+
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    keys: jsonb('keys').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('push_subscriptions_endpoint_uq').on(t.endpoint),
+    index('push_subscriptions_user_idx').on(t.userId),
   ],
 );

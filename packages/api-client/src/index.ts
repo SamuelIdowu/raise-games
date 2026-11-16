@@ -20,6 +20,7 @@ export { leaderboardsApi } from './leaderboards';
 export { chatApi } from './chat';
 export { uploadsApi } from './uploads';
 export { disputesApi } from './disputes';
+export { notificationsApi } from './notifications';
 export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
@@ -66,3 +67,9 @@ export type {
   LeaderboardRow,
   ReputationLevel,
 } from './leaderboards';
+export type {
+  InboxConversation,
+  NotificationItem,
+  NotificationSettings,
+  NotificationType,
+} from './notifications';

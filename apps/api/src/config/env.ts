@@ -48,6 +48,15 @@ const envSchema = z.object({
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().default('raise-proof-screenshots'),
+  // ---- Notifications (Sprint 11). All optional: without them push is skipped and email
+  // goes to the logging mock. Email vendor (Resend vs SES) is an open owner decision.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:support@raise.gg'),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('RAISE <no-reply@raise.gg>'),
+  /** Absolute web origin used in push/email deep links. */
+  APP_URL: z.string().default('http://localhost:3000'),
 });
 
 export type Env = z.infer<typeof envSchema>;

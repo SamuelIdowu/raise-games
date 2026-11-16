@@ -7,6 +7,8 @@ export const ServerEvents = {
   ChatLocked: 'chat:locked',
   MatchState: 'match:state',
   Notification: 'notification',
+  NotificationNew: 'notification:new',
+  NotificationUnread: 'notification:unread',
   AuthRevoked: 'auth:revoked',
 } as const;
 

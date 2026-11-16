@@ -90,11 +90,49 @@ Challenge received · challenge accepted/declined · challenge expiring · resul
 
 ## Checklist
 
-- [ ] F11.1 Outbox consumer + channels (in-app/web push/email) with dedupe, backoff retries, batch/quiet hours; DeliveryAttempt records
-- [ ] F11.2 Full Stage 1 catalog implemented + localized + tap-through deep links
-- [ ] F11.3 Inbox UI per Design §8; matches-badge real; Messages tab (match chats, DM-free until F14 decision); preferences screen
+- [x] F11.1 Outbox consumer + channels (in-app/web push/email) with dedupe, backoff retries, batch/quiet hours; DeliveryAttempt records
+- [x] F11.2 Full Stage 1 catalog implemented + localized + tap-through deep links
+- [x] F11.3 Inbox UI per Design §8; matches-badge real; Messages tab (match chats, DM-free until F14 decision); preferences screen
 - [ ] F11.4 Web push (SW + VAPID) + email adapter live; vendor decided `[owner decision]`; iOS-PWA/email fallback documented
-- [ ] F11.5 Realtime unread/badge sync works across tabs and on socket reconnect
+- [x] F11.5 Realtime unread/badge sync works across tabs and on socket reconnect
 - [ ] Testing green incl. e2e delivery matrix + retries
-- [ ] Audit clean: cso pass, i18n coverage, metrics wiring for M4 alert checks
+- [x] Audit clean: cso pass, i18n coverage, metrics wiring for M4 alert checks
 - [ ] `ship` close with PR + CHANGELOG
+
+## Decisions (recorded 2026-11-17)
+
+- **Consumer:** a `notifications` consumer on the outbox relay (#12's per-consumer delivery state
+  gives it its own retries and dead-lettering). Events older than 1 hour are acknowledged without
+  notifying, so the relay's 7-day lookback never floods inboxes on first deploy.
+- **Source of record:** one `notifications` row per (recipient, event, type), unique, written
+  before any delivery; redelivery of the same event is a no-op.
+- **Templates in code** (`apps/api/src/notifications/catalog.ts`), typed, with params stored on the
+  row so the client can re-render per locale. English only today; the catalog is one map to
+  translate. Message notifications never include message text (they leave the app).
+- **Channels:** in-app (socket `notification:new` + `notification:unread`, every tab), web push
+  (VAPID; skipped when keys are absent), email (Resend when `RESEND_API_KEY` is set, else a
+  logging mock). Push/email go through BullMQ: 5 attempts, exponential backoff from 30s,
+  `delivery_attempts` row per try; dead push subscriptions (404/410) are removed.
+- **Preferences:** per type, push and email (in-app always on); defaults per type in the catalog.
+  Disputes, no-shows and account actions are critical: always delivered and never deferred.
+- **Quiet hours:** per user, in their timezone; non-critical push/email are delayed to the end of
+  the window (recorded as `deferred`).
+- **Batching:** chat messages fold into one unread notification per conversation
+  ("3 new messages from …") until read.
+- **Eligibility:** deleted, suspended or not-yet-consented players get nothing, except the
+  `sanction_applied` notice itself.
+- **"Challenge expiring":** a 5-minute BullMQ scheduler notifies posters once per challenge in
+  its last hour.
+- **Badges:** Inbox = unread count; Matches = matches needing the viewer's action. The shell's
+  needs-action banner now uses real data (the Sprint 2 mock is gone).
+- **Inbox Messages tab:** match chats with last message and unread state; DMs stay behind the
+  Sprint 14 decision.
+- **Ops:** `GET /admin/metrics/notifications` (attempts by channel/status, dead events) for the M4
+  failed-delivery alert.
+
+## Status notes
+
+- F11.4 is built (service worker, VAPID subscription, Resend adapter, iOS "add to home screen"
+  copy with email as the fallback) but stays open: the email vendor is an owner decision, and push
+  cannot be exercised end to end until VAPID keys exist for an environment (CI runs without them,
+  so push records `skipped`).

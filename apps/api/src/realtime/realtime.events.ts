@@ -12,6 +12,10 @@ export const ServerEvents = {
   ChatLocked: 'chat:locked',
   MatchState: 'match:state',
   Notification: 'notification',
+  /** Sprint 11: a persisted notification (NotificationDto). */
+  NotificationNew: 'notification:new',
+  /** Sprint 11: { unread } — keeps every tab's badge in sync. */
+  NotificationUnread: 'notification:unread',
 } as const;
 
 export const ClientEvents = {

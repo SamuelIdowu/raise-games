@@ -78,6 +78,13 @@
       "when": 1794851502186,
       "tag": "0010_sprint10_ratings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794871781656,
+      "tag": "0011_sprint11_notifications",
+      "breakpoints": true
     }
   ]
 }
