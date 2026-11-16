@@ -85,10 +85,47 @@ Player-facing dispute lifecycle: open with reason + evidence, shared status trac
 
 ## Checklist
 
-- [ ] F9.1 Dispute + Ruling tables, open API + status tracker API, audit-log lines at each change
-- [ ] F9.2 UI: open sheet, shared tracker, ruling view with moderator reason, single-appeal behavior
-- [ ] F9.3 `dispute.ruled` outbox contract defined (incl. void-win/loss splits); chat evidence snapshot endpoint for evidence reads
-- [ ] F9.4 Metrics events (dispute rate, resolution clock) emitting; bad-faith dispute datapoints recorded; rate limits documented
+- [x] F9.1 Dispute + Ruling tables, open API + status tracker API, audit-log lines at each change
+- [x] F9.2 UI: open sheet, shared tracker, ruling view with moderator reason, single-appeal behavior
+- [x] F9.3 `dispute.ruled` outbox contract defined (incl. void-win/loss splits); chat evidence snapshot endpoint for evidence reads
+- [x] F9.4 Metrics events (dispute rate, resolution clock) emitting; bad-faith dispute datapoints recorded; rate limits documented
 - [ ] Testing green incl. two-browser e2e + appeal gate
-- [ ] Audit clean (authz proof, audit-log completeness check)
+- [x] Audit clean (authz proof, audit-log completeness check)
 - [ ] `ship` close with PR + CHANGELOG
+
+## Decisions (recorded 2026-11-16)
+
+- **One dispute per match** (unique index). A system-opened conflict dispute and a player's
+  dispute are the same row: the player's reason joins it.
+- **When a player can open one:** while the opponent's result waits for confirmation
+  (`awaiting_confirmation → disputed`, stopping the 24h auto-confirm). Before a result exists,
+  players submit their own result instead; after an outcome, the appeal is the route.
+- **Status:** `open → awaiting_info → reviewed → ruled → appealed → final`, identical for both
+  players. The SLA clock starts at open (`slaStartedAt`); enforcement is Sprint 12.
+- **Evidence:** up to 3 items per player (screenshot via the F8.2 pipeline with purpose
+  `dispute_evidence`, and/or a note), while open, awaiting info, or appealed. Players see their
+  own evidence and only a count of the other side's; moderators see everything.
+- **Rulings** are append-only (DB trigger), outcome `side0_win | side1_win | draw | void`, with
+  the moderator's reason and an optional sanction note. Round 1 resolves the match (or voids
+  it); round 2 rules on the appeal and is final.
+- **One appeal per dispute** (either player, unique index). A void ruling is final and cannot be
+  appealed (a voided match is terminal).
+- **`dispute.ruled` contract** (`apps/api/src/disputes/dispute-events.ts`, zod-validated, contract
+  test): round, outcome, previous outcome, winner/loser, draw/void flags, participants,
+  `ratingAction` (`apply | reverse_and_apply | reverse | none`), final, `resolutionMs`.
+- **Evidence snapshot:** each ruling stores a SHA-256 digest and message count of the chat at
+  ruling time; `GET /admin/disputes/:id/evidence` returns chat, submissions and evidence hashes.
+- **Metrics:** `GET /admin/metrics/disputes` (dispute rate, median open→ruling). A player-opened
+  dispute ruled against its opener emits `reputation.flag` (bad-faith datapoint for Sprint 12).
+- **Rate limits:** open 5/hour, evidence 20/hour, appeal 5/hour per user.
+- **Moderator endpoints** (`/admin/disputes/:id/status|ruling|evidence`) exist now so the player
+  surfaces work end to end; the moderator queue UI is Sprint 12. Every change is audited.
+
+## Audit (2026-11-16)
+
+- Authz, endpoint by endpoint: dispute read 404s for non-participants (staff allowed); open,
+  evidence and appeal are participants only; status, ruling and evidence snapshot are moderator
+  or admin (RolesGuard + service check), all tested.
+- Audit log: opened, reason added, evidence added, awaiting info, reviewed, ruled, appeal ruled,
+  appealed and staff evidence reads each write an `audit_log` row.
+- Copy is in `apps/web/src/lib/copy/disputes.ts` (one catalogue, localisable).

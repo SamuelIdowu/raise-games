@@ -6,6 +6,8 @@ import { Banner, Button, Icon, useToast } from '@/components/ui';
 import { ConfirmPanel } from '@/features/results/confirm-panel';
 import { ConfirmedSummary } from '@/features/results/confirmed-summary';
 import { ResultSheet } from '@/features/results/result-sheet';
+import { OpenDisputeSheet } from './open-dispute-sheet';
+import { disputeCopy } from '@/lib/copy/disputes';
 import { RESULT_RULES, resultCopy } from '@/lib/copy/results';
 import { formatDateTime, formatRelative } from '@/lib/datetime';
 import { useNow } from '@/lib/use-now';
@@ -19,6 +21,7 @@ import { useNow } from '@/lib/use-now';
 export function ResultActions({ match, onChanged }: { match: MatchDetail; onChanged: () => void }) {
   const { toast } = useToast();
   const [sheet, setSheet] = useState<null | 'result' | 'no_show'>(null);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   // Each opening remounts the sheet (fresh state and idempotency key).
   const [session, setSession] = useState(0);
   const openSheet = (mode: 'result' | 'no_show') => {
@@ -63,11 +66,23 @@ export function ResultActions({ match, onChanged }: { match: MatchDetail; onChan
       break;
     case 'confirm_or_submit':
       body = (
-        <ConfirmPanel
-          match={match}
-          onConfirmed={onChanged}
-          onSubmitDifferent={() => openSheet('result')}
-        />
+        <div className="flex flex-col gap-2">
+          <ConfirmPanel
+            match={match}
+            onConfirmed={onChanged}
+            onSubmitDifferent={() => openSheet('result')}
+          />
+          <Button
+            variant="ghost"
+            fullWidth
+            onClick={() => {
+              setSession((n) => n + 1);
+              setDisputeOpen(true);
+            }}
+          >
+            {disputeCopy.open.cta}
+          </Button>
+        </div>
       );
       break;
     case 'waiting_for_opponent':
@@ -93,15 +108,8 @@ export function ResultActions({ match, onChanged }: { match: MatchDetail; onChan
       );
       break;
     case 'disputed':
-      body = (
-        <section className="flex flex-col gap-2 rounded-card border border-dispute/40 bg-surface p-4">
-          <h2 className="flex items-center gap-2 font-display text-h2 font-semibold text-fg">
-            <Icon name="alert-triangle" size={20} className="text-dispute" aria-hidden />
-            {resultCopy.disputed.title}
-          </h2>
-          <p className="text-body-sm text-fg-muted">{resultCopy.disputed.body}</p>
-        </section>
-      );
+      // The dispute panel in the room shows the tracker, evidence and ruling.
+      body = null;
       break;
     case 'done':
       body = <ConfirmedSummary match={match} />;
@@ -121,6 +129,18 @@ export function ResultActions({ match, onChanged }: { match: MatchDetail; onChan
         onClose={() => setSheet(null)}
         onSubmitted={afterSubmit}
       />
+      {disputeOpen ? (
+        <OpenDisputeSheet
+          key={`dispute-${session}`}
+          matchId={match.id}
+          open
+          onClose={() => setDisputeOpen(false)}
+          onOpened={() => {
+            setDisputeOpen(false);
+            onChanged();
+          }}
+        />
+      ) : null}
     </>
   );
 }

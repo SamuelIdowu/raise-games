@@ -19,6 +19,10 @@ const PAYLOAD_MATCH_EVENTS = new Set([
   'result.submitted',
   'noshow.reported',
   'dispute.opened',
+  // Sprint 9: dispute changes that do not bump the match version still refresh the room.
+  'dispute.status_changed',
+  'dispute.appealed',
+  'dispute.ruled',
 ]);
 
 export function isMatchStateEvent(type: string): boolean {

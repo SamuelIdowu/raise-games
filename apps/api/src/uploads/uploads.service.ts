@@ -29,6 +29,12 @@ import {
 import type { PresignUploadRequest } from './uploads.schemas';
 
 /** Statuses in which a match still takes result evidence. */
+export const DISPUTE_EVIDENCE_MATCH_STATES = [
+  'awaiting_confirmation',
+  'disputed',
+  'resolved',
+] as const;
+
 export const SUBMITTABLE_MATCH_STATES = [
   'accepted',
   'in_progress',
@@ -74,7 +80,7 @@ export class UploadsService {
   }
 
   /** Throws unless `userId` plays in `matchId` and the match still takes evidence from them. */
-  private async assertCanAttach(userId: string, matchId: string) {
+  private async assertCanAttach(userId: string, matchId: string, purpose: string) {
     const [row] = await db
       .select({
         status: schema.matches.status,
@@ -88,6 +94,13 @@ export class UploadsService {
       .where(eq(schema.matches.id, matchId))
       .limit(1);
     if (!row) throw new NotFoundException(UPLOAD_MESSAGES.notParticipant);
+    if (purpose === 'dispute_evidence') {
+      // Sprint 9: evidence while a dispute can be opened, is under review, or is appealed.
+      if (!(DISPUTE_EVIDENCE_MATCH_STATES as readonly string[]).includes(row.status)) {
+        throw new ConflictException(UPLOAD_MESSAGES.matchClosed);
+      }
+      return;
+    }
     if (!(SUBMITTABLE_MATCH_STATES as readonly string[]).includes(row.status)) {
       throw new ConflictException(UPLOAD_MESSAGES.matchClosed);
     }
@@ -107,7 +120,7 @@ export class UploadsService {
     if (input.sizeBytes > MAX_UPLOAD_BYTES)
       throw new PayloadTooLargeException(UPLOAD_MESSAGES.tooLarge);
 
-    await this.assertCanAttach(userId, input.matchId);
+    await this.assertCanAttach(userId, input.matchId, input.purpose);
 
     const [pendingRow] = await db
       .select({ pending: count() })
@@ -161,7 +174,7 @@ export class UploadsService {
     if (upload.status === 'ready') return toView(upload);
     if (upload.status === 'rejected')
       throw new ConflictException(rejectMessage(upload.rejectReason));
-    if (upload.matchId) await this.assertCanAttach(userId, upload.matchId);
+    if (upload.matchId) await this.assertCanAttach(userId, upload.matchId, upload.purpose);
 
     let original: Buffer | null;
     try {

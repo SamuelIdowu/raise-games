@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const presignUploadSchema = z.object({
   matchId: z.uuid(),
-  purpose: z.enum(['result_proof', 'no_show_proof']),
+  purpose: z.enum(['result_proof', 'no_show_proof', 'dispute_evidence']),
   contentType: z.string().min(1).max(100),
   sizeBytes: z.number().int().positive(),
 });

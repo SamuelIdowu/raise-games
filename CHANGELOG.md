@@ -4,6 +4,17 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 9 — Disputes (player side)
+
+- Open a dispute from the match room while the opponent's result waits for confirmation:
+  reason, detail and a screenshot; it stops the 24-hour auto-confirm.
+- Both players see the same dispute tracker, live; add up to 3 pieces of evidence each.
+- Rulings show the moderator's reason and any action taken; one appeal per dispute, and the
+  appeal ruling is final. Void rulings void the match.
+- `dispute.ruled` event contract for ratings and future holds; chat evidence snapshot with a
+  digest stored on each ruling; dispute-rate and resolution-time metrics.
+- Rulings, evidence and appeals are append-only in the database.
+
 ### Sprint 8 — Result submission & verification
 
 - Submit result, report no-show and one-tap confirm from the match room; result sheet with

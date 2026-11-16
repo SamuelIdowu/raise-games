@@ -473,15 +473,63 @@ export const disputes = pgTable(
     /** auto_conflict | player (Sprint 9) | no_show_contested */
     source: text('source').notNull().default('player'),
     reason: text('reason').notNull(),
+    /** Sprint 9 reason category for player-opened disputes (see disputes.rules.ts). */
+    category: text('category'),
+    /** Player's free-text detail (≤ 1000 chars). */
+    detail: text('detail'),
     evidence: jsonb('evidence'),
+    /** open | awaiting_info | reviewed | ruled | appealed | final (Sprint 9 tracker). */
     status: text('status').notNull().default('open'),
+    ruledAt: timestamp('ruled_at', { withTimezone: true }),
+    appealedAt: timestamp('appealed_at', { withTimezone: true }),
+    finalAt: timestamp('final_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('disputes_match_idx').on(t.matchId),
+    /** One dispute per match: auto-opened conflicts and player disputes share it. */
+    uniqueIndex('disputes_match_uq').on(t.matchId),
     index('disputes_raised_by_idx').on(t.raisedById),
+    index('disputes_status_idx').on(t.status, t.createdAt),
   ],
+);
+
+/** Extra evidence a player attaches to a dispute (Sprint 9). Append-only. */
+export const disputeEvidence = pgTable(
+  'dispute_evidence',
+  {
+    id: uuid('id').primaryKey(),
+    disputeId: uuid('dispute_id')
+      .notNull()
+      .references(() => disputes.id, { onDelete: 'cascade' }),
+    submittedById: uuid('submitted_by_id')
+      .notNull()
+      .references(() => users.id),
+    uploadId: uuid('upload_id').references(() => uploads.id),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('dispute_evidence_dispute_idx').on(t.disputeId),
+    uniqueIndex('dispute_evidence_upload_uq').on(t.uploadId),
+  ],
+);
+
+/** The single appeal a dispute allows (PRD: appeal once). */
+export const disputeAppeals = pgTable(
+  'dispute_appeals',
+  {
+    id: uuid('id').primaryKey(),
+    disputeId: uuid('dispute_id')
+      .notNull()
+      .references(() => disputes.id, { onDelete: 'cascade' }),
+    appellantId: uuid('appellant_id')
+      .notNull()
+      .references(() => users.id),
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('dispute_appeals_dispute_uq').on(t.disputeId)],
 );
 
 export const rulings = pgTable(
@@ -494,12 +542,21 @@ export const rulings = pgTable(
     moderatorId: uuid('moderator_id')
       .notNull()
       .references(() => users.id),
+    /** Outcome: side0_win | side1_win | draw | void. */
     ruling: text('ruling').notNull(),
+    /** The moderator's reason, shown to both players. */
     justification: text('justification').notNull(),
+    /** 1 = first ruling, 2 = ruling on the appeal (final). Append-only. */
+    round: integer('round').notNull().default(1),
+    /** Sanction note shown with the ruling (ladder mechanics are Sprint 12). */
+    sanctionNote: text('sanction_note'),
+    /** Evidence snapshot at ruling time: SHA-256 over the chat transcript, and its size. */
+    chatDigest: text('chat_digest'),
+    chatMessageCount: integer('chat_message_count'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('rulings_dispute_id_uq').on(t.disputeId),
+    uniqueIndex('rulings_dispute_round_uq').on(t.disputeId, t.round),
     index('rulings_moderator_idx').on(t.moderatorId),
   ],
 );
