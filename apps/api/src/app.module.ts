@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { ChatModule } from './chat/chat.module';
 import { ConsentModule } from './consent/consent.module';
+import { DisputesModule } from './disputes/disputes.controller';
 import { GamesModule } from './games/games.module';
 import { MatchesModule } from './matches/matches.module';
 import { StorageModule } from './storage/storage.module';
@@ -51,6 +52,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     UploadsModule,
     MatchesModule,
     ChatModule,
+    DisputesModule,
     RealtimeModule,
   ],
   controllers: [HealthController],

@@ -1,6 +1,6 @@
 import { apiFetch } from './fetch';
 
-export type UploadPurpose = 'result_proof' | 'no_show_proof';
+export type UploadPurpose = 'result_proof' | 'no_show_proof' | 'dispute_evidence';
 
 export interface PresignedUpload {
   uploadId: string;

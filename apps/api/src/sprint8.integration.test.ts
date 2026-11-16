@@ -123,6 +123,21 @@ describe('Sprint 8 - results & verification', () => {
     return { body, presigned, view: await uploads.complete(userId, presigned.uploadId) };
   }
 
+  /**
+   * The sweeper skips rows another transaction holds (SKIP LOCKED) and relies on its next
+   * 30s pass; under a parallel test run, retry a few passes the same way.
+   */
+  async function sweepUntilSettled(matchId: string) {
+    for (let i = 0; i < 5; i++) {
+      await deadlines.sweep();
+      const [m] = await db
+        .select({ status: schema.matches.status })
+        .from(schema.matches)
+        .where(eq(schema.matches.id, matchId));
+      if (m?.status !== 'awaiting_confirmation') return;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }
   const key = () => uuidv7();
   const goals = (self: number, opponent: number) => ({ self, opponent });
 
@@ -799,7 +814,7 @@ describe('Sprint 8 - results & verification', () => {
         .update(schema.matches)
         .set({ confirmationDeadline: new Date(Date.now() - 1000) })
         .where(eq(schema.matches.id, matchId));
-      await deadlines.sweep();
+      await sweepUntilSettled(matchId);
       const m = await matchRow(matchId);
       expect(m.status).toBe('forfeited');
       expect(m.winnerSide).toBe(0);

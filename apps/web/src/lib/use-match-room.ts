@@ -60,6 +60,8 @@ export function useMatchRoom(matchId: string) {
   const [messages, setMessages] = useState<ChatEntry[]>([]);
   const [connection, setConnection] = useState<Connection>('connecting');
   const [announcement, setAnnouncement] = useState('');
+  /** Bumps on every live match event, including ones that do not change the match version. */
+  const [liveTick, setLiveTick] = useState(0);
   const viewRef = useRef<MatchView | null>(null);
   useEffect(() => {
     viewRef.current = view;
@@ -131,6 +133,7 @@ export function useMatchRoom(matchId: string) {
 
     const onState = (event: MatchStateEvent) => {
       if (event.matchId !== matchId) return;
+      setLiveTick((n) => n + 1);
       const current = viewRef.current;
       if (current && event.version <= current.version) return;
       void refreshView().then((next) => {
@@ -253,7 +256,17 @@ export function useMatchRoom(matchId: string) {
     [deliver, messages],
   );
 
-  return { view, loadError, messages, connection, announcement, send, retry, refreshView };
+  return {
+    view,
+    loadError,
+    messages,
+    connection,
+    announcement,
+    liveTick,
+    send,
+    retry,
+    refreshView,
+  };
 }
 
 export { mergeMessages };

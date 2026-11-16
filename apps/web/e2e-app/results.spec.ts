@@ -110,10 +110,22 @@ test.describe('Sprint 8 — result verification (two browsers)', () => {
     await expect(sheet.getByText(/Screenshot added/)).toBeVisible({ timeout: 30_000 });
     await sheet.getByRole('button', { name: 'Submit result' }).click();
 
-    await expect(pageB.getByRole('heading', { name: 'Results do not match' })).toBeVisible();
+    // Sprint 9: the dispute panel replaces the static notice and explains why it opened.
+    await expect(pageB.getByRole('heading', { name: 'Dispute', exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      pageB.getByText(/Opened automatically because the two results do not match/),
+    ).toBeVisible();
     await expect(pageB.getByText('Disputed', { exact: true })).toBeVisible();
     await pageA.reload();
-    await expect(pageA.getByRole('heading', { name: 'Results do not match' })).toBeVisible();
+    // Sprint 9: the dispute panel replaces the static notice and explains why it opened.
+    await expect(pageA.getByRole('heading', { name: 'Dispute', exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      pageA.getByText(/Opened automatically because the two results do not match/),
+    ).toBeVisible();
   });
 
   test('no-show claim requires proof of attempt before it can be sent', async ({ browser }) => {

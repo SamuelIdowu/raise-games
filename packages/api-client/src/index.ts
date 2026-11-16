@@ -18,6 +18,7 @@ export { reportsApi } from './reports';
 export { matchesApi, isParticipantView } from './matches';
 export { chatApi } from './chat';
 export { uploadsApi } from './uploads';
+export { disputesApi } from './disputes';
 export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
@@ -50,3 +51,11 @@ export type {
 export type { ChatMessage, MessagePage, SendResult, ReportReason } from './chat';
 export type { MatchStateEvent, ChatLockedEvent, NotificationEvent, Ack } from './realtime';
 export type { PresignedUpload, UploadInfo, UploadPurpose } from './uploads';
+export type {
+  DisputeCategory,
+  DisputeRuling,
+  DisputeStatus,
+  DisputeTrackerStep,
+  DisputeView,
+  RulingOutcome,
+} from './disputes';

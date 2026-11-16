@@ -9,6 +9,7 @@ import { OpponentCard } from '@/components/match/opponent-card';
 import { ResultActions, needsActionCopy } from '@/components/match/result-actions';
 import { isParticipantView } from '@raise/api-client';
 import { RoomCodePanel } from '@/components/match/room-code-panel';
+import { DisputePanel } from '@/components/match/dispute-panel';
 import { statusDisplay } from '@/lib/match-status';
 import { useMatchRoom } from '@/lib/use-match-room';
 
@@ -24,8 +25,17 @@ export function MatchRoomClient() {
 }
 
 function MatchRoom({ id }: { id: string }) {
-  const { view, loadError, messages, connection, announcement, send, retry, refreshView } =
-    useMatchRoom(id);
+  const {
+    view,
+    loadError,
+    messages,
+    connection,
+    announcement,
+    liveTick,
+    send,
+    retry,
+    refreshView,
+  } = useMatchRoom(id);
 
   if (!view) {
     if (loadError) {
@@ -108,6 +118,16 @@ function MatchRoom({ id }: { id: string }) {
               <h2 className="label-caps mb-2 text-fg-muted">Rules</h2>
               <p className="whitespace-pre-wrap text-body-sm text-fg">{view.rules}</p>
             </section>
+          ) : null}
+
+          {['disputed', 'resolved', 'voided'].includes(view.status) ? (
+            <DisputePanel
+              matchId={view.id}
+              refreshKey={liveTick + view.version}
+              onChanged={() => {
+                void refreshView();
+              }}
+            />
           ) : null}
 
           {isParticipantView(view) ? (

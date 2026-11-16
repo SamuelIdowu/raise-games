@@ -15,7 +15,10 @@ export interface Player {
   name: string;
 }
 
-async function api<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  init: RequestInit & { token?: string } = {},
+): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
@@ -169,4 +172,15 @@ export function uniquePng(
     mimeType: 'image/png',
     buffer: png,
   };
+}
+
+/** Promotes a fixture player to moderator (Sprint 9 rulings; the admin UI is Sprint 12). */
+export async function makeModerator(player: Player): Promise<void> {
+  const client = new pg.Client({ connectionString: DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(`UPDATE users SET role = 'moderator' WHERE id = $1`, [player.userId]);
+  } finally {
+    await client.end();
+  }
 }
