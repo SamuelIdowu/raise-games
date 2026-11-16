@@ -89,7 +89,7 @@ Player-facing dispute lifecycle: open with reason + evidence, shared status trac
 - [x] F9.2 UI: open sheet, shared tracker, ruling view with moderator reason, single-appeal behavior
 - [x] F9.3 `dispute.ruled` outbox contract defined (incl. void-win/loss splits); chat evidence snapshot endpoint for evidence reads
 - [x] F9.4 Metrics events (dispute rate, resolution clock) emitting; bad-faith dispute datapoints recorded; rate limits documented
-- [ ] Testing green incl. two-browser e2e + appeal gate
+- [x] Testing green incl. two-browser e2e + appeal gate
 - [x] Audit clean (authz proof, audit-log completeness check)
 - [ ] `ship` close with PR + CHANGELOG
 
