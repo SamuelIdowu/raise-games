@@ -171,3 +171,10 @@ Per Setup Guide §8/§10.3:
 - [ ] F0.12 M0 exit proof recorded (staging login walkthrough) → **Delivery Plan M0 exit met**
 - [ ] Sprint audit pass: cso + differential-review findings fixed or filed
 - [ ] `learn` run: setup learnings persisted for future sprints
+
+## Re-audit note (2026-11-16)
+
+Checklist items above stay open (staging, hosting, M0 exit proof, and the full Sprint 0 audit pass are owner and infrastructure work). Two Sprint 0 audit checks were done in the all-sprints audit:
+
+- No `.env` file has ever been committed (`git log --all` on every `.env` path), and no real secrets are in tracked files.
+- The web shell had no security headers. It now sends a CSP (the Next.js "without nonces" policy, because Cache Components rule out nonces), `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Permissions-Policy`, COOP, and HSTS in production. The API keeps helmet with CSP off, which is fine for a JSON API.

@@ -92,5 +92,11 @@ Games are configuration, not code (PRD): each game record defines its ID fields,
 - [x] F4.4 Profile UI per Design §8 incl. copy toast, tabs, stat grid, recent matches empty state, sticky Challenge (public profile page wired to API with displayName join)
 - [x] F4.5 Reputation placeholder shows "New" for all users (enum + DTO field present)
 - [x] Testing block green (seed, CRUD, e2e, config-extensibility) — integration tests pass in CI
-- [ ] Audit block clean; format decisions recorded `[owner decision]`
-- [ ] `ship` close with PR + CHANGELOG
+- [x] Audit block clean; format decisions recorded `[owner decision]` (`docs/decisions/0002-launch-formats.md`; re-audit 2026-11-16 below)
+- [x] `ship` close with PR + CHANGELOG (merged to `main` with #1–#3; CHANGELOG "Sprints 3–4")
+
+## Re-audit (2026-11-16)
+
+- **Config-driven check:** the "4th game, zero code changes" test still passes.
+- **Formats against the PRD:** failed, now fixed. The shipped config had CODM "Battle Royale Duo" and PUBG "Battle Royale Solo/Duo", which are Team and Lobby formats the PRD puts in Stage 4, and PUBG had no Duel. Stage 1 now has one Duel per game (decision 0002). `game_formats.status` lets the seed disable removed formats without breaking past challenges.
+- **Accessibility on tabs, copy and stat grid:** failed, now fixed. The per-game tabs had an empty click handler, all rendered as active, and had no tab roles. They are now WAI-ARIA tabs (`tablist`/`tab`/`tabpanel`, `aria-selected`, arrow, Home and End keys), and the stat grid follows the selected game. The Copy buttons were below 44px and only said "Copy"; they are now 44×44 and labelled "Copy {game} ID {id}", with an error toast if the clipboard fails.

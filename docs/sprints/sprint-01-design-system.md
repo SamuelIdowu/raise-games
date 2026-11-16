@@ -126,4 +126,9 @@ This entire sprint IS the design doc. Fidelity requirement: a reviewer comparing
 - [x] Testing block all green; screenshots archived
 - [x] Audit block done: accessibility, design-review, animation reviews passed or findings filed and fixed
 - [x] `[owner decision]` items surfaced: tabular numerals outcome, chamfer treatment after first on-screen review (doc §14), violet-fallback confirm
-- [ ] Sprint closed via `ship`: PR merged, CHANGELOG entry, checklist ticks committed
+- [x] Sprint closed via `ship`: PR merged, CHANGELOG entry, checklist ticks committed (shipped to `main` in the bootstrap history before the PR workflow; CHANGELOG "Sprints 0–2")
+
+## Re-audit (2026-11-16)
+
+- Dependency and asset bans re-checked: no icon fonts, no Orbitron, no blur packages.
+- Drift found in later code and fixed: the app shell header used `backdrop-blur` (Design §11 bans backdrop filters); it now uses a solid `bg-raised`. The Sprint 7 timeline used a pill progress bar and round 24px step markers (Design §4: no pills; only status dots are circles); both are now 2px radius.

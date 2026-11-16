@@ -92,7 +92,7 @@ The Play tab: browse games, see player discovery, and the open challenge board. 
 - [x] Testing green (unit/integration) — e2e/perf deferred to Sprint 7
 - [x] Audit clean: design-review, accessibility, data-minimization check
 - [x] `[owner decision]`: rank tier names confirmed (Rookie→Challenger→Contender→Elite→Champion)
-- [ ] `ship` close with PR + CHANGELOG
+- [x] `ship` close with PR + CHANGELOG (merged as #4; CHANGELOG "Sprint 5")
 
 ## Close-out (2026-11-15)
 

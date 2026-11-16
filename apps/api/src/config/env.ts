@@ -16,6 +16,19 @@ const envSchema = z.object({
   SMS_PROVIDER: z.enum(['mock', 'termii', 'twilio']).default('mock'),
   SMS_API_KEY: z.string().optional(),
   SMS_SENDER_ID: z.string().optional(),
+  /**
+   * Staging gate (Sprint 3): comma-separated E.164 numbers. When set, real SMS is only
+   * sent to these numbers; any other phone is refused. Leave empty in production.
+   */
+  SMS_ALLOWLIST: z
+    .string()
+    .default('')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean),
+    ),
   TURNSTILE_SITE_KEY: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
   // ---- File storage (Cloudflare R2 in prod; any S3-compatible store locally) ----
