@@ -432,33 +432,40 @@ export class ChatService {
 
     let locked = 0;
     for (const row of due.rows) {
-      const stamped = await db
-        .update(schema.conversations)
-        .set({ lockedAt: now })
-        .where(
-          and(
-            eq(schema.conversations.id, row.conversation_id),
-            sql`${schema.conversations.lockedAt} is null`,
-          ),
-        )
-        .returning({ id: schema.conversations.id });
-      if (stamped.length === 0) continue; // another instance got it
+      // Lock stamp and "Chat is closed" message commit together, so a failure never
+      // leaves a locked chat without its closing message (or the reverse).
+      const system = await db.transaction(async (tx) => {
+        const stamped = await tx
+          .update(schema.conversations)
+          .set({ lockedAt: now })
+          .where(
+            and(
+              eq(schema.conversations.id, row.conversation_id),
+              sql`${schema.conversations.lockedAt} is null`,
+            ),
+          )
+          .returning({ id: schema.conversations.id });
+        if (stamped.length === 0) return null; // another instance got it
 
-      const [system] = await db
-        .insert(schema.messages)
-        .values({
-          id: uuidv7(),
-          conversationId: row.conversation_id,
-          senderId: null,
-          kind: 'system',
-          body: 'Chat is closed. Messages are kept for dispute review.',
-          createdAt: now,
-        })
-        .returning();
+        const [message] = await tx
+          .insert(schema.messages)
+          .values({
+            id: uuidv7(),
+            conversationId: row.conversation_id,
+            senderId: null,
+            kind: 'system',
+            body: 'Chat is closed. Messages are kept for dispute review.',
+            createdAt: now,
+          })
+          .returning();
+        return message ?? null;
+      });
+      if (!system) continue;
+
       this.publisher.emit(
         matchRoom(row.match_id),
         ServerEvents.ChatMessage,
-        toDto(system!, row.match_id),
+        toDto(system, row.match_id),
       );
       this.publisher.emit(matchRoom(row.match_id), ServerEvents.ChatLocked, {
         matchId: row.match_id,

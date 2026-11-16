@@ -125,6 +125,7 @@ export default function LeaderboardPage() {
 
       <div className="flex flex-wrap gap-2">
         <select
+          aria-label="Game"
           value={filter}
           onChange={(e) =>
             setFilter(e.target.value as 'all' | 'fifa25' | 'cod' | 'tekken8' | 'streetfighter6')
@@ -138,6 +139,7 @@ export default function LeaderboardPage() {
           <option value="streetfighter6">Street Fighter 6</option>
         </select>
         <select
+          aria-label="Period"
           value={period}
           onChange={(e) => setPeriod(e.target.value as 'all-time' | 'season' | 'monthly')}
           className="h-10 rounded-control border border-line bg-raised px-3 py-1 text-body-sm text-fg focus:border-accent focus:outline-none appearance-none bg-no-repeat bg-right-2 bg-center pr-8"
@@ -147,6 +149,7 @@ export default function LeaderboardPage() {
           <option value="monthly">Monthly</option>
         </select>
         <select
+          aria-label="Location"
           value={location}
           onChange={(e) => setLocation(e.target.value as 'all' | 'campus' | 'city')}
           className="h-10 rounded-control border border-line bg-raised px-3 py-1 text-body-sm text-fg focus:border-accent focus:outline-none appearance-none bg-no-repeat bg-right-2 bg-center pr-8"

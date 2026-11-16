@@ -1,10 +1,12 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
-import { asc, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
+import type { Tx } from '../db/tx';
 
 export type OutboxEvent = typeof schema.outboxEvents.$inferSelect;
 
 interface Handler {
+  /** Stable consumer name; it keys this handler's delivery state in outbox_deliveries. */
   name: string;
   matches: (type: string) => boolean;
   handle: (event: OutboxEvent) => Promise<void>;
@@ -12,17 +14,18 @@ interface Handler {
 
 /**
  * Drains `outbox_events` (written in the same transaction as each domain change) and
- * hands each event to registered in-process handlers: live match-state broadcast,
- * match-chat creation, and in Sprint 11 the notification service.
+ * hands each event to registered in-process consumers: live match-state broadcast,
+ * match-chat creation, and later ratings (Sprint 10) and notifications (Sprint 11).
  *
- * Claiming uses FOR UPDATE SKIP LOCKED inside a transaction, so every API instance can
- * run the relay and each event is processed once. Delivery is at-least-once per batch
- * (a crash before commit re-runs the batch); handlers must be idempotent.
+ * Each consumer has its own delivery state (`outbox_deliveries`), so one consumer
+ * finishing an event never hides it from another, and a consumer added later still
+ * sees events inside the lookback window. Per consumer, a transaction-scoped advisory
+ * lock lets exactly one API instance drain it at a time; the delivery rows are written
+ * in that same transaction, so delivery is at-least-once and handlers must be
+ * idempotent.
  *
- * A handler error is logged and the event is still marked processed: today's handlers
- * are best-effort and self-healing (clients re-fetch on reconnect; chat is created
- * lazily). Sprint 11's notification handler will need its own retry/dead-letter state
- * rather than relying on processed_at — noted in the sprint doc.
+ * A failing handler is retried with linear backoff and marked `dead` after
+ * MAX_ATTEMPTS, rather than being treated as delivered.
  */
 @Injectable()
 export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
@@ -34,6 +37,10 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
 
   static readonly INTERVAL_MS = 500;
   static readonly BATCH = 100;
+  static readonly MAX_ATTEMPTS = 5;
+  static readonly RETRY_BACKOFF_SEC = 30;
+  /** Bounds the scan; events older than this are never (re)delivered. */
+  static readonly LOOKBACK = sql`interval '7 days'`;
 
   register(handler: Handler): void {
     this.handlers.push(handler);
@@ -74,47 +81,88 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
     });
   }
 
-  /** Processes one batch. Public for tests. Returns the number of events claimed. */
+  /**
+   * One batch per consumer. Public for tests. Returns the number of events this call
+   * settled (delivered, skipped as not handled, or recorded as failed).
+   */
   async drain(): Promise<number> {
     if (this.running) return 0;
     this.running = true;
     try {
-      return await db.transaction(async (tx) => {
-        const events = await tx
-          .select()
-          .from(schema.outboxEvents)
-          .where(isNull(schema.outboxEvents.processedAt))
-          .orderBy(asc(schema.outboxEvents.createdAt), asc(schema.outboxEvents.id))
-          .limit(OutboxRelay.BATCH)
-          .for('update', { skipLocked: true });
-        if (events.length === 0) return 0;
-
-        for (const event of events) {
-          for (const handler of this.handlers) {
-            if (!handler.matches(event.type)) continue;
-            try {
-              await handler.handle(event);
-            } catch (error) {
-              this.logger.warn(
-                `outbox handler ${handler.name} failed on ${event.type} ${event.id}: ${(error as Error).message}`,
-              );
-            }
-          }
-        }
-
-        await tx
-          .update(schema.outboxEvents)
-          .set({ processedAt: new Date() })
-          .where(
-            inArray(
-              schema.outboxEvents.id,
-              events.map((e) => e.id),
-            ),
-          );
-        return events.length;
-      });
+      let total = 0;
+      for (const handler of this.handlers) total += await this.drainConsumer(handler);
+      return total;
     } finally {
       this.running = false;
     }
+  }
+
+  private async drainConsumer(handler: Handler): Promise<number> {
+    return db.transaction(async (tx) => {
+      const [lock] = (
+        await tx.execute<{ ok: boolean }>(
+          sql`select pg_try_advisory_xact_lock(hashtextextended(${`outbox:${handler.name}`}, 0)) as ok`,
+        )
+      ).rows;
+      if (!lock?.ok) return 0; // another instance is draining this consumer
+
+      const d = schema.outboxDeliveries;
+      const e = schema.outboxEvents;
+      const rows = await tx
+        .select({ event: e, attempts: d.attempts })
+        .from(e)
+        .leftJoin(d, and(eq(d.eventId, e.id), eq(d.consumer, handler.name)))
+        .where(
+          and(
+            gt(e.createdAt, sql`now() - ${OutboxRelay.LOOKBACK}`),
+            or(
+              isNull(d.eventId),
+              and(
+                eq(d.status, 'retry'),
+                sql`${d.updatedAt} <= now() - make_interval(secs => ${OutboxRelay.RETRY_BACKOFF_SEC} * ${d.attempts})`,
+              ),
+            ),
+          ),
+        )
+        .orderBy(asc(e.createdAt), asc(e.id))
+        .limit(OutboxRelay.BATCH);
+
+      for (const { event, attempts } of rows) {
+        if (!handler.matches(event.type)) {
+          await this.record(tx, handler.name, event.id, 'skipped', attempts ?? 0, null);
+          continue;
+        }
+        try {
+          await handler.handle(event);
+          await this.record(tx, handler.name, event.id, 'done', (attempts ?? 0) + 1, null);
+        } catch (error) {
+          const tries = (attempts ?? 0) + 1;
+          const status = tries >= OutboxRelay.MAX_ATTEMPTS ? 'dead' : 'retry';
+          const message = (error as Error).message ?? String(error);
+          this.logger.warn(
+            `outbox consumer ${handler.name} failed on ${event.type} ${event.id} (attempt ${tries}, ${status}): ${message}`,
+          );
+          await this.record(tx, handler.name, event.id, status, tries, message.slice(0, 500));
+        }
+      }
+      return rows.length;
+    });
+  }
+
+  private async record(
+    tx: Tx,
+    consumer: string,
+    eventId: string,
+    status: 'done' | 'skipped' | 'retry' | 'dead',
+    attempts: number,
+    lastError: string | null,
+  ) {
+    await tx
+      .insert(schema.outboxDeliveries)
+      .values({ consumer, eventId, status, attempts, lastError, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [schema.outboxDeliveries.consumer, schema.outboxDeliveries.eventId],
+        set: { status, attempts, lastError, updatedAt: new Date() },
+      });
   }
 }

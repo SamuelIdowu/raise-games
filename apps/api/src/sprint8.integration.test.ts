@@ -596,10 +596,25 @@ describe('Sprint 8 - results & verification', () => {
           outcome: 'win',
           score: goals(1, 0),
           uploadId: proof,
-          note: 'you mumu',
+          note: 'you are a shit player',
           idempotencyKey: key(),
         }),
       ).rejects.toMatchObject({ status: 400 });
+      // same filter as chat: contact handles and payment details are refused in notes
+      for (const [note, message] of [
+        ['whatsapp me on 08031234567', 'Notes cannot include phone numbers or contact handles.'],
+        ['send 5k to my opay', 'Notes cannot include payment details.'],
+      ] as const) {
+        await expect(
+          results.submitResult(a, matchId, {
+            outcome: 'win',
+            score: goals(1, 0),
+            uploadId: proof,
+            note,
+            idempotencyKey: key(),
+          }),
+        ).rejects.toMatchObject({ status: 400, message });
+      }
 
       const future = await createMatch(-60 * 60 * 1000);
       await expect(

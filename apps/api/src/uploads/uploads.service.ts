@@ -10,7 +10,7 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { db, schema } from '../db/client';
 import type { UserRole } from '../auth/jwt-auth.guard';
@@ -38,7 +38,8 @@ export const SUBMITTABLE_MATCH_STATES = [
 
 const PUT_URL_TTL_SEC = 300;
 const READ_URL_TTL_SEC = 60;
-const MAX_PENDING_PER_MATCH = 10;
+/** Per player per match, pending + ready (rejected ones do not count). */
+const MAX_UPLOADS_PER_MATCH = 10;
 
 export const UPLOAD_MESSAGES = {
   storageDown: 'Screenshot uploads are unavailable right now. Try again in a few minutes.',
@@ -47,7 +48,7 @@ export const UPLOAD_MESSAGES = {
   alreadySubmitted: 'You have already submitted a result for this match.',
   badType: 'Upload a JPG, PNG or WebP image.',
   tooLarge: 'The screenshot is too large. The limit is 1 MB.',
-  tooManyPending: 'Too many unfinished uploads for this match. Remove one and try again.',
+  tooManyUploads: 'You have added the maximum number of screenshots for this match.',
   missingObject: 'Could not upload the screenshot. Check your connection and try again.',
   notAnImage: 'This file is not a supported image.',
   reused: 'This screenshot was already used for another match.',
@@ -109,18 +110,19 @@ export class UploadsService {
 
     await this.assertCanAttach(userId, input.matchId);
 
-    const [pendingRow] = await db
-      .select({ pending: count() })
+    // Caps storage per match: unfinished and finished uploads both count.
+    const [usedRow] = await db
+      .select({ used: count() })
       .from(schema.uploads)
       .where(
         and(
           eq(schema.uploads.ownerId, userId),
           eq(schema.uploads.matchId, input.matchId),
-          eq(schema.uploads.status, 'pending'),
+          inArray(schema.uploads.status, ['pending', 'ready']),
         ),
       );
-    if ((pendingRow?.pending ?? 0) >= MAX_PENDING_PER_MATCH)
-      throw new ConflictException(UPLOAD_MESSAGES.tooManyPending);
+    if ((usedRow?.used ?? 0) >= MAX_UPLOADS_PER_MATCH)
+      throw new ConflictException(UPLOAD_MESSAGES.tooManyUploads);
 
     const id = uuidv7();
     const quarantineKey = `quarantine/${id}`;
@@ -186,68 +188,91 @@ export class UploadsService {
       throw err;
     }
 
-    // Exact reuse: identical bytes already attached to a different match.
-    const [reused] = await db
-      .select({ id: schema.uploads.id })
-      .from(schema.uploads)
-      .where(
-        and(
-          eq(schema.uploads.sha256, processed.sha256),
-          eq(schema.uploads.status, 'ready'),
-          sql`${schema.uploads.matchId} IS DISTINCT FROM ${upload.matchId}`,
-        ),
-      )
-      .limit(1);
-    if (reused) {
-      await this.reject(upload.id, upload.quarantineKey, 'reused_screenshot', {
-        reusedUploadId: reused.id,
-        sha256: processed.sha256,
-        phash: processed.phash,
-      });
-      this.logger.warn(`Upload ${upload.id} rejected: exact reuse of ${reused.id}`);
-      throw new ConflictException(UPLOAD_MESSAGES.reused);
-    }
-
-    // Near-duplicate: same picture re-encoded or re-screenshotted, on another match
-    // or uploaded by the opponent on this one. Accepted, but flagged for moderators.
-    const similar = await db.execute<{ id: string; distance: number }>(sql`
-      SELECT id, bit_count(('x' || phash)::bit(64) # ('x' || ${processed.phash})::bit(64))::int AS distance
-      FROM uploads
-      WHERE status = 'ready'
-        AND phash IS NOT NULL
-        AND id <> ${upload.id}
-        AND (match_id IS DISTINCT FROM ${upload.matchId} OR owner_id <> ${userId})
-      ORDER BY distance ASC
-      LIMIT 1
-    `);
-    const nearest = similar.rows[0];
-    const flag = nearest && nearest.distance <= PHASH_SIMILAR_THRESHOLD ? nearest : null;
-
     const storageKey = `proofs/${upload.id}.jpg`;
     const thumbKey = `proofs/${upload.id}_thumb.webp`;
     await this.storage.putObject(storageKey, processed.stored, 'image/jpeg');
     await this.storage.putObject(thumbKey, processed.thumb, 'image/webp');
     await this.storage.deleteObject(upload.quarantineKey).catch(() => undefined);
 
-    const [updated] = await db
-      .update(schema.uploads)
-      .set({
-        status: 'ready',
-        storageKey,
-        thumbKey,
-        mime: 'image/jpeg',
-        sizeBytes: processed.stored.byteLength,
-        width: processed.width,
-        height: processed.height,
-        sha256: processed.sha256,
-        storedSha256: processed.storedSha256,
-        phash: processed.phash,
-        similarUploadId: flag?.id ?? null,
-        similarDistance: flag?.distance ?? null,
-        completedAt: new Date(),
-      })
-      .where(and(eq(schema.uploads.id, upload.id), eq(schema.uploads.status, 'pending')))
-      .returning();
+    // Reuse check and the `ready` write run under a lock on the image hash, so two
+    // concurrent uploads of identical bytes to different matches cannot both pass.
+    const outcome = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`upload-sha:${processed.sha256}`}, 0))`,
+      );
+
+      // Exact reuse: identical bytes already attached to a different match.
+      const [reused] = await tx
+        .select({ id: schema.uploads.id })
+        .from(schema.uploads)
+        .where(
+          and(
+            eq(schema.uploads.sha256, processed.sha256),
+            eq(schema.uploads.status, 'ready'),
+            sql`${schema.uploads.matchId} IS DISTINCT FROM ${upload.matchId}`,
+          ),
+        )
+        .limit(1);
+      if (reused) {
+        await tx
+          .update(schema.uploads)
+          .set({
+            status: 'rejected',
+            rejectReason: 'reused_screenshot',
+            reusedUploadId: reused.id,
+            sha256: processed.sha256,
+            phash: processed.phash,
+            completedAt: new Date(),
+          })
+          .where(eq(schema.uploads.id, upload.id));
+        return { reusedId: reused.id, updated: null, flag: null };
+      }
+
+      // Near-duplicate: same picture re-encoded or re-screenshotted, on another match
+      // or uploaded by the opponent on this one. Accepted, but flagged for moderators.
+      const similar = await tx.execute<{ id: string; distance: number }>(sql`
+        SELECT id, bit_count(('x' || phash)::bit(64) # ('x' || ${processed.phash})::bit(64))::int AS distance
+        FROM uploads
+        WHERE status = 'ready'
+          AND phash IS NOT NULL
+          AND id <> ${upload.id}
+          AND (match_id IS DISTINCT FROM ${upload.matchId} OR owner_id <> ${userId})
+        ORDER BY distance ASC
+        LIMIT 1
+      `);
+      const nearest = similar.rows[0];
+      const flag = nearest && nearest.distance <= PHASH_SIMILAR_THRESHOLD ? nearest : null;
+
+      const [updated] = await tx
+        .update(schema.uploads)
+        .set({
+          status: 'ready',
+          storageKey,
+          thumbKey,
+          mime: 'image/jpeg',
+          sizeBytes: processed.stored.byteLength,
+          width: processed.width,
+          height: processed.height,
+          sha256: processed.sha256,
+          storedSha256: processed.storedSha256,
+          phash: processed.phash,
+          similarUploadId: flag?.id ?? null,
+          similarDistance: flag?.distance ?? null,
+          completedAt: new Date(),
+        })
+        .where(and(eq(schema.uploads.id, upload.id), eq(schema.uploads.status, 'pending')))
+        .returning();
+      return { reusedId: null, updated: updated ?? null, flag };
+    });
+
+    if (outcome.reusedId) {
+      await this.storage.deleteObject(storageKey).catch(() => undefined);
+      await this.storage.deleteObject(thumbKey).catch(() => undefined);
+      this.logger.warn(`Upload ${upload.id} rejected: exact reuse of ${outcome.reusedId}`);
+      throw new ConflictException(UPLOAD_MESSAGES.reused);
+    }
+    const updated = outcome.updated;
+    const flag = outcome.flag ?? null;
     if (!updated) {
       // A concurrent complete() won; return its result.
       const [current] = await db
