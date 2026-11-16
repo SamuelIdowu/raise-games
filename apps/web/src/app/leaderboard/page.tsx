@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   gamesApi,
@@ -53,34 +53,38 @@ export default function LeaderboardPage() {
   const filter = scope !== 'all' && place.trim() ? { [scope]: place.trim() } : {};
   const filterKey = JSON.stringify(filter);
 
-  const load = useCallback(
-    async (opts: { poll?: boolean } = {}) => {
-      if (!gameKey) return;
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    if (!gameKey) return;
+    let live = true;
+    const run = async (poll: boolean) => {
       try {
         const next = await leaderboardsApi.get(gameKey, { ...JSON.parse(filterKey), limit: 25 });
+        if (!live) return;
         // Cheap freshness check: an unchanged version means an unchanged board.
-        if (opts.poll && next.version === versionRef.current) return;
+        if (poll && next.version === versionRef.current) return;
         versionRef.current = next.version;
         setPage(next);
         setRows(next.items);
         setError(null);
       } catch (err) {
-        if (!opts.poll)
+        if (live && !poll) {
           setError(err instanceof Error ? err.message : 'Could not load the leaderboard.');
+        }
       }
-    },
-    [gameKey, filterKey],
-  );
-
-  useEffect(() => {
-    setPage(null);
+    };
+    // Filters changed: the next response replaces the board (old rows stay until then).
     versionRef.current = null;
-    void load();
+    void run(false);
     const id = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void load({ poll: true });
+      if (document.visibilityState === 'visible') void run(true);
     }, POLL_MS);
-    return () => window.clearInterval(id);
-  }, [load]);
+    return () => {
+      live = false;
+      window.clearInterval(id);
+    };
+  }, [gameKey, filterKey, reloadKey]);
 
   const loadMore = async () => {
     if (!page?.nextCursor) return;
@@ -103,10 +107,8 @@ export default function LeaderboardPage() {
   const meInList = !!me && rows.some((r) => r.userId === me.userId);
   useEffect(() => {
     const el = meRef.current;
-    if (!el) {
-      setMeVisible(false);
-      return;
-    }
+    // No in-list row: the pin condition (`!meInList`) already shows the pinned row.
+    if (!el) return;
     const io = new IntersectionObserver(([entry]) => setMeVisible(entry?.isIntersecting ?? false));
     io.observe(el);
     return () => io.disconnect();
@@ -177,7 +179,7 @@ export default function LeaderboardPage() {
         <Banner
           variant="system"
           action={
-            <Button variant="ghost" onClick={() => void load()}>
+            <Button variant="ghost" onClick={() => setReloadKey((k) => k + 1)}>
               Try again
             </Button>
           }
