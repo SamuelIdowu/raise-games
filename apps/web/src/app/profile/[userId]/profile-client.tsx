@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Avatar,
@@ -46,6 +46,8 @@ export function ProfileClient() {
   const userId = params.userId;
   const [profiles, setProfiles] = useState<GameProfileDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(0);
+  const tabsId = useId();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,14 +62,42 @@ export function ProfileClient() {
     };
   }, [userId]);
 
-  const handleCopy = (id: string) => {
-    void navigator.clipboard.writeText(id);
-    toast({ title: 'Copied', description: `${id} copied to clipboard` });
+  const handleCopy = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      toast({ title: 'Game ID copied', description: id });
+    } catch {
+      toast({ title: 'Could not copy', variant: 'error' });
+    }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return <div className="mx-auto max-w-2xl p-6 text-body-sm text-fg-muted">Loading profile…</div>;
 
-  const p = profiles[0];
+  const p = profiles[Math.min(selected, Math.max(profiles.length - 1, 0))];
+
+  // Per-game tabs (Design §8 player profile header): WAI-ARIA tabs with arrow-key roving focus.
+  const onTabKey = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = profiles.length - 1;
+    const next =
+      event.key === 'ArrowRight'
+        ? index === last
+          ? 0
+          : index + 1
+        : event.key === 'ArrowLeft'
+          ? index === 0
+            ? last
+            : index - 1
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    setSelected(next);
+    document.getElementById(`${tabsId}-tab-${next}`)?.focus();
+  };
 
   return (
     <div className="mx-auto max-w-2xl p-6 space-y-6">
@@ -90,7 +120,40 @@ export function ProfileClient() {
         </div>
       </header>
 
-      <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
+      {profiles.length > 1 ? (
+        <div role="tablist" aria-label="Games" className="flex gap-2 border-b border-line">
+          {profiles.map((profile, index) => {
+            const active = index === selected;
+            return (
+              <button
+                key={profile.gameKey}
+                id={`${tabsId}-tab-${index}`}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`${tabsId}-panel`}
+                tabIndex={active ? 0 : -1}
+                onClick={() => setSelected(index)}
+                onKeyDown={(event) => onTabKey(event, index)}
+                className={`min-h-11 flex-1 border-b-2 px-4 py-2 font-display text-body-sm font-semibold transition-colors ${
+                  active
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-fg-muted hover:text-fg'
+                }`}
+              >
+                {profile.gameName}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <div
+        id={`${tabsId}-panel`}
+        role={profiles.length > 1 ? 'tabpanel' : undefined}
+        aria-labelledby={profiles.length > 1 ? `${tabsId}-tab-${selected}` : undefined}
+        className="flex flex-col md:grid md:grid-cols-3 gap-4"
+      >
         <div className="rounded-card border border-line bg-surface p-4">
           <p className="label-caps text-fg-muted">Rating</p>
           <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
@@ -109,18 +172,6 @@ export function ProfileClient() {
             W{p?.streak ?? 0}
           </p>
         </div>
-      </div>
-
-      <div className="flex gap-2 border-b border-line">
-        {profiles.map((profile) => (
-          <button
-            key={profile.gameKey}
-            onClick={() => {}}
-            className="flex-1 py-2 px-4 font-display text-body-sm font-semibold rounded-t-card transition-colors text-accent border-b-2 border-accent"
-          >
-            {profile.gameName}
-          </button>
-        ))}
       </div>
 
       <div className="space-y-4">
@@ -151,8 +202,9 @@ export function ProfileClient() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleCopy(profile.inGameId)}
-                  className="text-caption text-accent hover:underline flex items-center gap-1"
+                  onClick={() => void handleCopy(profile.inGameId)}
+                  aria-label={`Copy ${profile.gameName} ID ${profile.inGameId}`}
+                  className="flex min-h-11 min-w-11 items-center justify-center gap-1 px-2 text-caption text-accent hover:underline"
                 >
                   <Icon name="copy" size={14} /> Copy
                 </button>

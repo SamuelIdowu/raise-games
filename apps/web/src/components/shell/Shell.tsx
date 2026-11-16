@@ -20,7 +20,7 @@ export function Shell({ children }: { children: ReactNode }) {
       )}
       <NeedsActionBanner />
 
-      <header className="sticky top-0 z-30 h-14 bg-raised/80 backdrop-blur border-b border-line flex items-center justify-between px-4">
+      <header className="sticky top-0 z-30 h-14 bg-raised border-b border-line flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <Sidebar />
           <GameSwitcherTrigger currentGame={currentGame} />

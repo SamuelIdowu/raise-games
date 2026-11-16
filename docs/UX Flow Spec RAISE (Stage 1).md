@@ -91,10 +91,12 @@ Stage 2 adds: a payout and withdrawal review queue, refunds, KYC review, fee con
 
 Challenge received, challenge accepted or declined, challenge expiring, result submitted and needs confirmation, result auto-confirmed, dispute opened, dispute ruled, no-show reported, roster invite, friend request, new message, sanction applied. Stage 2 adds: stake held, payout sent, withdrawal status, and KYC result.
 
-## Open UX decisions
+## UX decisions (resolved 2026-11-16)
 
-- Exact copy for the auto-confirm rule, and for the credits explanation if a play-credit rehearsal is chosen.
-- Reputation badge design and thresholds.
-- Whether leaderboards show real names, usernames only, or both.
-- Stage 2 stake-first board design: stake bands, rating-gap warning threshold, and confirmation wording.
-- Whether restricted DMs stay in Stage 1.
+All previously open UX decisions are closed in [decisions/0003-ux-open-decisions.md](decisions/0003-ux-open-decisions.md):
+
+- Auto-confirm copy: "Your opponent has 24 hours to confirm. If they do not respond, the result is confirmed automatically." No credits copy (no play-credit rehearsal).
+- Reputation badge: New, Low, Reliable, Trusted, with thresholds on completion and dispute-loss rates over the last 50 matches.
+- Leaderboards: usernames only.
+- Stage 2 stake-first board: rating-gap warning at 200 Elo, block at 400 for staked play, amounts and fees stated before confirm.
+- Restricted DMs: not at launch; built behind the flag in Sprint 14.

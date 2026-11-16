@@ -25,12 +25,12 @@ Offline queue: the compressed file stays in memory. The upload moves to `offline
 
 ### Open findings (none critical)
 
-| Severity | Finding                                                                                                             | Plan                                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Low      | Orphaned `quarantine/` objects when a client presigns but never calls complete                                      | Add a bucket lifecycle rule (delete `quarantine/` after 1 day) at R2 setup; Setup Guide note added                              |
-| Low      | Two simultaneous `complete` calls with identical bytes on two different matches can both pass the exact-reuse check | Rare, and the pHash flag still fires on the second one. A serialisable check or advisory lock on sha256 can follow in Sprint 12 |
-| Low      | Rate limits fail open when Redis is down (existing project-wide pattern)                                            | Unchanged here; tracked for Sprint 12 ops hardening                                                                             |
-| Info     | Resumable/multipart upload not used                                                                                 | Deliberate: ≤ 300 KB files and the S3/R2 multipart 5 MB part minimum. See spec §7                                               |
+| Severity | Finding                                                                                                               | Plan                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Low      | Orphaned `quarantine/` objects when a client presigns but never calls complete                                        | Add a bucket lifecycle rule (delete `quarantine/` after 1 day) at R2 setup; Setup Guide note added                   |
+| Fixed    | Two simultaneous `complete` calls with identical bytes on two different matches could both pass the exact-reuse check | Fixed 2026-11-16: the reuse check and the `ready` write run in one transaction under an advisory lock on the SHA-256 |
+| Low      | Rate limits fail open when Redis is down (existing project-wide pattern)                                              | Unchanged here; tracked for Sprint 12 ops hardening                                                                  |
+| Info     | Resumable/multipart upload not used                                                                                   | Deliberate: ≤ 300 KB files and the S3/R2 multipart 5 MB part minimum. See spec §7                                    |
 
 ## 2. Append-only `result_submissions`
 
@@ -58,10 +58,19 @@ Offline queue: the compressed file stays in memory. The upload moves to `offline
 
 ## 4. Note content policy
 
-The 200-character note goes through `shared/content-filter.ts`: a small blocklist including common Nigerian Pidgin and Yoruba insults, word-boundary matching and normalised character swaps. Sprint 7 chat reuses the same module. A blocked note is refused with "Remove offensive words from the note." Forfeit and no-show submissions store no score.
+The 200-character note goes through the same filter as match chat (`chat/keyword-filter.ts`: the `obscenity` dataset, project local terms, and off-platform-contact and money-solicitation patterns). Chat only flags; a note is evidence shown to the opponent, so it is refused: "Remove offensive words from the note.", "Notes cannot include phone numbers or contact handles." or "Notes cannot include payment details." Forfeit and no-show submissions store no score. (Until 2026-11-16 notes used a separate `shared/content-filter.ts`; it was merged into the chat filter.)
 
 ## 5. Performance
 
 - PRD 5-second criterion: the integration test measures the second submission, through Confirmed, through the `match.confirmed` outbox row. It took 58 ms locally and the assertion is < 5 s. Ratings consume that outbox event in Sprint 10.
 - Screenshots are compressed on the client to about 300 KB or less with the longest edge at 1280px (Design §11). The server stores JPEGs of about 1280px and 320px WebP thumbnails for lists.
 - The web bundle imports the zod-free `@raise/game-configs/results` subpath, so zod and `games.json` stay out of the route JS.
+
+## 6. Re-audit (2026-11-16)
+
+Fixed on `fix/audit-sprints-0-8`:
+
+- **Matches list N+1:** about 5 queries per match (around 100 per call) is now 4 queries for the whole list (`MatchesService.getViewsForParticipant`). The single-match view uses the same builder.
+- **Concurrent retries with one idempotency key:** the loser of the match lock now returns the winner's submission instead of 409 "already submitted".
+- **Uploads per match:** capped at 10 per player per match, pending and ready combined (rejected uploads do not count). Previously only pending uploads were capped.
+- **Dependencies:** `fastify` 5.11.3 had auth- and validation-bypass advisories, and `@fastify/static` 8 a path traversal. Now on `fastify` ^5.12.8 (a workspace override, because `@nestjs/platform-fastify` pins its own copy) and `@fastify/static` ^10.1.11. `pnpm audit --prod`: no known vulnerabilities.

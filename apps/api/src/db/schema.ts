@@ -126,7 +126,35 @@ export const outboxEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp('processed_at', { withTimezone: true }),
   },
-  (t) => [index('outbox_unprocessed_idx').on(t.processedAt)],
+  (t) => [
+    index('outbox_unprocessed_idx').on(t.processedAt),
+    index('outbox_created_idx').on(t.createdAt, t.id),
+  ],
+);
+
+/**
+ * Per-consumer delivery state for outbox events. Each relay consumer (live broadcast,
+ * chat creation, ratings, notifications…) tracks its own progress, so one consumer
+ * finishing never hides an event from another. `processed_at` on outbox_events is no
+ * longer written (kept for history).
+ */
+export const outboxDeliveries = pgTable(
+  'outbox_deliveries',
+  {
+    consumer: text('consumer').notNull(),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => outboxEvents.id, { onDelete: 'cascade' }),
+    /** done | skipped (type not handled) | retry | dead (gave up after max attempts) */
+    status: text('status').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.consumer, t.eventId] }),
+    index('outbox_deliveries_status_idx').on(t.consumer, t.status),
+  ],
 );
 
 export const featureFlags = pgTable(
@@ -214,6 +242,11 @@ export const gameFormats = pgTable(
     resultSchema: jsonb('result_schema').notNull(),
     requiredProof: jsonb('required_proof').notNull(),
     tiebreakRules: text('tiebreak_rules'),
+    /**
+     * enabled | disabled. The seed disables formats that leave games.json, so they stop
+     * being offered for new challenges while past challenges keep resolving them.
+     */
+    status: text('status').notNull().default('enabled'),
   },
   (t) => [uniqueIndex('game_formats_game_key_uq').on(t.gameId, t.key)],
 );

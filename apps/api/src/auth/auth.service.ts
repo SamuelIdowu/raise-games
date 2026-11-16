@@ -22,6 +22,7 @@ import {
   randomCode,
   resolveFamilyId,
 } from './auth.utils';
+import { SmsNotAllowlistedError } from './sms.factory';
 import { SmsService } from './sms.service';
 import type { UpdateMe } from './auth.schemas';
 
@@ -79,7 +80,11 @@ export class AuthService {
 
     try {
       await this.sms.sendOtp(phone, code);
-    } catch {
+    } catch (error) {
+      if (error instanceof SmsNotAllowlistedError) {
+        // Staging only: tell testers plainly instead of a generic outage message.
+        throw new ForbiddenException('This number is not enabled for SMS on staging');
+      }
       throw new ServiceUnavailableException('Could not send verification code');
     }
 

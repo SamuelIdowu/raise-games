@@ -5,6 +5,7 @@
  */
 import { createRequire } from 'module';
 import { readFileSync } from 'fs';
+import { and, eq, notInArray } from 'drizzle-orm';
 import { db, schema } from './client';
 import { v7 as uuidv7 } from 'uuid';
 
@@ -78,6 +79,7 @@ export async function seed() {
           resultSchema: format.resultSchema,
           requiredProof: format.requiredProof,
           tiebreakRules: format.tiebreakRules,
+          status: 'enabled',
         })
         .onConflictDoUpdate({
           target: [schema.gameFormats.gameId, schema.gameFormats.key],
@@ -86,9 +88,25 @@ export async function seed() {
             resultSchema: format.resultSchema,
             requiredProof: format.requiredProof,
             tiebreakRules: format.tiebreakRules,
+            status: 'enabled',
           },
         });
     }
+
+    // Formats removed from games.json stop being offered for new challenges. They are
+    // disabled, not deleted, because past challenges and matches still reference them.
+    await db
+      .update(schema.gameFormats)
+      .set({ status: 'disabled' })
+      .where(
+        and(
+          eq(schema.gameFormats.gameId, gameId),
+          notInArray(
+            schema.gameFormats.key,
+            game.formats.map((f) => f.key),
+          ),
+        ),
+      );
   }
 
   // Record seed completion only once (optional: could upsert based on subjectId)

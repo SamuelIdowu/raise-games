@@ -172,3 +172,14 @@ Two-browser proof: `apps/web/e2e-app/match-room.spec.ts` (live chat ≤2s, live 
 reload) is green in CI on PR #9. Two-instance fan-out is proven by the integration suite (two API
 instances sharing Redis). Socket-down → polling → reconnect → retry was verified manually in two
 browser contexts; it is not automated.
+
+## Re-audit (2026-11-16)
+
+Findings from the all-sprints audit, all fixed on `fix/audit-sprints-0-8`:
+
+- **High — the outbox relay hid events from future consumers.** It set one `processed_at` on every event, including types no handler consumed (`match.confirmed`, `match.forfeited`, `reputation.debt`…), so Sprint 10/11 consumers would never see them. Now each consumer has its own row in `outbox_deliveries` (done, skipped, retry with backoff, or dead after 5 attempts). A per-consumer advisory lock means one instance drains each consumer; a 7-day lookback bounds the scan. The migration backfills `done` for the two existing consumers so nothing replays.
+- **Medium — staff could read live chat without an audit entry.** Staff joining a match room over the socket now writes `chat.live_read_as_staff` to the audit log, once per socket per match, alongside the HTTP `chat.read_as_staff`.
+- **Low — no rate limit on socket connects or subscribes.** Handshakes are capped at 60/min per IP, before any DB read; subscribes at 60/min per user.
+- **Low — the 72h lock sweep was not atomic.** The lock stamp and the "Chat is closed" system message now commit in one transaction.
+- **Low — two keyword filters.** `shared/content-filter.ts` is removed. Result notes now use this sprint's `chat/keyword-filter.ts` (one list, one version) with a block policy; chat keeps flag-only.
+- **Design drift:** the timeline's pill progress bar and round step markers are now 2px radius (Design §4).
