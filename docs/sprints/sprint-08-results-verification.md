@@ -99,11 +99,11 @@ Two-sided result submission with screenshot proof, matching auto-confirm, confli
 
 - [x] F8.1 Result submission endpoint append-only + per-game schema validation + active-submission side rule
 - [x] F8.2 Upload pipeline: client compression, presign to private bucket, MIME/size/EXIF/hash checks, resumable where practical; signed-read-only views; Procfile/host notes
-- [ ] F8.3 Sheet UI complete with offline/failed/retry/submitted states + doc-correct error copy
+- [x] F8.3 Sheet UI complete with offline/failed/retry/submitted states + doc-correct error copy
 - [x] F8.4 Matching auto-confirm ≤5s incl. rating event handoff; conflict → dispute auto-open; silent-24h auto-confirm timer proven
 - [x] F8.5 No-show (20-min gate, proof required), forfeit + ratings/reputation-debt records; voided reserved for admin
 - [x] Anti-fraud test matrix green (reuse-hash, mismatch, wrong score forced bounds)
-- [ ] Testing green incl. two-browser e2e suite
+- [x] Testing green incl. two-browser e2e suite
 - [x] Audits pass (cso/differential) with zero open critical findings
 - [ ] `ship` close with PR + CHANGELOG
 
@@ -130,5 +130,5 @@ Sprint 8 was started before Sprint 7 landed; it was rebased onto Sprints 6 and 7
 
 ## Status notes
 
-- Two-browser e2e (`apps/web/e2e-app`, results + match-room specs) now runs in CI (`E2E` job);
-  the local machine could not hold the full stack in memory, so the suite is proven there.
+- Two-browser e2e (`apps/web/e2e-app`, results + match-room specs) runs in CI (`E2E` job): 8/8
+  green on PR #9. The local machine could not hold the full stack in memory.

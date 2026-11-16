@@ -99,7 +99,7 @@ The match room is the hub (UX Flow 4): timeline, opponent card, deadlines, chat,
 - [x] F7.3 Chat live: bubbles/states/500-char/no preview/report+block entries; rate limits + keyword flags; 72h lock banner
 - [x] F7.4 Admin/moderator chat-read endpoint exists + role-check proven; ToS amendment stub filed
 - [x] F7.5 Messages partitioned by time; conversation model supports later DM scoping
-- [ ] Two-instance sync e2e green; chaos/socket-down fallback green
+- [x] Two-instance sync e2e green; chaos/socket-down fallback green
 - [x] Testing green; audits clean
 - [ ] `ship` close with PR + CHANGELOG
 
@@ -168,5 +168,7 @@ Moderation:
 - Admin chat reads are role-guarded and audited (`chat.read_as_staff`), ToS stub filed.
 - Retention: nothing is deleted; the period is an open owner decision.
 
-Open: the Playwright two-browser run is added with the Sprint 8 app e2e harness
-(`apps/web/e2e-app`), which provides the real-API Playwright setup.
+Two-browser proof: `apps/web/e2e-app/match-room.spec.ts` (live chat ≤2s, live state flip without
+reload) is green in CI on PR #9. Two-instance fan-out is proven by the integration suite (two API
+instances sharing Redis). Socket-down → polling → reconnect → retry was verified manually in two
+browser contexts; it is not automated.
