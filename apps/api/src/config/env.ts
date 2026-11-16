@@ -18,6 +18,23 @@ const envSchema = z.object({
   SMS_SENDER_ID: z.string().optional(),
   TURNSTILE_SITE_KEY: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
+  // ---- File storage (Cloudflare R2 in prod; any S3-compatible store locally) ----
+  /** Optional override; defaults to https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com. */
+  STORAGE_ENDPOINT: z.string().url().optional(),
+  STORAGE_REGION: z.string().default('auto'),
+  STORAGE_FORCE_PATH_STYLE: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** Dev/test only: create the private bucket on boot if missing. */
+  STORAGE_AUTO_CREATE_BUCKET: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().default('raise-proof-screenshots'),
 });
 
 export type Env = z.infer<typeof envSchema>;

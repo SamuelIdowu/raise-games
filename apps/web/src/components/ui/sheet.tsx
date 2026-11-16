@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon } from './icons';
 
@@ -19,6 +19,8 @@ export interface SheetProps {
  */
 export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Unique per sheet: several sheets can be mounted at once (e.g. the nav drawer).
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -35,7 +37,7 @@ export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: S
         event.preventDefault();
         onClose();
       }}
-      aria-labelledby="sheet-title"
+      aria-labelledby={titleId}
       className={cn(
         'm-auto w-[calc(100%-2rem)] rounded-modal border border-line bg-raised p-0 text-fg backdrop:bg-scrim',
         'max-sm:mb-0 max-sm:mt-auto max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none',
@@ -44,7 +46,7 @@ export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: S
     >
       <div className="flex max-h-[90vh] flex-col">
         <header className="flex items-center justify-between border-b border-line p-4">
-          <h2 id="sheet-title" className="font-display text-h2 font-semibold text-fg">
+          <h2 id={titleId} className="font-display text-h2 font-semibold text-fg">
             {title}
           </h2>
           <button
@@ -56,8 +58,10 @@ export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: S
             <Icon name="x" size={20} />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-        {footer ? <footer className="border-t border-line p-4">{footer}</footer> : null}
+        {/* Content only while open: a closed sheet should not leave duplicate text, inputs
+            or focusable controls in the page (screen readers, find-in-page, tests). */}
+        <div className="flex-1 overflow-y-auto p-4">{open ? children : null}</div>
+        {open && footer ? <footer className="border-t border-line p-4">{footer}</footer> : null}
       </div>
     </dialog>
   );

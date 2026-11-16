@@ -6,6 +6,6 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   test: {
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/e2e/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/e2e/**', '**/e2e-app/**'],
   },
 });

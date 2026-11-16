@@ -10,13 +10,28 @@ import {
   type MatchStateEvent,
 } from '../realtime/realtime.events';
 
+/**
+ * Events that change what a match room shows. `match.*` events carry the match id as
+ * their subject; the others name it in the payload (Sprint 6 accept, Sprint 8 results).
+ */
+const PAYLOAD_MATCH_EVENTS = new Set([
+  'challenge.accepted',
+  'result.submitted',
+  'noshow.reported',
+  'dispute.opened',
+]);
+
+export function isMatchStateEvent(type: string): boolean {
+  return type.startsWith('match.') || PAYLOAD_MATCH_EVENTS.has(type);
+}
+
 /** Which match an outbox event is about, if any. */
 export function matchIdForEvent(
   event: Pick<OutboxEvent, 'type' | 'subjectId' | 'payload'>,
 ): string | null {
   if (event.type.startsWith('match.')) return event.subjectId;
   const payload = event.payload as { matchId?: unknown } | null;
-  if (event.type === 'challenge.accepted' && typeof payload?.matchId === 'string') {
+  if (PAYLOAD_MATCH_EVENTS.has(event.type) && typeof payload?.matchId === 'string') {
     return payload.matchId;
   }
   return null;
@@ -41,7 +56,7 @@ export class MatchStateBroadcaster implements OnModuleInit {
   onModuleInit(): void {
     this.relay.register({
       name: 'match-state-broadcast',
-      matches: (type) => type.startsWith('match.') || type === 'challenge.accepted',
+      matches: isMatchStateEvent,
       handle: (event) => this.handle(event),
     });
   }

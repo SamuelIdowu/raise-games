@@ -49,7 +49,11 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const accessToken = getAccessToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // Only declare JSON when there is a body: Fastify rejects an empty body sent
+    // as application/json, which broke body-less PATCH/POST calls (accept, decline, …).
+    ...(options.body !== undefined && options.body !== null
+      ? { 'Content-Type': 'application/json' }
+      : {}),
     ...(options.headers as Record<string, string>),
   };
   if (accessToken) {

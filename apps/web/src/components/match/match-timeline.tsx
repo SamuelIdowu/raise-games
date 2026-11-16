@@ -50,7 +50,7 @@ const MARKER: Record<StepState, { icon: IconName | null; className: string; srLa
   },
 };
 
-type TimelineView = Pick<MatchView, 'status' | 'deadline' | 'me' | 'viewerRole'>;
+type TimelineView = Pick<MatchView, 'status' | 'deadline' | 'me' | 'viewerRole' | 'nextAction'>;
 
 function deadlineLabel(view: TimelineView): string {
   return view.deadline?.kind === 'confirm_result' ? 'Confirm by' : 'Submit by';
@@ -90,11 +90,6 @@ export function MatchTimeline({ view, now }: { view: TimelineView; now?: number 
           </li>
         ))}
       </ol>
-      <p className="mt-2 flex items-center gap-1.5 text-body-sm text-fg md:hidden">
-        <Icon name={display.icon} size={16} aria-hidden />
-        <span>{display.label}</span>
-      </p>
-
       {/* Desktop: vertical stepper */}
       <ol className="hidden md:block" aria-label="Match progress">
         {STEPS.map((step, i) => {

@@ -15,8 +15,9 @@ export { profilesApi } from './profiles';
 export { challengesApi } from './challenges';
 export { playersApi } from './players';
 export { reportsApi } from './reports';
-export { matchesApi } from './matches';
+export { matchesApi, isParticipantView } from './matches';
 export { chatApi } from './chat';
+export { uploadsApi } from './uploads';
 export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
@@ -30,6 +31,22 @@ export type {
 } from './challenges';
 export type { PlayerCard, PlayerSearchQuery, PlayerSearchResponse } from './players';
 export type { ReportSubjectType, ReportReasonCode } from './reports';
-export type { MatchView, MatchPlayer, MatchStatus, DeadlineKind } from './matches';
+export type {
+  DeadlineKind,
+  MatchDetail,
+  MatchNextAction,
+  MatchOutcome,
+  MatchPlayer,
+  MatchStatus,
+  MatchSubmission,
+  MatchView,
+  ReportNoShowRequest,
+  ScoreModel,
+  ScorePayload,
+  SubmissionKind,
+  SubmitResultRequest,
+  SubmitResultResponse,
+} from './matches';
 export type { ChatMessage, MessagePage, SendResult, ReportReason } from './chat';
 export type { MatchStateEvent, ChatLockedEvent, NotificationEvent, Ack } from './realtime';
+export type { PresignedUpload, UploadInfo, UploadPurpose } from './uploads';

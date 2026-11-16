@@ -57,3 +57,20 @@ export const gamesByKey = new Map(games.map((g) => [g.key, g]));
 export interface GameWithFormats extends GameConfig {
   formats: GameFormat[];
 }
+
+export {
+  SCORE_BOUNDS,
+  RESULT_ERROR_MESSAGES,
+  compareScore,
+  parseScorePayload,
+  validateResult,
+} from './results';
+export type {
+  ResultOutcome,
+  ResultSchema,
+  ResultValidation,
+  ResultValidationError,
+  ScoreBounds,
+  ScoreModel,
+  ScorePayload,
+} from './results';

@@ -16,6 +16,11 @@ const player = (userId: string, username: string, side: number): MatchPlayer => 
   side,
   isPoster: side === 0,
   submittedAt: null,
+  inGameId: `${username.toLowerCase()}_efb`,
+  wins: 8,
+  losses: 3,
+  draws: 1,
+  submission: null,
 });
 const players = [player('me', 'Alice', 0), player('bola', 'Bola', 1)];
 

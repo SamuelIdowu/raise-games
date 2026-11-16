@@ -1,32 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage, MatchPlayer, MatchStatus, MatchView } from '@raise/api-client';
+import type { ChatMessage, MatchStatus, MatchView } from '@raise/api-client';
 import { stepStates } from '@/components/match/match-timeline';
-import { primaryAction } from '@/components/match/primary-action';
 import { statusDisplay } from './match-status';
 import { mergeMessages, type ChatEntry } from './use-match-room';
 import { formatAbsolute, formatDuration } from './time';
-
-const me: MatchPlayer = {
-  userId: 'me',
-  username: 'Alice',
-  rating: 1200,
-  rankTier: 'rookie',
-  rankLabel: 'Rookie',
-  provisional: true,
-  record: '0–0–0',
-  reputation: 'new',
-  gameId: 'alice_efb',
-  side: 0,
-  isPoster: true,
-  submittedAt: null,
-};
-
-function view(
-  status: MatchStatus,
-  overrides: Partial<MatchView> = {},
-): Pick<MatchView, 'status' | 'me' | 'viewerRole'> {
-  return { status, me, viewerRole: 'participant', ...overrides };
-}
 
 describe('timeline step states', () => {
   it('maps live states to the current step', () => {
@@ -64,60 +41,48 @@ describe('timeline step states', () => {
 });
 
 describe('status display (Design §7)', () => {
+  const v = (
+    status: MatchStatus,
+    nextAction: MatchView['nextAction'],
+    viewerRole: MatchView['viewerRole'] = 'participant',
+  ) =>
+    ({ status, nextAction, viewerRole }) as Pick<MatchView, 'status' | 'nextAction' | 'viewerRole'>;
+
   it('uses accent only when the viewer must act', () => {
-    expect(statusDisplay(view('awaiting_confirmation'))).toMatchObject({
+    expect(statusDisplay(v('awaiting_confirmation', 'confirm_or_submit'))).toMatchObject({
       label: 'Needs confirmation',
       variant: 'accent',
       viewerMustAct: true,
     });
-    expect(
-      statusDisplay(
-        view('awaiting_confirmation', { me: { ...me, submittedAt: '2026-11-14T10:00:00Z' } }),
-      ),
-    ).toMatchObject({ label: 'Waiting for opponent', variant: 'neutral', viewerMustAct: false });
+    expect(statusDisplay(v('awaiting_confirmation', 'waiting_for_opponent'))).toMatchObject({
+      label: 'Waiting for opponent',
+      variant: 'neutral',
+      viewerMustAct: false,
+    });
+    expect(statusDisplay(v('in_progress', 'submit_result'))).toMatchObject({
+      variant: 'accent',
+      viewerMustAct: true,
+    });
+    expect(statusDisplay(v('accepted', 'wait_for_start'))).toMatchObject({
+      variant: 'neutral',
+      viewerMustAct: false,
+    });
   });
 
   it('never asks staff to act', () => {
-    expect(
-      statusDisplay(view('awaiting_result', { viewerRole: 'staff', me: null })).viewerMustAct,
-    ).toBe(false);
+    expect(statusDisplay(v('awaiting_result', 'submit_result', 'staff')).viewerMustAct).toBe(false);
+    expect(statusDisplay(v('awaiting_confirmation', 'closed', 'staff')).label).toBe(
+      'Awaiting confirmation',
+    );
   });
 
   it('keeps Confirmed neutral and side exits muted', () => {
-    expect(statusDisplay(view('confirmed')).variant).toBe('neutral');
-    expect(statusDisplay(view('forfeited'))).toMatchObject({
+    expect(statusDisplay(v('confirmed', 'done')).variant).toBe('neutral');
+    expect(statusDisplay(v('forfeited', 'done'))).toMatchObject({
       label: 'Forfeited',
       variant: 'muted',
     });
-    expect(statusDisplay(view('disputed')).variant).toBe('dispute');
-  });
-});
-
-describe('primary action', () => {
-  it('swaps with state and never disables silently', () => {
-    const cases: Array<[MatchStatus, string]> = [
-      ['accepted', 'Submit result'],
-      ['awaiting_result', 'Submit result'],
-      ['awaiting_confirmation', 'Confirm result'],
-      ['disputed', 'Dispute in review'],
-      ['confirmed', 'Back to matches'],
-      ['cancelled', 'Back to matches'],
-    ];
-    for (const [status, label] of cases) {
-      const spec = primaryAction(view(status));
-      expect(spec?.label, status).toBe(label);
-      if (!spec?.href) expect(spec?.disabledReason, status).toBeTruthy();
-    }
-  });
-
-  it('shows waiting once the viewer has submitted', () => {
-    expect(
-      primaryAction(view('awaiting_confirmation', { me: { ...me, submittedAt: 'x' } }))?.label,
-    ).toBe('Waiting for opponent');
-  });
-
-  it('has no action for staff', () => {
-    expect(primaryAction(view('awaiting_result', { viewerRole: 'staff', me: null }))).toBeNull();
+    expect(statusDisplay(v('disputed', 'disputed')).variant).toBe('dispute');
   });
 });
 

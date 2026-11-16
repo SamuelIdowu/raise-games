@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "raise-dev",
+      "credentials": [{ "accessKey": "raise", "secretKey": "raise-storage-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

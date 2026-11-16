@@ -136,6 +136,8 @@ export function useMatchRoom(matchId: string) {
       void refreshView().then((next) => {
         if (next) setAnnouncement(`Match status: ${statusDisplay(next).label}`);
       });
+      // State changes can post system messages (e.g. "a dispute has been opened").
+      void refreshMessages();
     };
 
     const onMessage = (msg: ChatMessage) => {
