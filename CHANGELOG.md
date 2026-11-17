@@ -4,6 +4,26 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 10 — Elo ratings, leaderboards & profile stats
+
+- Per-game Elo per the PRD: start 1000, K 32 then 20 after 20 matches, provisional until 10, and diminishing gains after 3 matches against the same opponent in 7 days (decision 0004).
+- Append-only rating event log; every rating is recomputable from it (`pnpm --filter @raise/api ratings:verify`), proven by 10,000-event fuzz tests.
+- Ratings update from confirmed results, forfeits and dispute rulings, including exact reversal when an appeal changes or voids a result, within the 5-second budget.
+- Leaderboards per game: confirmed results only, campus and city filters, your own row pinned, top-three notch, 7-day trend.
+- Profiles show rank tier, rating with the provisional marker, record, streak and a live reputation badge; the confirmed summary counts up the real rating change.
+
+### Audit fixes — Sprints 0–8 (2026-11-16)
+
+- Security: `fastify` raised to ^5.12.8 (auth and validation-bypass advisories) and `@fastify/static` to ^10.1.11 (path traversal); `pnpm audit --prod` is clean. The web app now sends a Content-Security-Policy and standard security headers.
+- OTP delivery: Termii now sends on the DND (transactional) route instead of the promotional route, which DND-registered Nigerian numbers never received. Staging can restrict real SMS to an allow-list.
+- Launch formats follow the PRD: one Duel per game (eFootball 1v1, CODM Multiplayer 1v1, PUBG Mobile 1v1 TDM). Removed formats are disabled, not deleted.
+- Outbox: each consumer tracks its own deliveries, with retries and dead-lettering, so ratings and notifications will see every event.
+- Match chat: staff live reads are audited; socket connects and subscribes are rate-limited; the 72h lock is atomic.
+- One keyword filter for chat and result notes; notes also refuse contact handles and payment details.
+- Matches list loads in 4 queries instead of about 5 per match; idempotent result retries are safe under concurrency; uploads capped per match; the screenshot-reuse check is race-free.
+- Accessibility and design fixes: working profile game tabs with ARIA tab semantics; 44px labelled copy buttons; labelled leaderboard filters; no backdrop blur; no pill shapes in the match timeline.
+- Decisions recorded: SMS vendor (0001), launch formats (0002), UX open decisions (0003).
+
 ### Sprint 9 — Disputes (player side)
 
 - Open a dispute from the match room while the opponent's result waits for confirmation:

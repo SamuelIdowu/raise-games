@@ -116,8 +116,8 @@ Real accounts: phone OTP signup and login, session/token lifecycle, roles, conse
 - [x] F3.7 Consent version + record table; re-accept endpoint; gate UI
 - [x] Testing block green incl. concurrency + abuse sims (42 integration tests passing locally + CI)
 - [x] Audit block: cso + differential-review findings closed or filed; log PII scrub verified
-- [ ] SMS vendor decided `[owner decision]`, staging SMS path (or documented allow-list) works
-- [ ] `ship` close: merged PR, CHANGELOG, checklist ticks committed
+- [x] SMS vendor decided `[owner decision]`, staging SMS path (or documented allow-list) works: Termii on the DND route, Twilio fallback (`docs/decisions/0001-sms-vendor.md`); `SMS_ALLOWLIST` staging gate built and unit-tested. The live staging proof lands with Sprint 0's F0.11 (staging deploy)
+- [x] `ship` close: merged PR, CHANGELOG, checklist ticks committed (merged to `main` with #1–#3; CHANGELOG "Sprints 3–4")
 
 ## Audit (2026-11-15)
 
@@ -128,4 +128,4 @@ Real accounts: phone OTP signup and login, session/token lifecycle, roles, conse
   made unrelated tests fail intermittently. Phones are now unique per run; 3 consecutive green runs.
 - Log PII scrub verified: the request logger redacts `authorization`, `cookie`, `body.phone` and
   `body.code`; the only other console output is the boot line and seed errors.
-- Still open (owner): SMS vendor decision.
+- SMS vendor decided 2026-11-16 (decision 0001). Research found a delivery bug: the Termii adapter sent OTPs on the `generic` (promotional) route, which Nigerian DND-registered numbers never receive. It now uses `dnd`, with a test.

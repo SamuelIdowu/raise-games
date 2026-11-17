@@ -14,7 +14,26 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "passThroughEnv": [
+        "NODE_ENV",
+        "PORT",
+        "WEB_ORIGIN",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "JWT_ACCESS_SECRET",
+        "JWT_ACCESS_TTL",
+        "JWT_REFRESH_TTL",
+        "OTP_MOCK_ENABLED",
+        "SMS_*",
+        "TURNSTILE_*",
+        "STORAGE_*",
+        "R2_*",
+        "OUTBOX_RELAY_DISABLED",
+        "CHAT_JOBS_DISABLED",
+        "E2E_*"
+      ],
+      "cache": false
     },
     "db:migrate": {
       "cache": false

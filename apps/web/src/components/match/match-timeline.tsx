@@ -77,7 +77,7 @@ export function MatchTimeline({ view, now }: { view: TimelineView; now?: number 
             <span
               aria-hidden
               className={cn(
-                'h-1 w-full rounded-full',
+                'h-1 w-full rounded-[2px]',
                 states[i] === 'done' && 'bg-fg-muted',
                 states[i] === 'current' && 'bg-accent',
                 states[i] === 'blocked' && 'bg-dispute',
@@ -110,7 +110,7 @@ export function MatchTimeline({ view, now }: { view: TimelineView; now?: number 
               <span
                 aria-hidden
                 className={cn(
-                  'relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2',
+                  'relative z-10 flex size-6 shrink-0 items-center justify-center rounded-[2px] border-2',
                   marker.className,
                 )}
               >

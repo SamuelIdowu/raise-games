@@ -4,6 +4,9 @@ import { db, schema } from '../db/client';
 import { eq, and } from 'drizzle-orm';
 import { GamesService } from '../games/games.service';
 import type { UpsertProfile } from './profiles.schemas';
+import { ReputationService } from '../ratings/reputation.service';
+import type { ReputationLevel } from '../ratings/reputation';
+import { rankTierForRating, rankTierLabel } from '../shared/ranks';
 
 export interface GameProfileDto {
   id: string;
@@ -21,14 +24,21 @@ export interface GameProfileDto {
   draws: number;
   streak: number;
   provisional: boolean;
-  reputation: 'new';
+  /** Rated matches in this game (Sprint 10). */
+  ratedMatches: number;
+  rankTier: string;
+  rankLabel: string;
+  reputation: ReputationLevel;
   createdAt: Date;
   updatedAt: Date;
 }
 
 @Injectable()
 export class ProfilesService {
-  constructor(private readonly games: GamesService) {}
+  constructor(
+    private readonly games: GamesService,
+    private readonly reputation: ReputationService,
+  ) {}
 
   async listMyProfiles(userId: string): Promise<GameProfileDto[]> {
     const rows = await db
@@ -46,6 +56,7 @@ export class ProfilesService {
         draws: schema.gameProfiles.draws,
         streak: schema.gameProfiles.streak,
         provisional: schema.gameProfiles.provisional,
+        ratedMatches: schema.gameProfiles.ratedMatches,
         createdAt: schema.gameProfiles.createdAt,
         updatedAt: schema.gameProfiles.updatedAt,
         gameKey: schema.games.key,
@@ -75,6 +86,7 @@ export class ProfilesService {
         draws: schema.gameProfiles.draws,
         streak: schema.gameProfiles.streak,
         provisional: schema.gameProfiles.provisional,
+        ratedMatches: schema.gameProfiles.ratedMatches,
         createdAt: schema.gameProfiles.createdAt,
         updatedAt: schema.gameProfiles.updatedAt,
         gameKey: schema.games.key,
@@ -107,6 +119,7 @@ export class ProfilesService {
         draws: schema.gameProfiles.draws,
         streak: schema.gameProfiles.streak,
         provisional: schema.gameProfiles.provisional,
+        ratedMatches: schema.gameProfiles.ratedMatches,
         createdAt: schema.gameProfiles.createdAt,
         updatedAt: schema.gameProfiles.updatedAt,
         gameKey: schema.games.key,
@@ -123,7 +136,9 @@ export class ProfilesService {
   }
 
   async getPublicProfile(userId: string): Promise<GameProfileDto[]> {
-    return this.listMyProfiles(userId);
+    const profiles = await this.listMyProfiles(userId);
+    const level = (await this.reputation.forUsers([userId])).get(userId) ?? 'new';
+    return profiles.map((p) => ({ ...p, reputation: level }));
   }
 
   async upsertProfile(userId: string, data: UpsertProfile): Promise<GameProfileDto> {
@@ -183,6 +198,7 @@ export class ProfilesService {
     draws: number;
     streak: number;
     provisional: boolean;
+    ratedMatches: number;
     createdAt: Date;
     updatedAt: Date;
     gameKey: string;
@@ -204,6 +220,10 @@ export class ProfilesService {
       draws: row.draws,
       streak: row.streak,
       provisional: row.provisional,
+      ratedMatches: row.ratedMatches,
+      rankTier: rankTierForRating(row.rating),
+      rankLabel: rankTierLabel(rankTierForRating(row.rating)),
+      // Reputation is per player; the public profile fills it in (getPublicProfile).
       reputation: 'new',
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

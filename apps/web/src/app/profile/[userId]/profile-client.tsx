@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Avatar,
   Button,
   CountUp,
   Icon,
+  RankTierBadge,
+  RatingBadge,
   ReputationBadge,
   StatusChip,
   useToast,
+  type ReputationLevel,
+  type TierLevel,
 } from '@/components/ui';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -29,6 +33,25 @@ interface GameProfileDto {
   draws: number;
   streak: number;
   provisional: boolean;
+  ratedMatches: number;
+  rankTier: string;
+  rankLabel: string;
+  reputation: ReputationLevel;
+}
+
+const TIER: Record<string, TierLevel> = {
+  rookie: 1,
+  challenger: 2,
+  contender: 3,
+  elite: 4,
+  champion: 5,
+};
+
+/** "W3", "L2" or "—": streak sign carries win/loss, the letter keeps it readable. */
+function streakLabel(streak: number): { text: string; sr: string } {
+  if (streak > 0) return { text: `W${streak}`, sr: `${streak} win streak` };
+  if (streak < 0) return { text: `L${-streak}`, sr: `${-streak} loss streak` };
+  return { text: '—', sr: 'No streak' };
 }
 
 async function fetchProfile(userId: string): Promise<GameProfileDto[]> {
@@ -46,6 +69,8 @@ export function ProfileClient() {
   const userId = params.userId;
   const [profiles, setProfiles] = useState<GameProfileDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(0);
+  const tabsId = useId();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,14 +85,42 @@ export function ProfileClient() {
     };
   }, [userId]);
 
-  const handleCopy = (id: string) => {
-    void navigator.clipboard.writeText(id);
-    toast({ title: 'Copied', description: `${id} copied to clipboard` });
+  const handleCopy = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      toast({ title: 'Game ID copied', description: id });
+    } catch {
+      toast({ title: 'Could not copy', variant: 'error' });
+    }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return <div className="mx-auto max-w-2xl p-6 text-body-sm text-fg-muted">Loading profile…</div>;
 
-  const p = profiles[0];
+  const p = profiles[Math.min(selected, Math.max(profiles.length - 1, 0))];
+
+  // Per-game tabs (Design §8 player profile header): WAI-ARIA tabs with arrow-key roving focus.
+  const onTabKey = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = profiles.length - 1;
+    const next =
+      event.key === 'ArrowRight'
+        ? index === last
+          ? 0
+          : index + 1
+        : event.key === 'ArrowLeft'
+          ? index === 0
+            ? last
+            : index - 1
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    setSelected(next);
+    document.getElementById(`${tabsId}-tab-${next}`)?.focus();
+  };
 
   return (
     <div className="mx-auto max-w-2xl p-6 space-y-6">
@@ -90,37 +143,82 @@ export function ProfileClient() {
         </div>
       </header>
 
-      <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
-        <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps text-fg-muted">Rating</p>
-          <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
-            {p?.rating ?? 1000}
-          </p>
+      {profiles.length > 1 ? (
+        <div role="tablist" aria-label="Games" className="flex gap-2 border-b border-line">
+          {profiles.map((profile, index) => {
+            const active = index === selected;
+            return (
+              <button
+                key={profile.gameKey}
+                id={`${tabsId}-tab-${index}`}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`${tabsId}-panel`}
+                tabIndex={active ? 0 : -1}
+                onClick={() => setSelected(index)}
+                onKeyDown={(event) => onTabKey(event, index)}
+                className={`min-h-11 flex-1 border-b-2 px-4 py-2 font-display text-body-sm font-semibold transition-colors ${
+                  active
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-fg-muted hover:text-fg'
+                }`}
+              >
+                {profile.gameName}
+              </button>
+            );
+          })}
         </div>
-        <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps text-fg-muted">Record</p>
-          <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
-            {p?.wins ?? 0}-{p?.losses ?? 0}-{p?.draws ?? 0}
-          </p>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-4">
-          <p className="label-caps text-fg-muted">Streak</p>
-          <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">
-            W{p?.streak ?? 0}
-          </p>
-        </div>
-      </div>
+      ) : null}
 
-      <div className="flex gap-2 border-b border-line">
-        {profiles.map((profile) => (
-          <button
-            key={profile.gameKey}
-            onClick={() => {}}
-            className="flex-1 py-2 px-4 font-display text-body-sm font-semibold rounded-t-card transition-colors text-accent border-b-2 border-accent"
-          >
-            {profile.gameName}
-          </button>
-        ))}
+      <div
+        id={`${tabsId}-panel`}
+        role={profiles.length > 1 ? 'tabpanel' : undefined}
+        aria-labelledby={profiles.length > 1 ? `${tabsId}-tab-${selected}` : undefined}
+        className="grid grid-cols-2 gap-4 md:grid-cols-3"
+      >
+        {/* Stat grid (Design §8 player profile header): rank, rating, record, streak, reputation. */}
+        <dl className="contents">
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Rank</dt>
+            <dd className="mt-2">
+              <RankTierBadge tier={TIER[p?.rankTier ?? 'challenger'] ?? 2} label={p?.rankLabel} />
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Rating</dt>
+            <dd className="mt-1">
+              <RatingBadge value={p?.rating ?? 1000} provisional={p?.provisional ?? true} />
+              {p?.provisional ? (
+                <span className="mt-1 block text-caption text-fg-muted">
+                  Provisional · {p.ratedMatches} of 10 rated matches
+                </span>
+              ) : null}
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Record</dt>
+            <dd
+              className="mt-1 font-display text-stat-md font-semibold text-fg tabular"
+              aria-label={`${p?.wins ?? 0} wins, ${p?.losses ?? 0} losses, ${p?.draws ?? 0} draws`}
+            >
+              {p?.wins ?? 0}–{p?.losses ?? 0}–{p?.draws ?? 0}
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Streak</dt>
+            <dd className="mt-1 font-display text-stat-md font-semibold text-fg tabular">
+              <span aria-hidden>{streakLabel(p?.streak ?? 0).text}</span>
+              <span className="sr-only">{streakLabel(p?.streak ?? 0).sr}</span>
+            </dd>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <dt className="label-caps text-fg-muted">Reputation</dt>
+            <dd className="mt-2">
+              <ReputationBadge level={p?.reputation ?? 'new'} />
+            </dd>
+          </div>
+        </dl>
       </div>
 
       <div className="space-y-4">
@@ -151,12 +249,12 @@ export function ProfileClient() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleCopy(profile.inGameId)}
-                  className="text-caption text-accent hover:underline flex items-center gap-1"
+                  onClick={() => void handleCopy(profile.inGameId)}
+                  aria-label={`Copy ${profile.gameName} ID ${profile.inGameId}`}
+                  className="flex min-h-11 min-w-11 items-center justify-center gap-1 px-2 text-caption text-accent hover:underline"
                 >
                   <Icon name="copy" size={14} /> Copy
                 </button>
-                <ReputationBadge level="new" />
               </div>
             </div>
           ))}

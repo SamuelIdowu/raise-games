@@ -156,7 +156,11 @@ export class ChallengesService {
       .select({ id: schema.gameFormats.id, key: schema.gameFormats.key })
       .from(schema.gameFormats)
       .where(
-        and(eq(schema.gameFormats.gameId, game[0].id), eq(schema.gameFormats.key, input.formatKey)),
+        and(
+          eq(schema.gameFormats.gameId, game[0].id),
+          eq(schema.gameFormats.key, input.formatKey),
+          eq(schema.gameFormats.status, 'enabled'),
+        ),
       )
       .limit(1);
     if (!format[0])

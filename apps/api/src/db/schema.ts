@@ -19,6 +19,8 @@ import {
   uniqueIndex,
   pgEnum,
   primaryKey,
+  bigserial,
+  doublePrecision,
 } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['player', 'moderator', 'admin']);
@@ -126,7 +128,35 @@ export const outboxEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp('processed_at', { withTimezone: true }),
   },
-  (t) => [index('outbox_unprocessed_idx').on(t.processedAt)],
+  (t) => [
+    index('outbox_unprocessed_idx').on(t.processedAt),
+    index('outbox_created_idx').on(t.createdAt, t.id),
+  ],
+);
+
+/**
+ * Per-consumer delivery state for outbox events. Each relay consumer (live broadcast,
+ * chat creation, ratings, notifications…) tracks its own progress, so one consumer
+ * finishing never hides an event from another. `processed_at` on outbox_events is no
+ * longer written (kept for history).
+ */
+export const outboxDeliveries = pgTable(
+  'outbox_deliveries',
+  {
+    consumer: text('consumer').notNull(),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => outboxEvents.id, { onDelete: 'cascade' }),
+    /** done | skipped (type not handled) | retry | dead (gave up after max attempts) */
+    status: text('status').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.consumer, t.eventId] }),
+    index('outbox_deliveries_status_idx').on(t.consumer, t.status),
+  ],
 );
 
 export const featureFlags = pgTable(
@@ -214,6 +244,11 @@ export const gameFormats = pgTable(
     resultSchema: jsonb('result_schema').notNull(),
     requiredProof: jsonb('required_proof').notNull(),
     tiebreakRules: text('tiebreak_rules'),
+    /**
+     * enabled | disabled. The seed disables formats that leave games.json, so they stop
+     * being offered for new challenges while past challenges keep resolving them.
+     */
+    status: text('status').notNull().default('enabled'),
   },
   (t) => [uniqueIndex('game_formats_game_key_uq').on(t.gameId, t.key)],
 );
@@ -580,6 +615,8 @@ export const gameProfiles = pgTable(
     draws: integer('draws').notNull().default(0),
     streak: integer('streak').notNull().default(0),
     provisional: boolean('provisional').notNull().default(true),
+    /** Rated result applications (Sprint 10). Drives K and the provisional flag. */
+    ratedMatches: integer('rated_matches').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -587,6 +624,7 @@ export const gameProfiles = pgTable(
     uniqueIndex('game_profiles_user_game_uq').on(t.userId, t.gameId),
     index('game_profiles_user_idx').on(t.userId),
     index('game_profiles_game_idx').on(t.gameId),
+    index('game_profiles_leaderboard_idx').on(t.gameId, t.rating, t.id),
   ],
 );
 
@@ -799,5 +837,63 @@ export const uploads = pgTable(
     index('uploads_match_idx').on(t.matchId),
     index('uploads_sha256_idx').on(t.sha256),
     index('uploads_phash_idx').on(t.phash),
+  ],
+);
+
+/**
+ * Sprint 10 (F10.1): append-only rating event log, the source of truth for ratings.
+ * One row per player per application. An application ("apply") rates one match result;
+ * a "reverse" undoes an earlier apply exactly (appeal rulings, Sprint 9). Every row keeps
+ * the inputs replay needs, so `ratings/elo.ts#replay` can recompute every rating from
+ * this table alone (PRD acceptance criterion). A trigger rejects UPDATE and DELETE.
+ */
+export const ratingEvents = pgTable(
+  'rating_events',
+  {
+    id: uuid('id').primaryKey(),
+    /** Global processing order; replay sorts by it. */
+    seq: bigserial('seq', { mode: 'number' }).notNull().unique(),
+    /** Shared by the two rows of one application or reversal. */
+    applyId: uuid('apply_id').notNull(),
+    gameId: uuid('game_id')
+      .notNull()
+      .references(() => games.id),
+    // Cascade only so test fixtures can purge their matches (inside raise.allow_purge);
+    // matches are never deleted in production and the trigger blocks any other delete.
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    opponentId: uuid('opponent_id')
+      .notNull()
+      .references(() => users.id),
+    /** apply | reverse */
+    kind: text('kind').notNull(),
+    /** result | forfeit | ruling | reversal */
+    reason: text('reason').notNull(),
+    /** Idempotency: the outbox event that caused this row (one row per user per source). */
+    sourceKey: text('source_key').notNull(),
+    /** 1 win, 0.5 draw, 0 loss (0 on reversals). */
+    score: doublePrecision('score').notNull(),
+    /** When the result was decided; the 7-day same-opponent window uses it. */
+    decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
+    reversesApplyId: uuid('reverses_apply_id'),
+    kFactor: integer('k_factor'),
+    expected: doublePrecision('expected'),
+    multiplier: doublePrecision('multiplier'),
+    ratingBefore: integer('rating_before').notNull(),
+    delta: integer('delta').notNull(),
+    ratingAfter: integer('rating_after').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('rating_events_source_user_uq').on(t.sourceKey, t.userId),
+    index('rating_events_player_idx').on(t.gameId, t.userId, t.seq),
+    index('rating_events_pair_idx').on(t.gameId, t.userId, t.opponentId, t.decidedAt),
+    index('rating_events_match_idx').on(t.matchId),
+    index('rating_events_apply_idx').on(t.applyId),
+    index('rating_events_reverses_idx').on(t.reversesApplyId),
   ],
 );

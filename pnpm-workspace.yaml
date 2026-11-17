@@ -11,3 +11,8 @@ allowBuilds:
   simple-git-hooks: true
   '@scarf/scarf': true
   msgpackr-extract: true
+
+# Security: @nestjs/platform-fastify pins fastify 5.11.3, which has auth/validation-bypass
+# advisories (GHSA, fixed in 5.12.2–5.12.5). Force the patched line until Nest bumps its pin.
+overrides:
+  fastify: ^5.12.8

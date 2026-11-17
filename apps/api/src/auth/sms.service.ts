@@ -12,6 +12,7 @@ export class SmsService {
       provider: env.SMS_PROVIDER,
       apiKey: env.SMS_API_KEY,
       senderId: env.SMS_SENDER_ID,
+      allowlist: env.SMS_ALLOWLIST,
     });
   }
 

@@ -5,10 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { roomCodeModeFor } from '../games/room-code-mode';
 import { db, schema } from '../db/client';
+import { ReputationService } from '../ratings/reputation.service';
+import type { ReputationLevel } from '../ratings/reputation';
 import type { AuthedUser } from '../auth/jwt-auth.guard';
 import { rankTierForRating, rankTierLabel } from '../shared/ranks';
 import {
@@ -49,7 +51,7 @@ export interface MatchPlayerDto {
   provisional: boolean;
   record: string;
   /** Reputation scoring lands in Sprint 10; every player reads "new" until then. */
-  reputation: 'new';
+  reputation: ReputationLevel;
   gameId: string;
   /** Same as gameId (Sprint 8 components read this name). */
   inGameId: string;
@@ -122,6 +124,8 @@ export interface MatchAccess {
 
 @Injectable()
 export class MatchesService {
+  constructor(private readonly reputation: ReputationService) {}
+
   /**
    * Loads a match and decides whether the viewer may see it. Participants always may;
    * moderators and admins may as staff (dispute evidence, F7.4). Everyone else gets 404
@@ -159,10 +163,39 @@ export class MatchesService {
     viewer: AuthedUser,
     now: Date = new Date(),
   ): Promise<MatchViewDto> {
-    const { match, isParticipant } = await this.access(matchId, viewer);
+    const { isParticipant } = await this.access(matchId, viewer);
+    const [view] = await this.loadViews([matchId], viewer, now, () => isParticipant);
+    if (!view) throw new NotFoundException('Match not found');
+    return view;
+  }
 
-    const [challenge] = await db
+  /**
+   * Views for several matches the viewer plays in (matches list). Four queries in total,
+   * whatever the number of matches; the old per-match getView loop was ~5 per match.
+   */
+  async getViewsForParticipant(
+    matchIds: string[],
+    viewer: AuthedUser,
+    now: Date = new Date(),
+  ): Promise<MatchViewDto[]> {
+    return this.loadViews(matchIds, viewer, now, () => true);
+  }
+
+  private async loadViews(
+    matchIds: string[],
+    viewer: AuthedUser,
+    now: Date,
+    isParticipantOf: (matchId: string) => boolean,
+  ): Promise<MatchViewDto[]> {
+    if (matchIds.length === 0) return [];
+    const matches = await db
+      .select()
+      .from(schema.matches)
+      .where(inArray(schema.matches.id, matchIds));
+
+    const challenges = await db
       .select({
+        id: schema.challenges.id,
         rules: schema.challenges.rules,
         startsAt: schema.challenges.startsAt,
         endsAt: schema.challenges.endsAt,
@@ -176,12 +209,16 @@ export class MatchesService {
       .from(schema.challenges)
       .innerJoin(schema.games, eq(schema.games.id, schema.challenges.gameId))
       .innerJoin(schema.gameFormats, eq(schema.gameFormats.id, schema.challenges.formatId))
-      .where(eq(schema.challenges.id, match.challengeId))
-      .limit(1);
-    if (!challenge) throw new NotFoundException('Match not found');
+      .where(
+        inArray(
+          schema.challenges.id,
+          matches.map((m) => m.challengeId),
+        ),
+      );
 
-    const rows = await db
+    const sideRows = await db
       .select({
+        matchId: schema.matchSides.matchId,
         userId: schema.matchSides.userId,
         side: schema.matchSides.side,
         isPoster: schema.matchSides.isPoster,
@@ -198,19 +235,95 @@ export class MatchesService {
       .from(schema.matchSides)
       .innerJoin(schema.users, eq(schema.users.id, schema.matchSides.userId))
       .innerJoin(schema.gameProfiles, eq(schema.gameProfiles.id, schema.matchSides.gameProfileId))
-      .where(eq(schema.matchSides.matchId, matchId));
+      .where(inArray(schema.matchSides.matchId, matchIds));
 
-    const submissions = await db
+    const allSubmissions = await db
       .select()
       .from(schema.resultSubmissions)
       .where(
         and(
-          eq(schema.resultSubmissions.matchId, matchId),
+          inArray(schema.resultSubmissions.matchId, matchIds),
           eq(schema.resultSubmissions.revision, 1),
         ),
       )
       .orderBy(asc(schema.resultSubmissions.submittedAt));
 
+    // Sprint 10: the viewer's net rating change per match (apply + any reversal), and
+    // live reputation badges for both players.
+    const deltaRows = await db
+      .select({
+        matchId: schema.ratingEvents.matchId,
+        delta: sql<number>`sum(${schema.ratingEvents.delta})::int`,
+      })
+      .from(schema.ratingEvents)
+      .where(
+        and(
+          inArray(schema.ratingEvents.matchId, matchIds),
+          eq(schema.ratingEvents.userId, viewer.sub),
+        ),
+      )
+      .groupBy(schema.ratingEvents.matchId);
+    const deltas = new Map(deltaRows.map((d) => [d.matchId, Number(d.delta)]));
+    const reputations = await this.reputation.forUsers(sideRows.map((r) => r.userId));
+
+    const byId = new Map(matches.map((m) => [m.id, m]));
+    const views: MatchViewDto[] = [];
+    // Preserve the caller's order (the list is sorted by recent activity).
+    for (const matchId of matchIds) {
+      const match = byId.get(matchId);
+      const challenge = match && challenges.find((c) => c.id === match.challengeId);
+      if (!match || !challenge) continue;
+      views.push(
+        this.buildView(
+          match,
+          challenge,
+          sideRows.filter((r) => r.matchId === matchId),
+          allSubmissions.filter((x) => x.matchId === matchId),
+          viewer,
+          isParticipantOf(matchId),
+          now,
+          deltas.get(matchId) ?? null,
+          reputations,
+        ),
+      );
+    }
+    return views;
+  }
+
+  private buildView(
+    match: typeof schema.matches.$inferSelect,
+    challenge: {
+      rules: string;
+      startsAt: Date;
+      endsAt: Date;
+      gameKey: string;
+      gameName: string;
+      formatKey: string;
+      formatName: string;
+      resultSchema: unknown;
+      requiredProof: unknown;
+    },
+    rows: Array<{
+      userId: string;
+      side: number;
+      isPoster: boolean;
+      sideId: string;
+      submittedAt: Date | null;
+      displayName: string | null;
+      rating: number;
+      provisional: boolean;
+      wins: number;
+      losses: number;
+      draws: number;
+      inGameId: string;
+    }>,
+    submissions: Array<typeof schema.resultSubmissions.$inferSelect>,
+    viewer: AuthedUser,
+    isParticipant: boolean,
+    now: Date,
+    ratingDelta: number | null,
+    reputations: Map<string, ReputationLevel>,
+  ): MatchViewDto {
     const players: MatchPlayerDto[] = rows
       .sort((a, b) => a.side - b.side)
       .map((r) => {
@@ -223,7 +336,7 @@ export class MatchesService {
           rankLabel: rankTierLabel(tier),
           provisional: r.provisional,
           record: `${r.wins}–${r.losses}–${r.draws}`,
-          reputation: 'new' as const,
+          reputation: reputations.get(r.userId) ?? 'new',
           gameId: r.inGameId,
           inGameId: r.inGameId,
           wins: r.wins,
@@ -301,7 +414,7 @@ export class MatchesService {
         resultDeadline,
         now,
       }),
-      ratingDelta: null,
+      ratingDelta,
       confirmedAt: (match.confirmedAt ?? match.forfeitedAt)?.toISOString() ?? null,
       roomCode: canSeeRoomCode(isParticipant, status) ? match.roomCode : null,
       roomCodeMode,

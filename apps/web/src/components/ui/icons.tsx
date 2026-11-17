@@ -1,5 +1,7 @@
 import {
   AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
   Ban,
   Camera,
   Check,
@@ -71,7 +73,9 @@ export type IconName =
   | 'camera'
   | 'image'
   | 'refresh'
-  | 'trash';
+  | 'trash'
+  | 'trend-up'
+  | 'trend-down';
 
 const ICONS: Record<IconName, LucideIcon> = {
   circle: Circle,
@@ -108,6 +112,8 @@ const ICONS: Record<IconName, LucideIcon> = {
   image: ImageIcon,
   refresh: RefreshCw,
   trash: Trash2,
+  'trend-up': ArrowUpRight,
+  'trend-down': ArrowDownRight,
 };
 
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {

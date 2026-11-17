@@ -440,6 +440,9 @@ OTP_MOCK_ENABLED=true            # dev only
 SMS_PROVIDER=termii              # termii | twilio | mock
 SMS_API_KEY=
 SMS_SENDER_ID=
+# Staging only: comma-separated E.164 numbers allowed to receive real SMS (others get a 403).
+# Leave empty in production. Vendor decision: docs/decisions/0001-sms-vendor.md (Termii, DND route).
+SMS_ALLOWLIST=
 
 # ---- Email (fallback channel, per architecture doc) ----
 EMAIL_PROVIDER=mock              # mock | resend | ses

@@ -9,6 +9,9 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import { z } from 'zod';
+import { v7 as uuidv7 } from 'uuid';
+import { db, schema } from '../db/client';
+import { enforceRateLimit } from '../shared/rate-limit';
 import {
   AccessDeniedError,
   checkSessionActive,
@@ -84,13 +87,18 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
       if (typeof token !== 'string' || token.length === 0) {
         return next(new Error('unauthenticated'));
       }
-      verifyAccessToken(this.jwt, token)
+      // Each accepted handshake costs ~3 DB reads; cap attempts per IP before doing them.
+      enforceRateLimit(`rl:ws:connect:${socket.handshake.address}`, 60, 60_000)
+        .then(() => verifyAccessToken(this.jwt, token))
         .then((user) => {
           (socket as AppSocket).data.user = user;
           void socket.join(userRoom(user.sub));
           next();
         })
         .catch((error: unknown) => {
+          if (error instanceof HttpException && error.getStatus() === 429) {
+            return next(new Error('rate_limited'));
+          }
           next(new Error(error instanceof AccessDeniedError ? error.reason : 'unauthenticated'));
         });
     });
@@ -147,12 +155,27 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
   ): Promise<Ack<{ matchId: string; version: number; status: string }>> {
     try {
       const { matchId } = subscribeSchema.parse(body);
-      const { match } = await this.matches.access(matchId, socket.data.user);
+      await enforceRateLimit(`rl:ws:subscribe:${socket.data.user.sub}`, 60, 60_000);
+      const { match, isParticipant } = await this.matches.access(matchId, socket.data.user);
       const joined = [...socket.rooms].filter((r) => r.startsWith('match:')).length;
       if (!socket.rooms.has(matchRoom(matchId)) && joined >= MAX_MATCH_ROOMS) {
         return { ok: false, error: 'Too many match subscriptions', status: 429 };
       }
+      const alreadyJoined = socket.rooms.has(matchRoom(matchId));
       await socket.join(matchRoom(matchId));
+      // Staff in a match room receive the live chat: audit it like the HTTP evidence read
+      // (TA: every admin action is audited). Once per socket per match.
+      if (!isParticipant && !alreadyJoined) {
+        await db.insert(schema.auditLog).values({
+          id: uuidv7(),
+          actorId: socket.data.user.sub,
+          action: 'chat.live_read_as_staff',
+          objectType: 'match',
+          objectId: matchId,
+          after: { socketId: socket.id, role: socket.data.user.role },
+          ip: socket.handshake.address ?? null,
+        });
+      }
       // Current state in the ack, so a (re)subscribing client never misses a transition
       // that happened while it was disconnected.
       return { ok: true, data: { matchId, version: match.version, status: match.status } };

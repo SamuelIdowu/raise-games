@@ -141,7 +141,15 @@ Screens: landing → phone entry + OTP → username → pick games → add game 
 - [x] F2.9 Inbox with catalog simulation + preferences; Messages tab behind disabled flag
 - [x] F2.10 Owner answers recorded: restricted DMs `[decision: disabled]` / play-credit rehearsal `[decision: disabled]` (feature flags added)
 - [ ] F2.11 8–10 player sessions run; findings filed as issues; three target flows pass testing
-- [ ] UX doc "Open decisions" driven to closure (auto-confirm copy, reputation badge, leaderboard names, Stage 2 board notes)
+- [x] UX doc "Open decisions" driven to closure (auto-confirm copy, reputation badge, leaderboard names, Stage 2 board notes): see `docs/decisions/0003-ux-open-decisions.md`
 - [~] Testing block complete incl. player-session summaries (Storybook visual + a11y tests pass; Next.js route testing requires dev server setup)
-- [ ] Audit block done; zero design drift findings open
+- [x] Audit block done; zero design drift findings open (re-audit 2026-11-16 below; player-session findings, if any, will be filed when F2.11 runs)
 - [ ] Sprint closed via `ship` → **Delivery Plan M1 exit met**
+
+## Re-audit (2026-11-16)
+
+- **Design drift** (Design §4–§8 against shipped screens): three findings, all fixed. App shell header `backdrop-blur` → solid surface; timeline pill bar and round step markers → 2px radius. No other pill shapes; the remaining circles are status dots and the spinner.
+- **Accessibility on assembled flows:** a static scan of every interactive control found the three leaderboard filter selects without an accessible name (fixed with labels). The profile's per-game tabs were inert and had no tab semantics (fixed in Sprint 4's re-audit). Every other input is labelled or wrapped in a label.
+- **Content audit:** no casino vocabulary (bet, wager, jackpot, odds, gamble) anywhere in the web app.
+- **Feature flags:** `restrictedDms` and `playCredits` are both off, confirmed by decision 0003.
+- **Still open: F2.11 player sessions.** These need 8–10 real players and cannot be replaced by desk research. Until they run, the testing block stays `[~]` and the M1 exit cannot be claimed. Suggested protocol: the three target flows (sign up and add a game ID; post and accept a challenge; submit and confirm a result), on low-end Android over throttled 3G, with findings filed as issues.

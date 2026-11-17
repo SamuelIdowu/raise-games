@@ -12,6 +12,7 @@ import { StorageModule } from './storage/storage.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { PlayersModule } from './players/players.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { RatingsModule } from './ratings/ratings.module';
 import { ReportsModule } from './reports/reports.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { HealthController } from './health/health.controller';
@@ -53,6 +54,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     MatchesModule,
     ChatModule,
     DisputesModule,
+    RatingsModule,
     RealtimeModule,
   ],
   controllers: [HealthController],

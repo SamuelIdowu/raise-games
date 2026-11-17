@@ -16,7 +16,7 @@ import {
 } from '@raise/game-configs/results';
 import { db, schema } from '../db/client';
 import type { Tx } from '../db/tx';
-import { containsBlockedTerm } from '../shared/content-filter';
+import { runKeywordFilter } from '../chat/keyword-filter';
 import { SUBMITTABLE_MATCH_STATES } from '../uploads/uploads.service';
 import { postSystemMessage } from './match-chat';
 import { MatchesService, type MatchViewDto } from './matches.service';
@@ -63,6 +63,8 @@ export const MATCH_MESSAGES = {
   proofInvalid: 'That screenshot cannot be used. Upload it again.',
   nothingToConfirm: 'Your opponent has not submitted a result yet.',
   noteBlocked: 'Remove offensive words from the note.',
+  noteContact: 'Notes cannot include phone numbers or contact handles.',
+  noteMoney: 'Notes cannot include payment details.',
   disputeSystemMessage:
     'The submitted results do not match, so a dispute has been opened. A moderator will review both submissions and this chat.',
   noShowDisputeMessage:
@@ -112,9 +114,10 @@ export class ResultsService {
       .where(and(eq(schema.matchSides.userId, viewer.sub), statusFilter))
       .orderBy(desc(schema.matches.updatedAt))
       .limit(query.limit);
-    const views: MatchViewDto[] = [];
-    for (const row of rows) views.push(await this.matches.getView(row.id, viewer));
-    return views;
+    return this.matches.getViewsForParticipant(
+      rows.map((r) => r.id),
+      viewer,
+    );
   }
 
   // --------------------------------------------------------------- writes
@@ -128,26 +131,28 @@ export class ResultsService {
     if (replay) return replay;
     this.assertNote(input.note);
 
-    return this.writeSubmission(matchId, userId, async (tx, ctx, mine) => {
-      const validation = validateResult(ctx.resultSchema, input.outcome, input.score);
-      if (!validation.ok) throw new BadRequestException(RESULT_ERROR_MESSAGES[validation.error]);
+    return this.withReplay(input.idempotencyKey, userId, () =>
+      this.writeSubmission(matchId, userId, async (tx, ctx, mine) => {
+        const validation = validateResult(ctx.resultSchema, input.outcome, input.score);
+        if (!validation.ok) throw new BadRequestException(RESULT_ERROR_MESSAGES[validation.error]);
 
-      const needsProof = ctx.requiredProof.includes('screenshot');
-      if (needsProof && !input.uploadId)
-        throw new BadRequestException(MATCH_MESSAGES.proofRequired);
-      if (input.uploadId)
-        await this.assertUsableUpload(tx, input.uploadId, userId, matchId, 'result_proof');
+        const needsProof = ctx.requiredProof.includes('screenshot');
+        if (needsProof && !input.uploadId)
+          throw new BadRequestException(MATCH_MESSAGES.proofRequired);
+        if (input.uploadId)
+          await this.assertUsableUpload(tx, input.uploadId, userId, matchId, 'result_proof');
 
-      return {
-        kind: 'result',
-        outcome: input.outcome,
-        score: input.score as ScorePayload,
-        uploadId: input.uploadId ?? null,
-        note: input.note || null,
-        idempotencyKey: input.idempotencyKey,
-        side: mine,
-      };
-    });
+        return {
+          kind: 'result',
+          outcome: input.outcome,
+          score: input.score as ScorePayload,
+          uploadId: input.uploadId ?? null,
+          note: input.note || null,
+          idempotencyKey: input.idempotencyKey,
+          side: mine,
+        };
+      }),
+    );
   }
 
   async reportNoShow(
@@ -159,21 +164,23 @@ export class ResultsService {
     if (replay) return replay;
     this.assertNote(input.note);
 
-    return this.writeSubmission(matchId, userId, async (tx, ctx, mine) => {
-      if (Date.now() < ctx.startsAt.getTime() + NO_SHOW_GATE_MS) {
-        throw new ConflictException(MATCH_MESSAGES.noShowTooEarly);
-      }
-      await this.assertUsableUpload(tx, input.uploadId, userId, matchId, 'no_show_proof');
-      return {
-        kind: 'no_show',
-        outcome: 'no_show',
-        score: null,
-        uploadId: input.uploadId,
-        note: input.note || null,
-        idempotencyKey: input.idempotencyKey,
-        side: mine,
-      };
-    });
+    return this.withReplay(input.idempotencyKey, userId, () =>
+      this.writeSubmission(matchId, userId, async (tx, ctx, mine) => {
+        if (Date.now() < ctx.startsAt.getTime() + NO_SHOW_GATE_MS) {
+          throw new ConflictException(MATCH_MESSAGES.noShowTooEarly);
+        }
+        await this.assertUsableUpload(tx, input.uploadId, userId, matchId, 'no_show_proof');
+        return {
+          kind: 'no_show',
+          outcome: 'no_show',
+          score: null,
+          uploadId: input.uploadId,
+          note: input.note || null,
+          idempotencyKey: input.idempotencyKey,
+          side: mine,
+        };
+      }),
+    );
   }
 
   async confirmResult(
@@ -184,20 +191,22 @@ export class ResultsService {
     const replay = await this.replay(input.idempotencyKey, userId);
     if (replay) return replay;
 
-    return this.writeSubmission(matchId, userId, async (_tx, ctx, mine) => {
-      const theirs = ctx.submissions.find((s) => s.matchSideId !== mine.id);
-      if (!theirs) throw new ConflictException(MATCH_MESSAGES.nothingToConfirm);
-      const mirror = mirrorOf(toSide(theirs, ctx.sides));
-      return {
-        kind: 'confirmation',
-        outcome: mirror.outcome,
-        score: mirror.score,
-        uploadId: null,
-        note: null,
-        idempotencyKey: input.idempotencyKey,
-        side: mine,
-      };
-    });
+    return this.withReplay(input.idempotencyKey, userId, () =>
+      this.writeSubmission(matchId, userId, async (_tx, ctx, mine) => {
+        const theirs = ctx.submissions.find((s) => s.matchSideId !== mine.id);
+        if (!theirs) throw new ConflictException(MATCH_MESSAGES.nothingToConfirm);
+        const mirror = mirrorOf(toSide(theirs, ctx.sides));
+        return {
+          kind: 'confirmation',
+          outcome: mirror.outcome,
+          score: mirror.score,
+          uploadId: null,
+          note: null,
+          idempotencyKey: input.idempotencyKey,
+          side: mine,
+        };
+      }),
+    );
   }
 
   /**
@@ -568,9 +577,41 @@ export class ResultsService {
     if (used) throw new BadRequestException(MATCH_MESSAGES.proofInvalid);
   }
 
+  /**
+   * Same filter as match chat (one list, one version), stricter policy: chat flags for
+   * moderators, but a result note is evidence shown to the opponent, so it is refused.
+   */
   private assertNote(note: string | undefined) {
-    if (note && containsBlockedTerm(note))
+    if (!note) return;
+    const { categories } = runKeywordFilter(note);
+    if (categories.includes('profanity') || categories.includes('local')) {
       throw new BadRequestException(MATCH_MESSAGES.noteBlocked);
+    }
+    if (categories.includes('off_platform_contact')) {
+      throw new BadRequestException(MATCH_MESSAGES.noteContact);
+    }
+    if (categories.includes('money_solicitation')) {
+      throw new BadRequestException(MATCH_MESSAGES.noteMoney);
+    }
+  }
+
+  /**
+   * Two concurrent retries with the same key both miss the replay check, then one waits on
+   * the match lock and fails ("already submitted" or the unique key). If the winner's row
+   * now exists under this key, return it instead of the error.
+   */
+  private async withReplay(
+    idempotencyKey: string,
+    userId: string,
+    write: () => Promise<SubmitOutcome>,
+  ): Promise<SubmitOutcome> {
+    try {
+      return await write();
+    } catch (error) {
+      const replay = await this.replay(idempotencyKey, userId);
+      if (replay) return replay;
+      throw error;
+    }
   }
 
   /** Idempotency: a retried request with the same key returns the original outcome. */

@@ -17,7 +17,9 @@ export class TermiiSmsAdapter implements SmsOtpPort {
         from: this.config.senderId,
         sms: `Your RAISE verification code is ${code}. It expires in 5 minutes.`,
         type: 'plain',
-        channel: 'generic',
+        // OTPs must use the DND (transactional) route. Termii: the generic route is for
+        // promotional messages and is blocked for numbers on Nigeria's DND registry.
+        channel: 'dnd',
         api_key: this.config.apiKey,
       }),
     });
