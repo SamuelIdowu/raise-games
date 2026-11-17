@@ -236,15 +236,28 @@ describe('Sprint 13 - ledger & stage 2 foundations', () => {
         WHERE a.owner_id = ${u} LIMIT 1`,
         )
         .then((r) => r.rows);
-      await expect(
-        db.execute(sql`UPDATE ledger_entries SET amount_minor = 1 WHERE id = ${entry!.id}`),
-      ).rejects.toThrow(/append-only/);
-      await expect(
-        db.execute(sql`DELETE FROM ledger_entries WHERE id = ${entry!.id}`),
-      ).rejects.toThrow(/append-only/);
-      await expect(
-        db.execute(sql`UPDATE ledger_transactions SET kind = 'adjustment' WHERE currency = ${CUR}`),
-      ).rejects.toThrow(/append-only/);
+      // Drizzle wraps driver errors ("Failed query: …"); the Postgres message is on `cause`.
+      const pgError = (p: Promise<unknown>) =>
+        p.then(
+          () => 'no error',
+          (e: { message?: string; cause?: { message?: string } }) =>
+            String(e?.cause?.message ?? e?.message),
+        );
+      expect(
+        await pgError(
+          db.execute(sql`UPDATE ledger_entries SET amount_minor = 1 WHERE id = ${entry!.id}`),
+        ),
+      ).toMatch(/ledger_entries is append-only \(UPDATE rejected\)/);
+      expect(
+        await pgError(db.execute(sql`DELETE FROM ledger_entries WHERE id = ${entry!.id}`)),
+      ).toMatch(/ledger_entries is append-only \(DELETE rejected\)/);
+      expect(
+        await pgError(
+          db.execute(
+            sql`UPDATE ledger_transactions SET kind = 'adjustment' WHERE currency = ${CUR}`,
+          ),
+        ),
+      ).toMatch(/ledger_transactions is append-only \(UPDATE rejected\)/);
     });
 
     it('the database refuses an unbalanced transaction at commit', async () => {
