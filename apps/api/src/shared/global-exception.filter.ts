@@ -29,10 +29,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
       : status >= 500
         ? 'Internal error'
         : safeMessage(exception, this.logger);
+    // A machine-readable reason (e.g. 'mfa_required') travels in `data.reason` when the
+    // exception was thrown with `{ code: '...', message }`.
+    const body = isHttp ? exception.getResponse() : null;
+    const reason =
+      body && typeof body === 'object' && typeof (body as { code?: unknown }).code === 'string'
+        ? (body as { code: string }).code
+        : null;
     response.code(status).send({
       code: status,
       status: 'fail',
-      data: null,
+      data: reason ? { reason } : null,
       message,
     });
   }

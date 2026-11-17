@@ -13,6 +13,7 @@ import { JwtAuthGuard, type AuthedRequest, type AuthedUser } from '../auth/jwt-a
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { StaffMfaGuard } from '../moderation/mfa';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { enforceRateLimit } from '../shared/rate-limit';
 import { ChatService } from './chat.service';
@@ -82,7 +83,7 @@ export class ChatController {
 
 /** Staff evidence read (F7.4). Moderator or admin; every read is audited. */
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, StaffMfaGuard)
 @Roles('moderator', 'admin')
 export class AdminChatController {
   constructor(private readonly chat: ChatService) {}

@@ -1,4 +1,5 @@
 export {
+  ApiError,
   API_BASE_URL,
   apiFetch,
   isAuthenticated,
@@ -17,6 +18,7 @@ export { playersApi } from './players';
 export { reportsApi } from './reports';
 export { matchesApi, isParticipantView } from './matches';
 export { leaderboardsApi } from './leaderboards';
+export { adminApi } from './admin';
 export { chatApi } from './chat';
 export { uploadsApi } from './uploads';
 export { disputesApi } from './disputes';
@@ -73,3 +75,18 @@ export type {
   NotificationSettings,
   NotificationType,
 } from './notifications';
+export type {
+  AdminUserDetail,
+  AdminUserRow,
+  AuditRow,
+  Dashboard,
+  DisputeViewer,
+  LadderPreview,
+  MfaStatus,
+  QueueItem,
+  QueueState,
+  ReportItem,
+  Sla,
+  Standing,
+  ViewerPlayer,
+} from './admin';

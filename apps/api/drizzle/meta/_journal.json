@@ -85,6 +85,13 @@
       "when": 1794871781656,
       "tag": "0011_sprint11_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794919043666,
+      "tag": "0012_sprint12_trust_ops",
+      "breakpoints": true
     }
   ]
 }

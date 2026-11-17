@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { and, eq, isNull, lte, gt, or } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import { env } from '../config/env.instance';
 import { db, schema } from '../db/client';
@@ -55,6 +55,9 @@ export async function checkSessionActive(userId: string, sessionId: string): Pro
 
   if (!user || user.deletedAt) throw new AccessDeniedError('inactive');
 
+  // Only bans block the account (Sprint 12 ladder). A suspended player keeps access so
+  // they can see when it ends and finish current matches; play is blocked elsewhere
+  // (moderation/standing.service).
   const now = new Date();
   const [sanction] = await db
     .select({ id: schema.sanctions.id })
@@ -62,6 +65,7 @@ export async function checkSessionActive(userId: string, sessionId: string): Pro
     .where(
       and(
         eq(schema.sanctions.userId, user.id),
+        inArray(schema.sanctions.type, ['permanent_ban', 'temporary_ban']),
         isNull(schema.sanctions.revokedAt),
         lte(schema.sanctions.startsAt, now),
         or(isNull(schema.sanctions.endsAt), gt(schema.sanctions.endsAt, now)),
@@ -126,7 +130,7 @@ export class JwtAuthGuard implements CanActivate {
         case 'inactive':
           throw new UnauthorizedException('Account is not active');
         case 'suspended':
-          throw new ForbiddenException('Account is suspended');
+          throw new ForbiddenException('This account has been closed');
         case 'session_expired':
           throw new UnauthorizedException('Session expired');
         default:

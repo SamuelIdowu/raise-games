@@ -14,6 +14,7 @@ import { canonicalPair, ratingGapBetween } from './pairing';
 import { scheduleChallengeExpiry, cancelChallengeExpiry } from './challenges.queue';
 import type { BoardQuery, CreateChallengeRequest } from './challenges.schemas';
 import { v7 as uuidv7 } from 'uuid';
+import { assertCanPlay } from '../moderation/standing';
 
 interface BoardCursor {
   createdAt: string;
@@ -231,21 +232,8 @@ export class ChallengesService {
     if ((openCount[0]?.value ?? 0) >= 5)
       throw new BadRequestException('Maximum 5 open challenges allowed');
 
-    // Check for sanctions
-    const sanction = await db
-      .select({ id: schema.sanctions.id })
-      .from(schema.sanctions)
-      .where(
-        and(
-          eq(schema.sanctions.userId, posterId),
-          eq(schema.sanctions.type, 'suspension'),
-          lt(schema.sanctions.startsAt, new Date()),
-          or(isNull(schema.sanctions.endsAt), gt(schema.sanctions.endsAt, new Date())),
-          isNull(schema.sanctions.revokedAt),
-        ),
-      )
-      .limit(1);
-    if (sanction[0]) throw new ForbiddenException('Account suspended');
+    // Sanctions and fraud auto-limits (Sprint 12): suspended or limited players cannot post.
+    await assertCanPlay(posterId);
 
     const acceptanceDeadline = new Date(Date.now() + ACCEPTANCE_WINDOW_MS);
     const id = uuidv7();
@@ -438,6 +426,8 @@ export class ChallengesService {
     }
     if (c.status !== 'open') throw new ConflictException('Challenge is not open');
     if (c.acceptanceDeadline <= new Date()) throw new ConflictException('Challenge has expired');
+    // Sprint 12: suspended or auto-limited players cannot accept either.
+    await assertCanPlay(acceptorId);
 
     const profiles = await db
       .select({ id: schema.gameProfiles.id, userId: schema.gameProfiles.userId })

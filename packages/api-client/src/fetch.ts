@@ -76,9 +76,14 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(
-      (error as { message?: string }).message ?? `Request failed with status ${res.status}`,
+    const error = (await res.json().catch(() => ({ message: res.statusText }))) as {
+      message?: string;
+      data?: { reason?: string } | null;
+    };
+    throw new ApiError(
+      error.message ?? `Request failed with status ${res.status}`,
+      res.status,
+      error.data?.reason ?? null,
     );
   }
 
@@ -91,3 +96,15 @@ export function isAuthenticated(): boolean {
 }
 
 export { getAccessToken, getRefreshToken, setTokens, clearTokens };
+
+/** Failed API call. `reason` is a machine-readable code when the API sends one (e.g. 'mfa_required'). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly reason: string | null,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}

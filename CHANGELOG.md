@@ -4,6 +4,14 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 12 — Trust & operations
+
+- Moderator console at `/admin`: dashboard (queue, SLA, stuck matches, success metrics), dispute queue with claiming and a 24-hour SLA clock, and a dispute viewer with screenshots, hash flags, chat transcript, player history, reason templates and a confirm-before-apply ruling.
+- Staff accounts need two-factor (authenticator app); sensitive actions ask for a fresh code.
+- Sanction ladder: warning → 7-day → 30-day suspension → permanent ban. Suspended players keep their account but cannot start new challenges; a ban signs them out everywhere. Players are told in plain language.
+- Fraud signals: reused and near-duplicate screenshots, win-trading risk, shared devices, repeat pairings. Repeated late cancels, reused screenshots, upheld reports or lost disputes pause new challenges until a moderator reviews.
+- Reports queue with bulk actions; player records with masked phones; feature flags, game format pausing and an audit log viewer.
+
 ### Sprint 11 — Notifications & Inbox
 
 - Every Stage 1 notification type is live: challenges (received, accepted, declined, expiring),

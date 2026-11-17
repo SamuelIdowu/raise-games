@@ -117,6 +117,8 @@ describe('Sprint 7 - match room, gateway & chat', () => {
       displayName: name,
       role,
       tosVersionAccepted: '1.0',
+      // Sprint 12: staff routes need MFA; staff fixtures are enrolled and verified.
+      mfaEnabledAt: role === 'player' ? null : new Date(),
     });
     userIds.push(id);
     const profileId = uuidv7();
@@ -134,6 +136,7 @@ describe('Sprint 7 - match room, gateway & chat', () => {
       userId: id,
       refreshTokenHash: `test-${sid}`,
       expiresAt: new Date(Date.now() + 3600_000),
+      mfaVerifiedAt: role === 'player' ? null : new Date(),
     });
     sessionIds.push(sid);
     const token = await jwt.signAsync({ sub: id, sid });

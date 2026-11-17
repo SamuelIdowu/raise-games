@@ -53,6 +53,12 @@ export const users = pgTable(
     ageVerificationStatus: ageStatusEnum('age_verification_status').notNull().default('pending'),
     role: roleEnum('role').notNull().default('player'),
     tosVersionAccepted: text('tos_version_accepted'),
+    /** Sprint 12: staff TOTP secret, AES-256-GCM encrypted (shared/secret-box). */
+    mfaSecretEnc: text('mfa_secret_enc'),
+    /** Set once the first TOTP code verifies; staff routes require it. */
+    mfaEnabledAt: timestamp('mfa_enabled_at', { withTimezone: true }),
+    /** Fraud signals before this time no longer count toward auto-limits (moderator clear). */
+    fraudClearedAt: timestamp('fraud_cleared_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -69,6 +75,13 @@ export const sanctions = pgTable(
       .references(() => users.id),
     type: sanctionTypeEnum('type').notNull().default('suspension'),
     reason: text('reason').notNull(),
+    /** Sprint 12 ladder step (1 warning, 2 = 7 days, 3 = 30 days, 4 = permanent ban). */
+    step: integer('step'),
+    /** dispute | report | manual | bulk | auto */
+    source: text('source').notNull().default('manual'),
+    sourceId: uuid('source_id'),
+    issuedById: uuid('issued_by_id').references(() => users.id),
+    revokedById: uuid('revoked_by_id').references(() => users.id),
     startsAt: timestamp('starts_at', { withTimezone: true }).notNull().defaultNow(),
     endsAt: timestamp('ends_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
@@ -93,6 +106,8 @@ export const sessions = pgTable(
     deviceId: text('device_id'),
     userAgent: text('user_agent'),
     ip: text('ip'),
+    /** Sprint 12: last TOTP check on this session's refresh family (staff step-up). */
+    mfaVerifiedAt: timestamp('mfa_verified_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
@@ -520,10 +535,14 @@ export const disputes = pgTable(
     ruledAt: timestamp('ruled_at', { withTimezone: true }),
     appealedAt: timestamp('appealed_at', { withTimezone: true }),
     finalAt: timestamp('final_at', { withTimezone: true }),
+    /** Sprint 12 queue: the moderator who claimed it (optimistic, one claimant). */
+    assignedToId: uuid('assigned_to_id').references(() => users.id),
+    assignedAt: timestamp('assigned_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    index('disputes_assigned_idx').on(t.assignedToId, t.status),
     /** One dispute per match: auto-opened conflicts and player disputes share it. */
     uniqueIndex('disputes_match_uq').on(t.matchId),
     index('disputes_raised_by_idx').on(t.raisedById),
@@ -646,7 +665,11 @@ export const reports = pgTable(
     subjectId: uuid('subject_id').notNull(),
     reason: text('reason').notNull(),
     note: text('note'),
+    /** open | dismissed | actioned */
     status: text('status').notNull().default('open'),
+    resolvedById: uuid('resolved_by_id').references(() => users.id),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolution: text('resolution'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -999,4 +1022,42 @@ export const pushSubscriptions = pgTable(
     uniqueIndex('push_subscriptions_endpoint_uq').on(t.endpoint),
     index('push_subscriptions_user_idx').on(t.userId),
   ],
+);
+
+/**
+ * Sprint 12 (F12.3): reputation debts from late cancels and no-show forfeits
+ * (`reputation.debt` outbox events, Sprints 6 and 8). Feeds reputation and auto-limits.
+ */
+export const reputationDebts = pgTable(
+  'reputation_debts',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    /** late_cancel | no_show | … (the event's reason) */
+    reason: text('reason').notNull(),
+    matchId: uuid('match_id'),
+    /** Outbox event id: one debt per event. */
+    sourceEventId: uuid('source_event_id').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('reputation_debts_user_idx').on(t.userId, t.createdAt)],
+);
+
+/** Sprint 12 (F12.2): internal moderator notes on a dispute. Never shown to players. */
+export const moderatorNotes = pgTable(
+  'moderator_notes',
+  {
+    id: uuid('id').primaryKey(),
+    disputeId: uuid('dispute_id')
+      .notNull()
+      .references(() => disputes.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id')
+      .notNull()
+      .references(() => users.id),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('moderator_notes_dispute_idx').on(t.disputeId, t.createdAt)],
 );

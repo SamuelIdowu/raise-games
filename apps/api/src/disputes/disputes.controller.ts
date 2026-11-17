@@ -15,6 +15,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, type AuthedUser } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { StaffMfaGuard } from '../moderation/mfa';
 import { enforceRateLimit } from '../shared/rate-limit';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import {
@@ -109,7 +110,7 @@ export class DisputesController {
  * Moderator operations. Sprint 12 builds the queue UI on top; every action is audited.
  */
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, StaffMfaGuard)
 @Roles('moderator', 'admin')
 export class AdminDisputesController {
   constructor(private readonly disputes: DisputesService) {}

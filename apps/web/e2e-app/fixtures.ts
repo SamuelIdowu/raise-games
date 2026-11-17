@@ -1,4 +1,4 @@
-import { randomBytes, randomInt } from 'node:crypto';
+import { createHmac, randomBytes, randomInt } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import pg from 'pg';
 import type { BrowserContext } from '@playwright/test';
@@ -174,12 +174,82 @@ export function uniquePng(
   };
 }
 
-/** Promotes a fixture player to moderator (Sprint 9 rulings; the admin UI is Sprint 12). */
-export async function makeModerator(player: Player): Promise<void> {
+/**
+ * Promotes a fixture player to moderator. Staff routes need MFA (Sprint 12), so by default
+ * the account is marked enrolled and its sessions verified; pass `{ mfa: false }` to leave
+ * MFA for the test to set up through the admin UI.
+ */
+export async function makeModerator(player: Player, opts: { mfa?: boolean } = {}): Promise<void> {
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
   try {
     await client.query(`UPDATE users SET role = 'moderator' WHERE id = $1`, [player.userId]);
+    if (opts.mfa !== false) {
+      await client.query(`UPDATE users SET mfa_enabled_at = now() WHERE id = $1`, [player.userId]);
+      await client.query(`UPDATE sessions SET mfa_verified_at = now() WHERE user_id = $1`, [
+        player.userId,
+      ]);
+    }
+  } finally {
+    await client.end();
+  }
+}
+
+/** RFC 6238 TOTP (SHA-1, 30s, 6 digits) from a base32 secret, as an authenticator app would. */
+export function totp(secretB32: string, atMs = Date.now()): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const ch of secretB32.replace(/\s+/g, '').toUpperCase()) {
+    value = (value << 5) | alphabet.indexOf(ch);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(atMs / 30_000)));
+  const mac = createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
+  const o = mac[mac.length - 1]! & 15;
+  const code = ((mac[o]! & 127) << 24) | (mac[o + 1]! << 16) | (mac[o + 2]! << 8) | mac[o + 3]!;
+  return (code % 1_000_000).toString().padStart(6, '0');
+}
+
+/** A disputed match between two fixture players, opened by `b` (Sprint 12 seeded dispute). */
+export async function seedDispute(
+  a: Player,
+  b: Player,
+): Promise<{ matchId: string; disputeId: string }> {
+  const matchId = await createStartedMatch(a, b);
+  const client = new pg.Client({ connectionString: DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE matches SET status = 'disputed', disputed_at = now() WHERE id = $1`,
+      [matchId],
+    );
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO disputes (id, match_id, raised_by_id, source, reason, category, detail, status)
+       VALUES (gen_random_uuid(), $1, $2, 'player', 'wrong_winner', 'wrong_winner', 'They reported the wrong winner.', 'open')
+       RETURNING id`,
+      [matchId, b.userId],
+    );
+    return { matchId, disputeId: rows[0]!.id };
+  } finally {
+    await client.end();
+  }
+}
+
+export async function query<T extends Record<string, unknown>>(
+  sql: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const client = new pg.Client({ connectionString: DATABASE_URL });
+  await client.connect();
+  try {
+    return (await client.query<T>(sql, params)).rows;
   } finally {
     await client.end();
   }

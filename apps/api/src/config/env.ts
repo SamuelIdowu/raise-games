@@ -57,6 +57,11 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default('RAISE <no-reply@raise.gg>'),
   /** Absolute web origin used in push/email deep links. */
   APP_URL: z.string().default('http://localhost:3000'),
+  /**
+   * Sprint 12: 32-byte base64 key that encrypts staff TOTP secrets at rest. Required
+   * outside development/test (dev/test derive one from JWT_ACCESS_SECRET).
+   */
+  MFA_ENCRYPTION_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -70,6 +75,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const { OTP_MOCK_ENABLED: otpMock, NODE_ENV: env, ...rest } = parsed.data;
   if (otpMock && env !== 'development' && env !== 'test') {
     throw new Error('OTP_MOCK_ENABLED=true is only allowed in development/test — refusing to boot');
+  }
+  if (!rest.MFA_ENCRYPTION_KEY && env !== 'development' && env !== 'test') {
+    throw new Error('MFA_ENCRYPTION_KEY is required outside development/test — refusing to boot');
   }
   return { NODE_ENV: env, OTP_MOCK_ENABLED: otpMock, ...rest };
 }
