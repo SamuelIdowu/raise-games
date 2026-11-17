@@ -29,6 +29,7 @@ import {
   type UpdateMe,
 } from './auth.schemas';
 import { verifyTurnstileToken } from './turnstile';
+import { enforceRateLimit } from '../shared/rate-limit';
 
 @Controller('auth')
 export class AuthController {
@@ -61,6 +62,8 @@ export class AuthController {
     @Body(new ZodValidationPipe(otpVerifySchema)) body: OtpVerify,
     @Req() req: FastifyRequest,
   ) {
+    // Per-IP cap across phones (the per-phone cap is the attempt budget in the service).
+    await enforceRateLimit(`otp:rate:ip:verify:${req.ip ?? 'unknown'}`, 30, 10 * 60_000);
     const ua = Array.isArray(req.headers['user-agent'])
       ? req.headers['user-agent'][0]
       : req.headers['user-agent'];

@@ -53,7 +53,7 @@ describe('Sprint 3/4 Integration Tests', () => {
   async function clearRedisForPhone(phone: string) {
     try {
       await ensureRedis();
-      const keys = [`otp:pending:${phone}`, `otp:resend:${phone}`];
+      const keys = [`otp:pending:${phone}`, `otp:resend:${phone}`, `otp:attempts:${phone}`];
       if (keys.length > 0) {
         await redis.del(...keys);
       }
@@ -192,6 +192,24 @@ describe('Sprint 3/4 Integration Tests', () => {
       for (let i = 0; i < 5; i++) {
         await authService.verifyOtp(phone, '111111', { userAgent: 'test', ip });
       }
+      const result = await authService.verifyOtp(phone, '000000', { userAgent: 'test', ip });
+      expect(result).toBeNull();
+    });
+
+    it('parallel wrong guesses cannot exceed the 5-attempt budget', async () => {
+      const phone = uniquePhone();
+      const ip = '127.0.0.1';
+      await clearRedisForPhone(phone);
+      await clearPhoneRateLimit(phone);
+      await clearIpRateLimit(ip);
+
+      await authService.requestOtp(phone, ip, 'test-agent');
+      // All fired at once: a non-atomic counter would let every one read "0 attempts".
+      await Promise.all(
+        Array.from({ length: 20 }, () =>
+          authService.verifyOtp(phone, '111111', { userAgent: 'test', ip }),
+        ),
+      );
       const result = await authService.verifyOtp(phone, '000000', { userAgent: 'test', ip });
       expect(result).toBeNull();
     });

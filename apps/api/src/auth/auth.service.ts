@@ -28,7 +28,6 @@ import type { UpdateMe } from './auth.schemas';
 
 interface PendingOtp {
   codeHash: string;
-  attempts: number;
 }
 
 interface SessionMeta {
@@ -46,6 +45,7 @@ const WINDOW_MS = 10 * 60 * 1000;
 
 const pendingKey = (phone: string) => `otp:pending:${phone}`;
 const resendKey = (phone: string) => `otp:resend:${phone}`;
+const attemptsKey = (phone: string) => `otp:attempts:${phone}`;
 const phoneRateKey = (phone: string) => `otp:rate:phone:${phone}`;
 const ipRateKey = (ip: string) => `otp:rate:ip:${ip}`;
 
@@ -71,11 +71,12 @@ export class AuthService {
 
     const code = env.OTP_MOCK_ENABLED ? '000000' : randomCode();
     const codeHash = await hash(code);
-    const entry: PendingOtp = { codeHash, attempts: 0 };
+    const entry: PendingOtp = { codeHash };
 
     await this.withRedis(async () => {
       await redis.set(pendingKey(phone), JSON.stringify(entry), 'PX', OTP_TTL_MS);
       await redis.set(resendKey(phone), '1', 'PX', OTP_RESEND_COOLDOWN_MS);
+      await redis.del(attemptsKey(phone)); // a new code gets a fresh attempt budget
     });
 
     try {
@@ -115,21 +116,20 @@ export class AuthService {
       if (!raw) return { status: 'missing' as const };
 
       const entry = JSON.parse(raw) as PendingOtp;
-      if (entry.attempts >= OTP_MAX_ATTEMPTS) {
-        await redis.del(key);
+      // Claim an attempt atomically *before* checking the code. A read-modify-write of a
+      // counter in the entry let parallel guesses all read the same count, so the cap
+      // could be bypassed by sending many guesses at once.
+      const used = await redis.incr(attemptsKey(phone));
+      if (used === 1) await redis.pexpire(attemptsKey(phone), OTP_TTL_MS);
+      if (used > OTP_MAX_ATTEMPTS) {
+        await redis.del(key, attemptsKey(phone));
         return { status: 'locked' as const };
       }
 
       const ok = env.OTP_MOCK_ENABLED ? code === '000000' : await verify(entry.codeHash, code);
-      if (!ok) {
-        entry.attempts += 1;
-        const ttl = await redis.pttl(key);
-        if (ttl > 0) await redis.set(key, JSON.stringify(entry), 'PX', ttl);
-        else await redis.del(key);
-        return { status: 'invalid' as const };
-      }
+      if (!ok) return { status: 'invalid' as const };
 
-      await redis.del(key);
+      await redis.del(key, attemptsKey(phone));
       return { status: 'ok' as const };
     });
 

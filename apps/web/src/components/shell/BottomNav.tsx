@@ -34,7 +34,7 @@ export function NavBadge({ count, label }: { count: number; label: string }) {
   if (count <= 0) return null;
   return (
     <span
-      className="absolute -right-2 -top-1 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-on-accent tabular"
+      className="absolute -right-2 -top-1 min-w-4 rounded-sm bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-on-accent tabular"
       aria-label={`${count} ${label}`}
     >
       {count > 99 ? '99+' : count}
