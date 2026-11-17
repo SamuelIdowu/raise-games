@@ -35,7 +35,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm turbo run lint --filter=./...
+        run: pnpm turbo run lint
 
   typecheck:
     name: Typecheck / typecheck
@@ -59,7 +59,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: pnpm turbo run typecheck --filter=./...
+        run: pnpm turbo run typecheck
 
   build:
     name: Build / build
@@ -84,7 +84,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
-        run: pnpm turbo run build --filter=./...
+        run: pnpm turbo run build
 
   test:
     name: Test / test
@@ -166,7 +166,7 @@ jobs:
         run: pnpm --filter @raise/api db:seed
 
       - name: Run tests
-        run: pnpm turbo run test --filter=./...
+        run: pnpm turbo run test
 
   e2e:
     name: E2E / two-browser
