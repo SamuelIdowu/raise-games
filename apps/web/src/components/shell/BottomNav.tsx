@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { Icon, type IconName } from '@/components/ui';
 import { useBadges } from '@/lib/badges';
@@ -41,8 +42,23 @@ export function NavBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
+/**
+ * `usePathname()` is runtime data under Cache Components, so it lives behind a Suspense
+ * boundary; the fallback is the same nav with no active item (no layout shift).
+ */
 export function BottomNav() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<BottomNavView pathname="" />}>
+      <BottomNavWithPath />
+    </Suspense>
+  );
+}
+
+function BottomNavWithPath() {
+  return <BottomNavView pathname={usePathname()} />;
+}
+
+function BottomNavView({ pathname }: { pathname: string }) {
   const badges = useNavBadges();
   return (
     <nav
