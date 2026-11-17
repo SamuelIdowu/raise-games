@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createPlayer, createStartedMatch, signIn, uniquePng } from './fixtures';
+import { api, createPlayer, createStartedMatch, signIn, uniquePng, type Player } from './fixtures';
 
 /**
  * Sprint 11: a domain event becomes an in-app notification, delivered live; the unread
@@ -19,6 +19,28 @@ async function submitWin(page: Page) {
   await expect(sheet).toBeHidden();
 }
 
+/**
+ * The direct challenge behind createStartedMatch notifies the target (challenge_received)
+ * via the outbox relay. Wait for it, then mark everything read so badge counts in the test
+ * start from zero.
+ */
+async function startFromZeroUnread(player: Player) {
+  await expect
+    .poll(
+      async () =>
+        (
+          await api<{ items: { type: string }[] }>('/notifications', { token: player.accessToken })
+        ).items.some((n) => n.type === 'challenge_received'),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  await api('/notifications/read', {
+    method: 'POST',
+    token: player.accessToken,
+    body: JSON.stringify({ ids: 'all' }),
+  });
+}
+
 const inboxBadge = (page: Page) =>
   page.getByRole('navigation', { name: 'Main navigation' }).getByLabel(/\d+ unread/);
 
@@ -27,6 +49,7 @@ test.describe('Sprint 11 — notifications and inbox', () => {
     const a = await createPlayer('wale');
     const b = await createPlayer('yemi');
     const matchId = await createStartedMatch(a, b);
+    await startFromZeroUnread(b);
 
     const ctxA = await browser.newContext();
     await signIn(ctxA, a);
