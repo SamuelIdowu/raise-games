@@ -20,6 +20,7 @@ import {
   pgEnum,
   primaryKey,
   bigserial,
+  bigint,
   doublePrecision,
 } from 'drizzle-orm/pg-core';
 
@@ -192,34 +193,80 @@ export const featureFlags = pgTable(
   ],
 );
 
+/**
+ * Sprint 13 (F13.1): double-entry ledger. Entries are immutable; corrections are reversing
+ * transactions. `balance_minor` is a cache updated under row lock with every posting; the
+ * nightly check proves it equals the sum of entries and that every currency nets to zero.
+ *
+ * Account refs: `user:<id>:available`, `user:<id>:held`, `platform:fees`,
+ * `provider:<name>:clearing`. Only clearing accounts may go negative (they mirror money
+ * held outside the platform).
+ */
 export const ledgerAccounts = pgTable(
   'ledger_accounts',
   {
     id: uuid('id').primaryKey(),
     accountRef: text('account_ref').notNull(),
-    accountType: text('account_type').notNull(), // 'user', 'platform_fee', 'escrow', 'provider'
+    /** 'user_available' | 'user_held' | 'platform_fee' | 'provider_clearing' */
+    accountType: text('account_type').notNull(),
+    /** Owning user for user_* accounts. */
+    ownerId: uuid('owner_id').references(() => users.id),
     currency: text('currency').notNull(),
+    balanceMinor: bigint('balance_minor', { mode: 'number' }).notNull().default(0),
+    allowNegative: boolean('allow_negative').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('ledger_accounts_ref_currency_uq').on(t.accountRef, t.currency),
+    index('ledger_accounts_owner_idx').on(t.ownerId),
+  ],
+);
+
+/** One balanced posting. The idempotency key makes every money movement replay-safe. */
+export const ledgerTransactions = pgTable(
+  'ledger_transactions',
+  {
+    id: uuid('id').primaryKey(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    /** 'hold' | 'release' | 'refund' | 'deposit' | 'withdrawal' | 'reversal' | 'adjustment' */
+    kind: text('kind').notNull(),
+    currency: text('currency').notNull(),
+    /** What caused it, e.g. ('match', matchId) or ('provider_event', eventId). */
+    referenceType: text('reference_type'),
+    referenceId: text('reference_id'),
+    /** A reversal points at the transaction it cancels; each can be reversed once. */
+    reversesTransactionId: uuid('reverses_transaction_id'),
+    /** SHA-256 of the canonical request, so a replay with different contents is refused. */
+    requestHash: text('request_hash').notNull(),
+    meta: jsonb('meta'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('ledger_accounts_ref_currency_uq').on(t.accountRef, t.currency)],
+  (t) => [
+    uniqueIndex('ledger_transactions_idempotency_uq').on(t.idempotencyKey),
+    uniqueIndex('ledger_transactions_reverses_uq').on(t.reversesTransactionId),
+    index('ledger_transactions_reference_idx').on(t.referenceType, t.referenceId),
+  ],
 );
 
 export const ledgerEntries = pgTable(
   'ledger_entries',
   {
     id: uuid('id').primaryKey(),
+    transactionId: uuid('transaction_id')
+      .notNull()
+      .references(() => ledgerTransactions.id),
     accountId: uuid('account_id')
       .notNull()
       .references(() => ledgerAccounts.id),
-    amountMinor: integer('amount_minor').notNull(), // signed; sums to zero across an idempotent transfer group
-    entryType: text('entry_type').notNull(), // 'hold', 'release', 'refund', 'fee', 'transfer'
-    idempotencyKey: text('idempotency_key').notNull(),
-    meta: jsonb('meta'),
+    /** Signed minor units, non-zero. A transaction's entries sum to zero (DB-enforced). */
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('ledger_entries_idempotency_uq').on(t.idempotencyKey),
     index('ledger_entries_account_idx').on(t.accountId),
+    index('ledger_entries_transaction_idx').on(t.transactionId),
   ],
 );
 
@@ -414,17 +461,105 @@ export const matches = pgTable(
     winnerSide: integer('winner_side'),
     /** How the match was decided: agreement | auto_timeout | no_show_conceded | no_show_timeout. */
     decidedVia: text('decided_via'),
+    /** Sprint 13 (F13.5): Stage 3 bracket/competition slot; null for 1v1 challenges. */
+    competitionId: uuid('competition_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex('matches_challenge_id_uq').on(t.challengeId),
+    index('matches_competition_idx').on(t.competitionId),
     index('matches_status_idx').on(t.status),
     index('matches_deadline_idx').on(t.status, t.updatedAt),
     index('matches_start_idx').on(t.status, t.scheduledStartAt),
     index('matches_confirmation_deadline_idx').on(t.status, t.confirmationDeadline),
   ],
 );
+
+/** Stake held for one player of one challenge (TA "Hold"), and how it was settled. */
+export const ledgerHolds = pgTable(
+  'ledger_holds',
+  {
+    id: uuid('id').primaryKey(),
+    // Cascades: holds are bookkeeping for the challenge. Production never hard-deletes
+    // challenges, matches or users (users are soft-deleted); test purges do.
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id, { onDelete: 'cascade' }),
+    matchId: uuid('match_id').references(() => matches.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    currency: text('currency').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    /** 'held' | 'released' | 'refunded' */
+    status: text('status').notNull().default('held'),
+    holdTransactionId: uuid('hold_transaction_id').references(() => ledgerTransactions.id),
+    settleTransactionId: uuid('settle_transaction_id').references(() => ledgerTransactions.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('ledger_holds_challenge_user_uq').on(t.challengeId, t.userId),
+    index('ledger_holds_match_idx').on(t.matchId),
+  ],
+);
+
+/** F13.2: every provider webhook, stored before processing; (provider, event_id) dedupes. */
+export const providerWebhookEvents = pgTable(
+  'provider_webhook_events',
+  {
+    id: uuid('id').primaryKey(),
+    provider: text('provider').notNull(),
+    eventId: text('event_id').notNull(),
+    eventType: text('event_type').notNull(),
+    payload: jsonb('payload').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    /** 'applied' | 'ignored' | 'failed: <reason>' */
+    outcome: text('outcome'),
+  },
+  (t) => [uniqueIndex('provider_webhook_events_uq').on(t.provider, t.eventId)],
+);
+
+/**
+ * F13.3: stake caps as data. scope 'tier' keys by identity tier; scope 'restriction' keys
+ * by an account restriction (e.g. 'fraud_limited' from F12.4). The effective cap is the
+ * lowest active rule that applies; no tier rule means no stakes (fail closed).
+ */
+export const stakeLimitRules = pgTable(
+  'stake_limit_rules',
+  {
+    id: uuid('id').primaryKey(),
+    scope: text('scope').notNull(),
+    key: text('key').notNull(),
+    currency: text('currency').notNull(),
+    maxStakeMinor: bigint('max_stake_minor', { mode: 'number' }).notNull(),
+    version: integer('version').notNull().default(1),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('stake_limit_rules_uq').on(t.scope, t.key, t.currency, t.version)],
+);
+
+/**
+ * F13.5: responsible-gaming limits and self-exclusion (TA LimitSetting). Lowering a limit
+ * applies at once; raising one waits out a cooling-off period (`pending_*`).
+ */
+export const limitSettings = pgTable('limit_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id),
+  currency: text('currency').notNull().default('NGN'),
+  dailyStakeLimitMinor: bigint('daily_stake_limit_minor', { mode: 'number' }),
+  weeklyStakeLimitMinor: bigint('weekly_stake_limit_minor', { mode: 'number' }),
+  monthlyStakeLimitMinor: bigint('monthly_stake_limit_minor', { mode: 'number' }),
+  pendingLimits: jsonb('pending_limits'),
+  pendingEffectiveAt: timestamp('pending_effective_at', { withTimezone: true }),
+  selfExcludedUntil: timestamp('self_excluded_until', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const matchSides = pgTable(
   'match_sides',
