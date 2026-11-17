@@ -104,8 +104,8 @@ The ops layer M3 calls "trust and operations": admin dashboard and dispute queue
 - [x] F12.3 Reputation engine live + badges everywhere; sanctions enforced + sessions revocation on ban; late-cancel debt resolved
 - [x] F12.4 Fraud surfaces live: reused-image hash flags, collusion signals, report queue, escalation auto-limits `[owner decision]` recorded (decision 0005)
 - [x] F12.5 Bulk ops + queue health + empty/error states
-- [ ] Moderator-seeded-dispute walkthrough e2e green; PRD M3 exit condition proven
-- [ ] Testing green; cso/differential audits closed
+- [x] Moderator-seeded-dispute walkthrough e2e green; PRD M3 exit condition proven (`e2e-app/admin.spec.ts`, CI run 44182414790 on `7abadfd`)
+- [x] Testing green; cso/differential audits closed (unit, integration and e2e green in CI run 44182414790; audit notes above)
 - [ ] `ship` close with PR + CHANGELOG
 
 ## Implementation notes (2026-11-17)
