@@ -24,9 +24,21 @@ export const createChallengeSchema = z.object({
   targetPlayerId: z.uuid().optional(),
   /** Idempotency key for safe retries. */
   idempotencyKey: z.uuid().optional(),
+  /**
+   * Sprint 13: stake in minor units + ISO 4217 currency. Zero in Stage 1 (real money is
+   * flag-gated per jurisdiction); tier caps are still enforced, which proves the wiring.
+   */
+  stakeAmountMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .default('NGN'),
 });
 
-export type CreateChallengeRequest = z.infer<typeof createChallengeSchema>;
+type ParsedCreateChallenge = z.infer<typeof createChallengeSchema>;
+/** Stake fields are optional for internal callers; the service defaults them (0, NGN). */
+export type CreateChallengeRequest = Omit<ParsedCreateChallenge, 'stakeAmountMinor' | 'currency'> &
+  Partial<Pick<ParsedCreateChallenge, 'stakeAmountMinor' | 'currency'>>;
 
 export const challengeIdParamSchema = z.object({
   id: z.uuid(),

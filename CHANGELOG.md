@@ -4,6 +4,15 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 13 — Stage 2 foundations (no player-facing change)
+
+- Double-entry ledger with holds: immutable entries, idempotent postings, row locking, and the database itself refusing unbalanced transactions. A nightly check confirms the books net to zero.
+- Wallet provider port with a mock provider. Every challenge already runs through it with a zero stake, so Stage 2 is an adapter swap plus a flag.
+- Signed, replay-safe provider webhooks.
+- Stake limits by identity tier (and zero for fraud-limited or self-excluded players) as data; real-money flags per state, all off.
+- Responsible-gaming limits and self-exclusion stored, behind a flag until Stage 2.
+- Matches carry an optional competition id for Stage 3; withdrawal, refund and payout flows designed (decision 0006).
+
 ### Sprint 12 — Trust & operations
 
 - Moderator console at `/admin`: dashboard (queue, SLA, stuck matches, success metrics), dispute queue with claiming and a 24-hour SLA clock, and a dispute viewer with screenshots, hash flags, chat transcript, player history, reason templates and a confirm-before-apply ruling.
