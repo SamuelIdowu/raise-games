@@ -100,7 +100,7 @@ Per PRD "Early technical foundations" + TA §Ledger: double-entry ledger with ho
 - [x] F13.4 Jurisdiction feature flags per-state live; default Nigeria/NGN mapping; flag toggles respected at runtime
 - [~] F13.5 competition_id column live on matches; LimitSetting fields + gated endpoints. **F3 consent closure not done**: the server-side consent gate is audit finding #2 (`audit-sprints-01-11.md`), deferred on the owner's instruction
 - [x] F13.6 Withdrawal/refund/payout state machines documented in docs/ with PRD gate language
-- [ ] Invariant evidence pack archived (fuzz runs + webhook replay + net-zero): tests written (`ledger.math.test.ts`, `sprint13.integration.test.ts`); archive the CI run once green
+- [x] Invariant evidence pack archived (fuzz runs + webhook replay + net-zero): `ledger.math.test.ts` (10,000 postings × 3 seeds) and `sprint13.integration.test.ts`, green in CI run [44196482334](https://github.com/SamuelIdowu/raise-games/actions/runs/44196482334) on `9d0b758`
 - [x] Audits pass (cso + differential, zero open critical): see Status notes
 - [ ] `ship` close with PR + CHANGELOG
 
