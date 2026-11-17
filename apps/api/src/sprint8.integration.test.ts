@@ -338,7 +338,9 @@ describe('Sprint 8 - results & verification', () => {
     it('a re-encoded copy of a used screenshot is accepted but flagged by perceptual hash', async () => {
       const first = await createMatch();
       const second = await createMatch();
-      const png = await fakeScreenshot('7 - 5', 1600, 900, '#3a0ca3');
+      // A structurally unique image: suites share one database and upload look-alike
+      // fixture screens, which could tie with the original on pHash distance.
+      const png = await sharp(await randomImage()).png().toBuffer();
       const original = await upload(
         first.a,
         first.matchId,
