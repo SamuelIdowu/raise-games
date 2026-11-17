@@ -15,6 +15,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ logger: false }),
+    // Provider webhook signatures are computed over the exact bytes received (Sprint 13).
+    { rawBody: true },
   );
 
   await app.register(helmet, { contentSecurityPolicy: false });

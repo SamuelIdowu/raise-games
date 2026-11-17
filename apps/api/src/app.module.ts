@@ -15,6 +15,7 @@ import { PlayersModule } from './players/players.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { WalletModule } from './wallet/wallet.module';
 import { ReportsModule } from './reports/reports.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { HealthController } from './health/health.controller';
@@ -59,6 +60,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     RatingsModule,
     ModerationModule,
     NotificationsModule,
+    WalletModule,
     RealtimeModule,
   ],
   controllers: [HealthController],

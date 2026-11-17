@@ -14,6 +14,13 @@ const envSchema = z.object({
     .default('true')
     .transform((v) => v === 'true'),
   SMS_PROVIDER: z.enum(['mock', 'termii', 'twilio']).default('mock'),
+  /**
+   * Sprint 13: HMAC secret for the mock wallet provider's webhooks. Unset = the mock
+   * webhook route does not exist. Refused in production (like mock OTP).
+   */
+  MOCK_PROVIDER_WEBHOOK_SECRET: z.string().min(16).optional(),
+  /** Rollout stage for feature flags ('1' until Stage 2 launches). */
+  APP_STAGE: z.enum(['1', '2', '3']).default('1'),
   SMS_API_KEY: z.string().optional(),
   SMS_SENDER_ID: z.string().optional(),
   /**
@@ -73,6 +80,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment configuration → ${issues}`);
   }
   const { OTP_MOCK_ENABLED: otpMock, NODE_ENV: env, ...rest } = parsed.data;
+  if (env === 'production' && rest.MOCK_PROVIDER_WEBHOOK_SECRET) {
+    throw new Error('MOCK_PROVIDER_WEBHOOK_SECRET is not allowed in production — refusing to boot');
+  }
   if (otpMock && env !== 'development' && env !== 'test') {
     throw new Error('OTP_MOCK_ENABLED=true is only allowed in development/test — refusing to boot');
   }
