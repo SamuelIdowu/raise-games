@@ -32,16 +32,25 @@ describe('Sprint 11 - notifications', () => {
   let phone = Math.floor(Math.random() * 1_000_000);
   const as = (id: string): AuthedUser => ({ sub: id, sid: 'test', role: 'player' });
 
-  async function user(name: string, extra: Partial<typeof schema.users.$inferInsert> = {}) {
+  async function user(
+    name: string,
+    extra: Partial<typeof schema.users.$inferInsert> = {},
+    opts: { consented?: boolean } = {},
+  ) {
     const id = uuidv7();
     await db.insert(schema.users).values({
       id,
       phone: `+23492${(phone++).toString().padStart(8, '0')}`,
       displayName: `${name}_${id.slice(-4)}`,
-      tosVersionAccepted: '1.0',
       ...extra,
     });
     userIds.push(id);
+    // Same table the real onboarding flow writes (POST /consent/accept).
+    if (opts.consented !== false) {
+      await db
+        .insert(schema.consentRecords)
+        .values({ id: uuidv7(), userId: id, termsType: 'terms', termsVersion: '1.0' });
+    }
     await db
       .insert(schema.gameProfiles)
       .values({ id: uuidv7(), userId: id, gameId, inGameId: `${name}_${id.slice(-4)}` });
@@ -161,6 +170,9 @@ describe('Sprint 11 - notifications', () => {
           .delete(schema.notificationSettings)
           .where(inArray(schema.notificationSettings.userId, userIds));
         await tx.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
+        await tx
+          .delete(schema.consentRecords)
+          .where(inArray(schema.consentRecords.userId, userIds));
       }
       if (matchIds.length) {
         const convIds = (
@@ -316,7 +328,7 @@ describe('Sprint 11 - notifications', () => {
   it('skips suspended or not-yet-consented players, but tells a suspended player about the sanction', async () => {
     const a = await user('kola');
     const suspended = await user('lara');
-    const noConsent = await user('musa', { tosVersionAccepted: null });
+    const noConsent = await user('musa', {}, { consented: false });
     await db.insert(schema.sanctions).values({
       id: uuidv7(),
       userId: suspended,

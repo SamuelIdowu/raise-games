@@ -21,6 +21,8 @@ async function bootstrap() {
   await app.register(cors, {
     origin: env.WEB_ORIGIN.split(',').filter(Boolean),
     credentials: true,
+    // @fastify/cors v10+ defaults to GET/HEAD/POST; the API also uses PUT, PATCH and DELETE.
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   // WebSocket gateway with Redis fan-out across instances (Sprint 7, F7.1).

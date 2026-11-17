@@ -31,7 +31,8 @@ interface BadgeState {
   latest: NotificationItem | null;
 }
 
-let state: BadgeState = { unread: 0, needsAction: [], latest: null };
+const EMPTY: BadgeState = { unread: 0, needsAction: [], latest: null };
+let state: BadgeState = EMPTY;
 const listeners = new Set<() => void>();
 let started = false;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -99,6 +100,8 @@ export function useBadges(): BadgeState {
       return () => listeners.delete(listener);
     },
     () => state,
-    () => state,
+    // Server render and hydration always see empty badges, so client-side navigations
+    // (where the store is already filled) still hydrate without a mismatch.
+    () => EMPTY,
   );
 }

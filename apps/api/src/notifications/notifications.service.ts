@@ -269,11 +269,22 @@ export class NotificationsService implements OnModuleInit {
 
   /** Who may receive anything: active accounts that accepted the terms, not suspended. */
   private async eligible(userId: string, type: NotificationType): Promise<boolean> {
+    // Consent lives in consent_records (the onboarding flow never sets
+    // users.tos_version_accepted). Any accepted terms version counts: a policy bump must
+    // not silence notices about a live match or dispute.
     const [u] = await db
-      .select({ deletedAt: schema.users.deletedAt, tos: schema.users.tosVersionAccepted })
+      .select({
+        deletedAt: schema.users.deletedAt,
+        // Explicit names: Drizzle may render columns unqualified, and a bare "id" inside
+        // the subquery would bind to consent_records.id.
+        consented: sql<boolean>`exists (
+          select 1 from consent_records cr
+          where cr.user_id = "users"."id" and cr.terms_type = 'terms'
+        )`,
+      })
       .from(schema.users)
       .where(eq(schema.users.id, userId));
-    if (!u || u.deletedAt || !u.tos) return false;
+    if (!u || u.deletedAt || !u.consented) return false;
     if (type === 'sanction_applied') return true; // the suspended player must be told
     const now = new Date();
     const [sanction] = await db

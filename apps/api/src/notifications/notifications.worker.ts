@@ -14,6 +14,11 @@ interface DeliverJob {
   channel: Channel;
 }
 
+/** Idempotent job id per (notification, channel). No ':' (BullMQ reserves it). */
+export function deliverJobId(notificationId: string, channel: Channel): string {
+  return `deliver-${notificationId}-${channel}`;
+}
+
 /**
  * Outbound delivery on BullMQ (F11.1): `attempts` + exponential backoff (30s, 1m, 2m, …),
  * delayed jobs for quiet hours, and a 5-minute scheduler for "challenge expiring".
@@ -83,7 +88,8 @@ export class NotificationsWorker implements OnModuleInit, OnModuleDestroy, Sched
     if (!this.queue) return false;
     try {
       await this.queue.add('deliver', { notificationId, channel } satisfies DeliverJob, {
-        jobId: `deliver:${notificationId}:${channel}`,
+        // BullMQ rejects custom ids containing ':' ("Custom Id cannot contain :").
+        jobId: deliverJobId(notificationId, channel),
         delay: Math.max(0, delayMs),
         attempts: ATTEMPTS,
         backoff: { type: 'exponential', delay: 30_000 },
