@@ -92,7 +92,7 @@ Per-game Elo with an append-only event log as source of truth, leaderboards per 
 - [x] F10.4 UI per Design §8: rows, pinned own row, top-3 notches, badges, profile stat grid, count-up live with reduced-motion respect
 - [x] Recompute-equality property test green (fuzz + spot archives) — acceptance criterion met (10,000-event pure fuzz ×3 seeds; 120-step fuzz through the real consumer; `ratings:verify` CLI)
 - [x] `[owner decision]`: Elo numeric parameters + reputation thresholds (decisions 0004 and 0003)
-- [ ] Testing green; audits clean
+- [x] Testing green; audits clean (PR #12 CI 2026-11-17: 24 test files, 265 tests, lint/typecheck/build/e2e green; outbox → rating 60 ms)
 - [ ] `ship` close with PR + CHANGELOG
 
 ## Implementation notes (2026-11-17)
