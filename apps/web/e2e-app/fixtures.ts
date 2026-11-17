@@ -226,6 +226,10 @@ export async function seedDispute(
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
   try {
+    // The DB transition guard wants the real path: accepted -> awaiting_confirmation -> disputed.
+    await client.query(`UPDATE matches SET status = 'awaiting_confirmation' WHERE id = $1`, [
+      matchId,
+    ]);
     await client.query(
       `UPDATE matches SET status = 'disputed', disputed_at = now() WHERE id = $1`,
       [matchId],

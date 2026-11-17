@@ -21,7 +21,7 @@ import { SanctionsService } from './moderation/sanctions.service';
 import { getStanding } from './moderation/standing';
 import { OutboxRelay } from './realtime/outbox-relay';
 import { totpAt } from './shared/totp';
-import { redis } from './cache/redis';
+import { ensureRedis, redis } from './cache/redis';
 
 describe('Sprint 12 - trust & operations', () => {
   let moduleRef: TestingModule;
@@ -138,6 +138,7 @@ describe('Sprint 12 - trust & operations', () => {
     );
 
   beforeAll(async () => {
+    await ensureRedis();
     moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     await moduleRef.init();
     admin = moduleRef.get(AdminService);

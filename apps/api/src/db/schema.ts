@@ -1034,7 +1034,7 @@ export const reputationDebts = pgTable(
     id: uuid('id').primaryKey(),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
     /** late_cancel | no_show | … (the event's reason) */
     reason: text('reason').notNull(),
     matchId: uuid('match_id'),
