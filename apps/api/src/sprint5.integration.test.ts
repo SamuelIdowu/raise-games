@@ -241,8 +241,11 @@ describe('Sprint 5 - Discovery board & player search', () => {
     });
     expect(open.items.some((item) => item.id === overdue)).toBe(false);
 
+    // Scoped to the poster's own challenges: on a shared CI database the "all" board's
+    // first page fills with other suites' newer challenges.
     const all = await challenges.listBoard(poster, {
       status: 'all',
+      mine: 'true',
       limit: 50,
     });
     const found = all.items.find((item) => item.id === overdue);

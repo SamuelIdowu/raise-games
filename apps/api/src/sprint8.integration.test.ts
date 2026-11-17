@@ -338,17 +338,9 @@ describe('Sprint 8 - results & verification', () => {
     it('a re-encoded copy of a used screenshot is accepted but flagged by perceptual hash', async () => {
       const first = await createMatch();
       const second = await createMatch();
-      // A layout no other test uses: every fakeScreenshot shares one layout, so with test
-      // files sharing a database the nearest match could otherwise be another file's upload.
-      const png = await sharp(
-        Buffer.from(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#111"/>${Array.from(
-            { length: 8 },
-            (_, i) =>
-              `<rect x="${i * 200}" y="${(i % 2) * 450}" width="100" height="450" fill="#fafafa"/>`,
-          ).join('')}<circle cx="1300" cy="700" r="150" fill="#888"/></svg>`,
-        ),
-      )
+      // A structurally unique image: suites share one database and upload look-alike
+      // fixture screens, which could tie with the original on pHash distance.
+      const png = await sharp(await randomImage())
         .png()
         .toBuffer();
       const original = await upload(
