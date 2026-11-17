@@ -340,7 +340,9 @@ describe('Sprint 8 - results & verification', () => {
       const second = await createMatch();
       // A structurally unique image: suites share one database and upload look-alike
       // fixture screens, which could tie with the original on pHash distance.
-      const png = await sharp(await randomImage()).png().toBuffer();
+      const png = await sharp(await randomImage())
+        .png()
+        .toBuffer();
       const original = await upload(
         first.a,
         first.matchId,
