@@ -36,6 +36,16 @@ let state: BadgeState = EMPTY;
 const listeners = new Set<() => void>();
 let started = false;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * Bumped by every pushed or locally known unread count. A refresh that started before
+ * the newest value arrived must not overwrite it with its stale count.
+ */
+let unreadSeq = 0;
+
+function pushUnread(unread: number) {
+  unreadSeq++;
+  set({ unread });
+}
 
 function set(patch: Partial<BadgeState>) {
   state = { ...state, ...patch };
@@ -53,13 +63,14 @@ function toNeedsAction(m: MatchView): NeedsAction | null {
 }
 
 async function refreshAll() {
+  const seq = unreadSeq;
   try {
     const [{ unread }, active] = await Promise.all([
       notificationsApi.unreadCount(),
       matchesApi.list('active'),
     ]);
     set({
-      unread,
+      ...(seq === unreadSeq ? { unread } : {}),
       needsAction: active.items.map(toNeedsAction).filter((x): x is NeedsAction => x !== null),
     });
   } catch {
@@ -82,14 +93,14 @@ function start() {
   void refreshAll();
   const socket = getSocket();
   if (!socket) return;
-  socket.on(ServerEvents.NotificationUnread, (e: { unread: number }) => set({ unread: e.unread }));
+  socket.on(ServerEvents.NotificationUnread, (e: { unread: number }) => pushUnread(e.unread));
   socket.on(ServerEvents.NotificationNew, (n: NotificationItem) => set({ latest: n }));
   socket.on(ServerEvents.MatchState, scheduleRefresh);
   socket.on('connect', () => void refreshAll()); // catch up after a reconnect
 }
 
 export function setUnread(unread: number) {
-  set({ unread });
+  pushUnread(unread);
 }
 
 export function useBadges(): BadgeState {

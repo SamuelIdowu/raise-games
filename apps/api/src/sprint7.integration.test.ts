@@ -667,9 +667,16 @@ describe('Sprint 7 - match room, gateway & chat', () => {
         subjectId: matchId,
         payload: { matchId },
       });
-      for (let i = 0; i < 20; i++) if ((await relay.drain()) === 0) break;
+      // drain() returns 0 at once while another drain holds the lock (this instance's
+      // timer, or another test file's relay on the shared database), so keep polling.
+      let done = false;
+      const both = Promise.all([gotA, gotB]).finally(() => (done = true));
+      while (!done) {
+        await relay.drain();
+        await new Promise((r) => setTimeout(r, 25));
+      }
 
-      const [ea, eb] = await Promise.all([gotA, gotB]);
+      const [ea, eb] = await both;
       expect(ea).toMatchObject({
         matchId,
         status: 'in_progress',

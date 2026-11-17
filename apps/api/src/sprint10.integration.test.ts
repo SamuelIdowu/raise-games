@@ -412,7 +412,12 @@ describe('Sprint 10 - ratings & leaderboards', () => {
         .insert(schema.outboxEvents)
         .values({ id: e.id, type: e.type, subjectId: m, payload: e.payload });
       const start = performance.now();
-      for (let i = 0; i < 40 && (await events(m)).length === 0; i++) await relay.drain();
+      // drain() returns 0 at once while another drain holds this consumer (this
+      // instance's timer, or another test file's relay on the shared database), so poll.
+      while ((await events(m)).length === 0 && performance.now() - start < 5000) {
+        await relay.drain();
+        await new Promise((r) => setTimeout(r, 25));
+      }
       const elapsed = performance.now() - start;
       expect(await events(m)).toHaveLength(2);
       expect(elapsed).toBeLessThan(5000);
