@@ -1,0 +1,24 @@
+# Secret scanning (Sprint 15, F15.6). Default gitleaks rules, plus an allowlist for the
+# fake credentials the test and local stacks need. Anything outside these paths and
+# values is treated as a real secret and fails CI.
+title = "raise_games gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and local-only stack credentials"
+paths = [
+  '''^\.github/workflows/ci\.yml$''',
+  '''^infra/seaweedfs/s3\.json$''',
+  '''^docker-compose\.yml$''',
+  '''^\.env\.example$''',
+  '''^apps/.+\.test\.ts$''',
+  '''^apps/web/e2e(-app)?/''',
+  '''^apps/api/src/test-fixtures/''',
+  '''^pnpm-lock\.yaml$''',
+]
+regexes = [
+  '''ci-test-access-secret-[0-9a-f]+''',
+  '''raise-storage-secret''',
+]
