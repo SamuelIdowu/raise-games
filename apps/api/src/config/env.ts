@@ -19,6 +19,11 @@ const envSchema = z.object({
    * webhook route does not exist. Refused in production (like mock OTP).
    */
   MOCK_PROVIDER_WEBHOOK_SECRET: z.string().min(16).optional(),
+  /**
+   * Sprint 15: new WebSocket handshakes allowed per IP per minute. 60 suits players
+   * (several devices behind one carrier NAT); load generators raise it on staging.
+   */
+  WS_CONNECT_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
   /** Rollout stage for feature flags ('1' until Stage 2 launches). */
   APP_STAGE: z.enum(['1', '2', '3']).default('1'),
   SMS_API_KEY: z.string().optional(),

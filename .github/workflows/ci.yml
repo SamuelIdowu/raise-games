@@ -175,6 +175,159 @@ jobs:
         env:
           SOURCE_DATABASE_URL: postgres://raise:raise@localhost:5432/raise
 
+  perf:
+    # Sprint 15 (F15.1). PRD: first load under 3 s on throttled 3G. Simulated "Regular 3G"
+    # (300 ms RTT, 700 kbps) on a mobile viewport with 4x CPU slowdown, production build.
+    # First contentful paint gates the build; LCP, blocking time and JS weight warn and
+    # are recorded in the report until their budgets are set from real numbers.
+    name: Perf / lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web (production)
+        run: pnpm turbo run build --filter=@raise/web...
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3201
+
+      - name: Start web
+        run: |
+          pnpm --filter @raise/web exec next start -p 3200 > /tmp/web.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3200/ && echo "web ready" && break
+            sleep 2
+          done
+
+      - name: Lighthouse (throttled 3G, mobile)
+        working-directory: apps/web
+        run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse
+          path: apps/web/.lighthouseci
+          retention-days: 14
+
+  load:
+    # Sprint 15 (F15.2, F15.3). Smoke profiles of the load tests against the local stack,
+    # so the scripts stay working and gross regressions fail the build. The PRD-scale runs
+    # (500 VUs, 3,000 sockets) use the same scripts on staging.
+    name: Load / smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: raise
+          POSTGRES_PASSWORD: raise
+          POSTGRES_DB: raise_load
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U raise -d raise_load"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgres://raise:raise@localhost:5432/raise_load
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-test-access-secret-0123456789abcdef
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 30d
+      OTP_MOCK_ENABLED: 'true'
+      SMS_PROVIDER: mock
+      NODE_ENV: development
+      WS_CONNECT_LIMIT_PER_MIN: '100000'
+      STORAGE_ENDPOINT: http://localhost:9000
+      STORAGE_FORCE_PATH_STYLE: 'true'
+      STORAGE_AUTO_CREATE_BUCKET: 'true'
+      R2_ACCESS_KEY_ID: raise
+      R2_SECRET_ACCESS_KEY: raise-storage-secret
+      R2_BUCKET: raise-proof-screenshots
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start S3-compatible storage
+        run: |
+          docker run -d --name raise-storage -p 9000:9000             -v "$PWD/infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro"             chrislusf/seaweedfs:3.85             server -dir=/data -s3 -s3.port=9000 -s3.config=/etc/seaweedfs/s3.json
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/ || true)
+            [ "$code" = "403" ] && echo "storage ready" && break
+            sleep 2
+          done
+
+      - name: Build API
+        run: pnpm turbo run build --filter=@raise/api...
+
+      - name: Migrate, seed reference data and load players
+        run: |
+          pnpm --filter @raise/api db:migrate
+          pnpm --filter @raise/api db:seed
+          pnpm --filter @raise/api exec tsx src/scripts/load-seed.ts 100 "$GITHUB_WORKSPACE/load-tokens.json"
+
+      - name: Start two API instances (shared Redis)
+        run: |
+          for port in 3301 3302; do
+            (cd apps/api && PORT=$port node dist/main.js > /tmp/api-$port.log 2>&1 &)
+          done
+          for port in 3301 3302; do
+            for i in $(seq 1 60); do
+              curl -sf -o /dev/null http://localhost:$port/health && echo "api $port ready" && break
+              sleep 2
+            done
+          done
+
+      - name: API load smoke (k6, 50 VUs, p95 < 500 ms)
+        run: |
+          docker run --rm --network host -v "$GITHUB_WORKSPACE:/load" grafana/k6:0.54.0             run -e PROFILE=smoke -e TOKENS=/load/load-tokens.json -e API_URL=http://localhost:3301             /load/tests/load/api.k6.js
+
+      - name: WebSocket fan-out smoke (200 sockets across 2 instances)
+        run: |
+          SOCKETS=200 ROUNDS=5 WS_URLS=http://localhost:3301,http://localhost:3302             pnpm --filter @raise/api exec tsx src/scripts/ws-load.ts "$GITHUB_WORKSPACE/load-tokens.json"
+
+      - name: API logs on failure
+        if: failure()
+        run: tail -n 200 /tmp/api-3301.log /tmp/api-3302.log
+
   e2e:
     name: E2E / two-browser
     runs-on: ubuntu-latest

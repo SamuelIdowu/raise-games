@@ -1,3 +1,4 @@
+import { env } from '../config/env.instance';
 import { HttpException, Logger, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -88,7 +89,11 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
         return next(new Error('unauthenticated'));
       }
       // Each accepted handshake costs ~3 DB reads; cap attempts per IP before doing them.
-      enforceRateLimit(`rl:ws:connect:${socket.handshake.address}`, 60, 60_000)
+      enforceRateLimit(
+        `rl:ws:connect:${socket.handshake.address}`,
+        env.WS_CONNECT_LIMIT_PER_MIN,
+        60_000,
+      )
         .then(() => verifyAccessToken(this.jwt, token))
         .then((user) => {
           (socket as AppSocket).data.user = user;
