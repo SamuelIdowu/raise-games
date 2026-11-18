@@ -168,6 +168,13 @@ jobs:
       - name: Run tests
         run: pnpm turbo run test
 
+      # Sprint 15 (F15.7): back up the database the suite just filled, restore it into a
+      # fresh database and verify the copy (rows, triggers, migrations, ledger invariants).
+      - name: Backup and restore drill
+        run: bash infra/restore-drill.sh
+        env:
+          SOURCE_DATABASE_URL: postgres://raise:raise@localhost:5432/raise
+
   e2e:
     name: E2E / two-browser
     runs-on: ubuntu-latest
