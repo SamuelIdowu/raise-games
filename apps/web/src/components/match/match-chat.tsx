@@ -38,16 +38,33 @@ export function MatchChat({
   canSend,
   onSend,
   onRetry,
+  heading = 'Match chat',
+  emptyText = 'No messages yet. Agree a time and share the room code here.',
+  lockedText = 'Chat is closed',
+  onReport,
+  blockNote,
+  reportNote = 'Moderators can read this match chat when reviewing reports and disputes.',
+  onBlocked,
 }: {
-  matchId: string;
+  matchId: string | null;
   meId: string | null;
-  players: MatchPlayer[];
+  players: Array<Pick<MatchPlayer, 'userId' | 'username'>>;
   messages: ChatEntry[];
   locked: boolean;
   /** False for staff viewers: read-only. */
   canSend: boolean;
   onSend: (body: string) => void;
   onRetry: (clientMsgId: string) => void;
+  /** Sprint 14: the same panel renders direct messages; these override match wording. */
+  heading?: string;
+  emptyText?: string;
+  /** Shown instead of the composer when `locked`. */
+  lockedText?: string;
+  /** Defaults to the match-chat report endpoint. */
+  onReport?: (messageId: string, reason: ReportReason) => Promise<unknown>;
+  blockNote?: string;
+  reportNote?: string;
+  onBlocked?: () => void;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
   const stickToBottom = useRef(true);
@@ -85,7 +102,7 @@ export function MatchChat({
       className="flex min-h-[420px] flex-col rounded-card border border-line bg-surface"
     >
       <h2 id="chat-heading" className="label-caps border-b border-line px-4 py-3 text-fg-muted">
-        Match chat
+        {heading}
       </h2>
 
       <ol
@@ -96,9 +113,7 @@ export function MatchChat({
         style={{ maxHeight: '55vh' }}
       >
         {messages.length === 0 ? (
-          <li className="py-8 text-center text-caption text-fg-muted">
-            No messages yet. Agree a time and share the room code here.
-          </li>
+          <li className="py-8 text-center text-caption text-fg-muted">{emptyText}</li>
         ) : null}
         {messages.map((m) =>
           m.kind === 'system' ? (
@@ -126,7 +141,7 @@ export function MatchChat({
         <div className="border-t border-line p-3">
           <Banner variant="system">
             <span className="inline-flex items-center gap-1.5">
-              <Icon name="lock" size={16} aria-hidden /> Chat is closed
+              <Icon name="lock" size={16} aria-hidden /> {lockedText}
             </span>
           </Banner>
         </div>
@@ -192,9 +207,14 @@ export function MatchChat({
 
       {action?.mode === 'report' ? (
         <ReportSheet
-          matchId={matchId}
           entry={action.entry}
           senderName={nameOf(action.entry.senderId)}
+          note={reportNote}
+          submitReport={
+            onReport ??
+            ((messageId, reason) =>
+              matchId ? chatApi.report(matchId, messageId, reason) : Promise.resolve(null))
+          }
           onClose={() => setAction(null)}
         />
       ) : null}
@@ -202,6 +222,8 @@ export function MatchChat({
         <BlockSheet
           userId={action.entry.senderId}
           name={nameOf(action.entry.senderId)}
+          note={blockNote}
+          onBlocked={onBlocked}
           onClose={() => setAction(null)}
         />
       ) : null}
@@ -326,14 +348,16 @@ function MessageBubble({
 }
 
 function ReportSheet({
-  matchId,
   entry,
   senderName,
+  note,
+  submitReport,
   onClose,
 }: {
-  matchId: string;
   entry: ChatEntry;
   senderName: string;
+  note: string;
+  submitReport: (messageId: string, reason: ReportReason) => Promise<unknown>;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -344,10 +368,10 @@ function ReportSheet({
   const submit = async () => {
     setBusy(true);
     try {
-      await chatApi.report(matchId, entry.id, reason);
+      await submitReport(entry.id, reason);
       toast({
         title: 'Report sent',
-        description: 'A moderator will review it. The chat stays open so you can finish the match.',
+        description: 'A moderator will review it.',
         variant: 'status',
       });
       onClose();
@@ -405,9 +429,7 @@ function ReportSheet({
           ))}
         </div>
       </fieldset>
-      <p className="mt-2 text-caption text-fg-muted">
-        Moderators can read this match chat when reviewing reports and disputes.
-      </p>
+      <p className="mt-2 text-caption text-fg-muted">{note}</p>
     </Sheet>
   );
 }
@@ -415,10 +437,14 @@ function ReportSheet({
 function BlockSheet({
   userId,
   name,
+  note,
+  onBlocked,
   onClose,
 }: {
   userId: string;
   name: string;
+  note?: string;
+  onBlocked?: () => void;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -429,6 +455,7 @@ function BlockSheet({
     try {
       await chatApi.block(userId);
       toast({ title: `${name} blocked`, variant: 'status' });
+      onBlocked?.();
       onClose();
     } catch (error) {
       toast({ title: 'Could not block', description: (error as Error).message, variant: 'error' });
@@ -454,8 +481,8 @@ function BlockSheet({
       }
     >
       <p className="text-body-sm text-fg">
-        {name} goes on your block list. This match chat stays open so you can finish the match or
-        report messages.
+        {note ??
+          `${name} goes on your block list. This match chat stays open so you can finish the match or report messages.`}
       </p>
     </Sheet>
   );

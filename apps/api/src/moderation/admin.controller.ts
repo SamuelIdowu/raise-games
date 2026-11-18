@@ -65,7 +65,7 @@ const reportsQ = z.object({
 });
 const resolveBody = z.object({
   items: z
-    .array(z.object({ kind: z.enum(['report', 'message']), id: z.uuid() }))
+    .array(z.object({ kind: z.enum(['report', 'message', 'flag']), id: z.uuid() }))
     .min(1)
     .max(100),
   resolution: z.enum(['dismissed', 'actioned']),

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -75,9 +76,27 @@ export class ChatController {
   async block(
     @CurrentUser() user: AuthedUser,
     @Param(new ZodValidationPipe(userParamSchema)) params: UserParam,
+    @Req() req: AuthedRequest,
   ) {
     await enforceRateLimit(`rl:blocks:${user.sub}`, 30, 3_600_000);
-    await this.chat.block(user, params.userId);
+    await this.chat.block(user, params.userId, req.ip);
+  }
+
+  @Delete('blocks/:userId')
+  @HttpCode(204)
+  async unblock(
+    @CurrentUser() user: AuthedUser,
+    @Param(new ZodValidationPipe(userParamSchema)) params: UserParam,
+    @Req() req: AuthedRequest,
+  ) {
+    await enforceRateLimit(`rl:blocks:${user.sub}`, 30, 3_600_000);
+    await this.chat.unblock(user, params.userId, req.ip);
+  }
+
+  @Get('blocks')
+  async blocks(@CurrentUser() user: AuthedUser) {
+    await enforceRateLimit(`rl:blocks:list:${user.sub}`, 60, 60_000);
+    return { items: await this.chat.blockList(user) };
   }
 }
 

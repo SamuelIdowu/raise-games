@@ -171,8 +171,18 @@ export interface AdminUserDetail {
   reports: Array<{ id: string; reason: string; status: string; createdAt: string }>;
 }
 
+export interface ReportContextMessage {
+  id: string;
+  senderId: string | null;
+  kind: 'user' | 'system';
+  body: string;
+  createdAt: string;
+  reported: boolean;
+}
+
 export interface ReportItem {
-  kind: 'report' | 'message';
+  /** `flag` = keyword-filter hit (no reporter). */
+  kind: 'report' | 'message' | 'flag';
   id: string;
   reason: string;
   note: string | null;
@@ -184,6 +194,10 @@ export interface ReportItem {
   reporter_name: string | null;
   body_snapshot: string | null;
   match_id: string | null;
+  /** Conversation scope for chat items. */
+  scope: 'match' | 'dm' | null;
+  /** DM reports: the conversation around the message, frozen at report time. */
+  context: ReportContextMessage[] | null;
 }
 
 export interface Dashboard {
@@ -295,7 +309,7 @@ export const adminApi = {
   reports: (status: 'open' | 'dismissed' | 'actioned' = 'open', limit = 50) =>
     apiFetch<{ items: ReportItem[] }>(`/admin/queue/reports${qs({ status, limit })}`),
   resolveReports: (body: {
-    items: Array<{ kind: 'report' | 'message'; id: string }>;
+    items: Array<{ kind: ReportItem['kind']; id: string }>;
     resolution: 'dismissed' | 'actioned';
     note: string;
     sanctionUserId?: string | null;

@@ -11,7 +11,10 @@ export type NotificationType =
   | 'dispute_ruled'
   | 'no_show_reported'
   | 'new_message'
-  | 'sanction_applied';
+  | 'sanction_applied'
+  | 'friend_request'
+  | 'friend_accepted'
+  | 'new_direct_message';
 
 export interface NotificationItem {
   id: string;

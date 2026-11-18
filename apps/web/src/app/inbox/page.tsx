@@ -1,10 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useId, useState } from 'react';
+import { Suspense, useCallback, useEffect, useId, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  dmApi,
   notificationsApi,
+  type DmConversationItem,
+  type FriendRequestItem,
   type InboxConversation,
   type NotificationItem,
   type NotificationSettings,
@@ -21,17 +24,31 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { setUnread, useBadges } from '@/lib/badges';
+import { useDmEnabled } from '@/features/dm/dm-kit';
 import { disablePush, enablePush, currentSubscription, pushSupport } from '@/lib/push';
 import { formatClock, userTimeZone } from '@/lib/time';
 
 type Tab = 'notifications' | 'messages' | 'preferences';
 
 /**
- * Inbox (Sprint 11, F11.3; UX Flow 10): notifications grouped by day, match-chat threads
- * (DMs join if Sprint 14 ships), and per-type preferences with quiet hours.
+ * Inbox (Sprint 11, F11.3; UX Flow 10): notifications grouped by day, match-chat threads,
+ * direct messages and friend requests (Sprint 14, only while `messaging.dm` is on), and
+ * per-type preferences with quiet hours.
  */
 export default function InboxPage() {
-  const [tab, setTab] = useState<Tab>('notifications');
+  // useSearchParams needs a Suspense boundary under Cache Components.
+  return (
+    <Suspense fallback={<SkeletonCard />}>
+      <Inbox />
+    </Suspense>
+  );
+}
+
+function Inbox() {
+  const params = useSearchParams();
+  const [tab, setTab] = useState<Tab>(
+    params.get('tab') === 'messages' ? 'messages' : 'notifications',
+  );
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: 'notifications', label: 'Notifications' },
     { key: 'messages', label: 'Messages' },
@@ -241,6 +258,189 @@ function Notifications() {
 // ---------------------------------------------------------------- messages
 
 function Messages() {
+  const { enabled: dmOn } = useDmEnabled();
+  return (
+    <div className="space-y-6">
+      {dmOn ? <DirectMessages /> : null}
+      <section aria-labelledby="match-chats-heading" className="space-y-2">
+        <h2 id="match-chats-heading" className={dmOn ? 'label-caps text-fg-muted' : 'sr-only'}>
+          Match chats
+        </h2>
+        <MatchChats />
+      </section>
+    </div>
+  );
+}
+
+/** Sprint 14: friend requests and DM conversations (rendered only while DMs are on). */
+function DirectMessages() {
+  const { toast } = useToast();
+  const [dms, setDms] = useState<DmConversationItem[] | null>(null);
+  const [requests, setRequests] = useState<{
+    incoming: FriendRequestItem[];
+    outgoing: FriendRequestItem[];
+  } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    Promise.all([dmApi.list(), dmApi.requests()])
+      .then(([list, reqs]) => {
+        if (!live) return;
+        setDms(list.items);
+        setRequests(reqs);
+      })
+      .catch(() => {
+        if (live) setDms([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [tick]);
+
+  const answer = async (r: FriendRequestItem, action: 'accept' | 'decline' | 'cancel') => {
+    setBusy(r.requestId);
+    try {
+      await dmApi.respond(r.requestId, action);
+      if (action === 'accept')
+        toast({
+          title: `You and ${r.name} are friends`,
+          description: 'You can message each other now.',
+        });
+      setTick((t) => t + 1);
+    } catch (e) {
+      toast({
+        title: 'Could not update the request',
+        description: (e as Error).message,
+        variant: 'error',
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <>
+      {requests && (requests.incoming.length > 0 || requests.outgoing.length > 0) ? (
+        <section aria-labelledby="requests-heading" className="space-y-2">
+          <h2 id="requests-heading" className="label-caps text-fg-muted">
+            Friend requests
+          </h2>
+          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+            {requests.incoming.map((r) => (
+              <li
+                key={r.requestId}
+                className="flex min-h-11 flex-wrap items-center gap-2 px-4 py-3"
+              >
+                <Link
+                  href={`/profile/${r.userId}`}
+                  className="min-w-0 flex-1 truncate text-body-sm font-semibold text-fg hover:underline"
+                >
+                  {r.name}
+                </Link>
+                <Button
+                  size="sm"
+                  loading={busy === r.requestId}
+                  onClick={() => void answer(r, 'accept')}
+                >
+                  Accept
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={busy === r.requestId}
+                  onClick={() => void answer(r, 'decline')}
+                >
+                  Decline
+                </Button>
+              </li>
+            ))}
+            {requests.outgoing.map((r) => (
+              <li
+                key={r.requestId}
+                className="flex min-h-11 flex-wrap items-center gap-2 px-4 py-3"
+              >
+                <span className="min-w-0 flex-1 truncate text-body-sm text-fg">
+                  <Link href={`/profile/${r.userId}`} className="font-semibold hover:underline">
+                    {r.name}
+                  </Link>{' '}
+                  <span className="text-fg-muted">· Request sent</span>
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={busy === r.requestId}
+                  onClick={() => void answer(r, 'cancel')}
+                >
+                  Cancel
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section aria-labelledby="dm-heading" className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 id="dm-heading" className="label-caps text-fg-muted">
+            Direct messages
+          </h2>
+          <Link
+            href="/messages/blocked"
+            className="flex min-h-11 items-center text-caption text-accent hover:underline"
+          >
+            Blocked players
+          </Link>
+        </div>
+        {!dms ? (
+          <SkeletonCard />
+        ) : dms.length === 0 ? (
+          <p className="rounded-card border border-line bg-surface px-4 py-3 text-body-sm text-fg-muted">
+            You can message players you have finished a match with or added as friends. Open their
+            profile to start.
+          </p>
+        ) : (
+          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+            {dms.map((c) => (
+              <li key={c.conversationId}>
+                <Link
+                  href={`/messages/${c.conversationId}`}
+                  className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-overlay"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body-sm font-semibold text-fg">{c.name}</span>
+                    <span className="block truncate text-body-sm text-fg-muted">
+                      {c.lastMessage
+                        ? `${c.lastFromMe ? 'You: ' : ''}${c.lastMessage}`
+                        : 'No messages yet'}
+                    </span>
+                  </span>
+                  {c.muted ? (
+                    <span className="text-fg-subtle">
+                      <Icon name="bell-off" size={14} aria-hidden />
+                      <span className="sr-only">Muted</span>
+                    </span>
+                  ) : null}
+                  {c.lastAt ? (
+                    <time className="text-caption text-fg-subtle">{formatClock(c.lastAt)}</time>
+                  ) : null}
+                  {c.unread && !c.muted ? (
+                    <span className="size-2 rounded-full bg-accent">
+                      <span className="sr-only">Unread</span>
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  );
+}
+
+function MatchChats() {
   const [items, setItems] = useState<InboxConversation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -315,6 +515,9 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   no_show_reported: 'A no-show is reported against you',
   new_message: 'New match chat messages',
   sanction_applied: 'Action on your account',
+  friend_request: 'Someone sends you a friend request',
+  friend_accepted: 'Your friend request is accepted',
+  new_direct_message: 'New direct messages',
 };
 
 const toTime = (m: number | null) =>

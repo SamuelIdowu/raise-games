@@ -1,5 +1,19 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { and, count, desc, eq, gt, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { db, schema } from '../db/client';
 import { env } from '../config/env.instance';
@@ -38,6 +52,8 @@ export const NOTIFICATION_EVENT_TYPES = new Set([
   'dispute.ruled',
   'message.created',
   'sanction.applied',
+  'friend.requested',
+  'friend.accepted',
 ]);
 
 /**
@@ -215,6 +231,21 @@ export class NotificationsService implements OnModuleInit {
           .map((userId) => ({ userId, type, sourceKey: key, params: { matchId } }));
       }
       case 'message.created': {
+        if (p.scope === 'dm') {
+          const conversationId = str('conversationId')!;
+          const ids = Array.isArray(p.recipientIds) ? (p.recipientIds as string[]) : [];
+          const muted = await this.mutedIn(conversationId, ids);
+          const from = await this.nameOf(str('senderId'));
+          return ids
+            .filter((userId) => !muted.has(userId))
+            .map((userId) => ({
+              userId,
+              type: 'new_direct_message' as const,
+              sourceKey: key,
+              params: { from, conversationId, count: 1 },
+              groupKey: `dm:${conversationId}`,
+            }));
+        }
         const matchId = str('matchId')!;
         const ids = Array.isArray(p.recipientIds) ? (p.recipientIds as string[]) : [];
         const opponent = await this.nameOf(str('senderId'));
@@ -225,6 +256,22 @@ export class NotificationsService implements OnModuleInit {
           params: { opponent, matchId, count: 1 },
           groupKey: `chat:${str('conversationId') ?? matchId}`,
         }));
+      }
+      case 'friend.requested':
+      case 'friend.accepted': {
+        const requested = event.type === 'friend.requested';
+        // Requests go to the addressee; acceptances back to the requester.
+        const to = str(requested ? 'addresseeId' : 'requesterId');
+        const fromId = str(requested ? 'requesterId' : 'addresseeId');
+        if (!to || !fromId) return [];
+        return [
+          {
+            userId: to,
+            type: requested ? ('friend_request' as const) : ('friend_accepted' as const),
+            sourceKey: key,
+            params: { from: await this.nameOf(fromId), userId: fromId },
+          },
+        ];
       }
       case 'sanction.applied': {
         const userId = str('userId');
@@ -254,6 +301,22 @@ export class NotificationsService implements OnModuleInit {
       .from(schema.matchSides)
       .where(eq(schema.matchSides.matchId, matchId));
     return rows.map((r) => r.userId);
+  }
+
+  /** Recipients who muted this conversation (F14.4): no notification for them. */
+  private async mutedIn(conversationId: string, userIds: string[]): Promise<Set<string>> {
+    if (userIds.length === 0) return new Set();
+    const rows = await db
+      .select({ userId: schema.conversationParticipants.userId })
+      .from(schema.conversationParticipants)
+      .where(
+        and(
+          eq(schema.conversationParticipants.conversationId, conversationId),
+          inArray(schema.conversationParticipants.userId, userIds),
+          isNotNull(schema.conversationParticipants.mutedAt),
+        ),
+      );
+    return new Set(rows.map((r) => r.userId));
   }
 
   private async nameOf(userId: string | null): Promise<string> {

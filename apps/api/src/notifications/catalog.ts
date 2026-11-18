@@ -5,8 +5,8 @@
  * typed, and are translated by adding a locale map. The same keys and params are stored on
  * each notification so the web client can re-render in the player's language.
  *
- * Roster invites and friend requests arrive with their sprints; `sanction_applied` is wired
- * now (Sprint 12 emits `sanction.applied`).
+ * Roster invites arrive with their sprint. `sanction_applied` is emitted by Sprint 12; friend
+ * requests and direct messages by Sprint 14 (only while the `messaging.dm` flag is on).
  */
 
 export const NOTIFICATION_TYPES = [
@@ -21,6 +21,9 @@ export const NOTIFICATION_TYPES = [
   'no_show_reported',
   'new_message',
   'sanction_applied',
+  'friend_request',
+  'friend_accepted',
+  'new_direct_message',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -135,6 +138,37 @@ export const CATALOG: Record<NotificationType, CatalogEntry> = {
     // Never the message text: notification bodies leave the app (push, email).
     body: () => 'Open the match chat to read it.',
     link: (p) => `/matches/${p.matchId}`,
+  },
+  friend_request: {
+    group: 'messages',
+    defaults: { push: true, email: false },
+    critical: false,
+    icon: 'user',
+    title: (p) => `${name(p, 'from')} sent you a friend request`,
+    body: () => 'Friends can message each other on RAISE.',
+    link: () => '/inbox?tab=messages',
+  },
+  friend_accepted: {
+    group: 'messages',
+    defaults: { push: false, email: false },
+    critical: false,
+    icon: 'check',
+    title: (p) => `${name(p, 'from')} accepted your friend request`,
+    body: () => 'You can message each other now.',
+    link: (p) => `/profile/${p.userId}`,
+  },
+  new_direct_message: {
+    group: 'messages',
+    defaults: { push: true, email: false },
+    critical: false,
+    icon: 'mail',
+    title: (p) =>
+      Number(p.count ?? 1) > 1
+        ? `${p.count} new messages from ${name(p, 'from')}`
+        : `New message from ${name(p, 'from')}`,
+    // Never the message text: notification bodies leave the app (push, email).
+    body: () => 'Open the conversation to read it.',
+    link: (p) => `/messages/${p.conversationId}`,
   },
   sanction_applied: {
     group: 'account',

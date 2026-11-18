@@ -9,6 +9,8 @@ export const ServerEvents = {
   Notification: 'notification',
   NotificationNew: 'notification:new',
   NotificationUnread: 'notification:unread',
+  /** Sprint 14: a direct message (DmMessageDto), sent to both players' user rooms. */
+  DmMessage: 'dm:message',
   AuthRevoked: 'auth:revoked',
 } as const;
 

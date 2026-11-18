@@ -19,7 +19,16 @@ import { cn } from '@/lib/cn';
 
 const key = (r: ReportItem) => `${r.kind}:${r.id}`;
 
-/** Report triage (F12.4): match-chat and challenge/player reports in one queue. */
+function typeLabel(r: ReportItem): string {
+  if (r.kind === 'flag') return r.scope === 'dm' ? 'DM keyword flag' : 'Chat keyword flag';
+  if (r.kind === 'message') return r.scope === 'dm' ? 'Direct message' : 'Chat message';
+  return r.subject_type;
+}
+
+/**
+ * Report triage (F12.4, F14.4): match-chat, DM, keyword-filter, challenge and player reports
+ * in one queue. DM reports carry the conversation around the message, frozen at report time.
+ */
 export default function ReportsPage() {
   const { toast } = useToast();
   const withStepUp = useStepUp();
@@ -136,7 +145,7 @@ export default function ReportsPage() {
         <EmptyState
           icon="check-circle"
           title="No reports here"
-          description="Reports from chat, challenges and profiles land in this queue."
+          description="Reports from chat, direct messages, challenges and profiles, and keyword-filter flags, land in this queue."
         />
       ) : null}
       {rows.length > 0 ? (
@@ -173,13 +182,36 @@ export default function ReportsPage() {
                     />
                   ) : null}
                 </TableCell>
-                <TableCell>{r.kind === 'message' ? 'Chat message' : r.subject_type}</TableCell>
+                <TableCell>{typeLabel(r)}</TableCell>
                 <TableCell>{r.reason.replace(/_/g, ' ')}</TableCell>
-                <TableCell
-                  className="max-w-[24rem] truncate"
-                  title={r.body_snapshot ?? r.note ?? ''}
-                >
-                  {r.body_snapshot ? `“${r.body_snapshot}”` : (r.note ?? '—')}
+                <TableCell className="max-w-[24rem]">
+                  <span className="block truncate" title={r.body_snapshot ?? r.note ?? ''}>
+                    {r.body_snapshot ? `“${r.body_snapshot}”` : (r.note ?? '—')}
+                  </span>
+                  {r.context?.length ? (
+                    <details className="mt-1 text-caption">
+                      <summary className="cursor-pointer text-accent">
+                        Context ({r.context.length} messages)
+                      </summary>
+                      <ol className="mt-1 space-y-1">
+                        {r.context.map((m) => (
+                          <li
+                            key={m.id}
+                            className={cn(
+                              'whitespace-pre-wrap break-words rounded-control px-2 py-1',
+                              m.reported ? 'bg-dispute/15 text-fg' : 'text-fg-muted',
+                            )}
+                          >
+                            <span className="font-semibold">
+                              {m.senderId === r.subject_user_id ? 'Reported player' : 'Reporter'}
+                              {m.reported ? ' (reported)' : ''}:
+                            </span>{' '}
+                            {m.body}
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   {r.subject_user_id ? (
@@ -193,7 +225,9 @@ export default function ReportsPage() {
                     '—'
                   )}
                 </TableCell>
-                <TableCell>{r.reporter_name ?? '—'}</TableCell>
+                <TableCell>
+                  {r.kind === 'flag' ? 'Keyword filter' : (r.reporter_name ?? '—')}
+                </TableCell>
                 <TableCell>{fmt(r.created_at)}</TableCell>
               </TableRow>
             ))}

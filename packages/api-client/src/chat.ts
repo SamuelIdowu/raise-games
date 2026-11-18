@@ -2,7 +2,8 @@ import { apiFetch } from './fetch';
 
 export interface ChatMessage {
   id: string;
-  matchId: string;
+  /** Null for direct messages (Sprint 14). */
+  matchId: string | null;
   conversationId: string;
   senderId: string | null;
   kind: 'user' | 'system';
@@ -47,4 +48,11 @@ export const chatApi = {
     ),
 
   block: (userId: string) => apiFetch<void>(`/blocks/${userId}`, { method: 'POST' }),
+
+  /** Undo a block (the "blocked by mistake" path). */
+  unblock: (userId: string) => apiFetch<void>(`/blocks/${userId}`, { method: 'DELETE' }),
+
+  /** The caller's own block list. */
+  blocks: () =>
+    apiFetch<{ items: Array<{ userId: string; name: string; blockedAt: string }> }>('/blocks'),
 };

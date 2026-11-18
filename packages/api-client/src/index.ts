@@ -23,6 +23,7 @@ export { chatApi } from './chat';
 export { uploadsApi } from './uploads';
 export { disputesApi } from './disputes';
 export { notificationsApi } from './notifications';
+export { dmApi } from './dm';
 export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
@@ -53,6 +54,14 @@ export type {
   SubmitResultResponse,
 } from './matches';
 export type { ChatMessage, MessagePage, SendResult, ReportReason } from './chat';
+export type {
+  DmConversation,
+  DmConversationItem,
+  DmMessage,
+  DmRelationship,
+  FriendRequestItem,
+  FriendState,
+} from './dm';
 export type { MatchStateEvent, ChatLockedEvent, NotificationEvent, Ack } from './realtime';
 export type { PresignedUpload, UploadInfo, UploadPurpose } from './uploads';
 export type {
@@ -85,6 +94,7 @@ export type {
   MfaStatus,
   QueueItem,
   QueueState,
+  ReportContextMessage,
   ReportItem,
   Sla,
   Standing,

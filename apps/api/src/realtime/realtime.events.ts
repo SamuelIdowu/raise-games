@@ -16,6 +16,8 @@ export const ServerEvents = {
   NotificationNew: 'notification:new',
   /** Sprint 11: { unread } — keeps every tab's badge in sync. */
   NotificationUnread: 'notification:unread',
+  /** Sprint 14: a direct message (DmMessageDto), sent to both players' user rooms. */
+  DmMessage: 'dm:message',
 } as const;
 
 export const ClientEvents = {

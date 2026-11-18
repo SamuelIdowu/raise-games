@@ -476,7 +476,7 @@ describe('Sprint 12 - trust & operations', () => {
         subjectId: subject.sub,
         reason: 'harassment',
       });
-      const queue = await admin.reportsQueue({ status: 'open', limit: 100 });
+      const queue = await admin.reportsQueue({ status: 'open', limit: 500 });
       expect(queue.items.some((i) => i.id === reportId && i.subject_user_id === subject.sub)).toBe(
         true,
       );

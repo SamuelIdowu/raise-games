@@ -4,6 +4,16 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 14 — Restricted DMs (behind the `messaging.dm` flag, off by default)
+
+- Direct messages between players who finished a match together or accepted a friend request. Nobody else can start one.
+- Friend requests from a player's profile, with notifications. Declining is silent; the same player can ask again after 30 days.
+- Inbox Messages tab lists friend requests and direct messages alongside match chats; conversations reuse the match chat (500 characters, no link previews, report and block on each message).
+- Block from a profile or a conversation: neither side can message or send requests, any friendship ends, and the blocked player is never told. Messages are kept as evidence. Unblock from Blocked players.
+- Mute a conversation to stop its notifications. Floods are throttled per pair, including a cap on unanswered messages.
+- Reported DMs reach the moderator queue with the surrounding conversation frozen at report time; keyword-filter hits now appear in the queue too.
+- With the flag off, every DM screen and endpoint is a 404 and no DM button appears anywhere.
+
 ### Sprint 13 — Stage 2 foundations (no player-facing change)
 
 - Double-entry ledger with holds: immutable entries, idempotent postings, row locking, and the database itself refusing unbalanced transactions. A nightly check confirms the books net to zero.

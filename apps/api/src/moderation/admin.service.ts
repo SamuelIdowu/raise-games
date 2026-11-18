@@ -715,18 +715,32 @@ export class AdminService {
       reporter_name: string | null;
       body_snapshot: string | null;
       match_id: string | null;
+      scope: 'match' | 'dm' | null;
+      context: unknown;
     }>(sql`
       SELECT * FROM (
         SELECT 'report' AS kind, r.id, r.reason, r.note, r.status, r.created_at, r.subject_type, r.subject_id,
                CASE WHEN r.subject_type = 'user' THEN r.subject_id ELSE (SELECT c.poster_id FROM challenges c WHERE c.id = r.subject_id) END AS subject_user_id,
-               u.display_name AS reporter_name, NULL::text AS body_snapshot, NULL::uuid AS match_id
+               u.display_name AS reporter_name, NULL::text AS body_snapshot, NULL::uuid AS match_id,
+               NULL::text AS scope, NULL::jsonb AS context
         FROM reports r JOIN users u ON u.id = r.reporter_id WHERE r.status = ${q.status}
         UNION ALL
         SELECT 'message' AS kind, mr.id, mr.reason, mr.note, mr.status, mr.created_at, 'message', mr.message_id,
-               (SELECT m.sender_id FROM messages m WHERE m.id = mr.message_id LIMIT 1),
-               u.display_name, mr.body_snapshot, c.match_id
+               (SELECT m.sender_id FROM messages m WHERE m.id = mr.message_id AND m.created_at = mr.message_created_at LIMIT 1),
+               u.display_name, mr.body_snapshot, c.match_id, c.scope::text, ctx.messages
         FROM message_reports mr JOIN users u ON u.id = mr.reporter_id
-        JOIN conversations c ON c.id = mr.conversation_id WHERE mr.status = ${q.status}
+        JOIN conversations c ON c.id = mr.conversation_id
+        LEFT JOIN message_report_contexts ctx ON ctx.report_id = mr.id
+        WHERE mr.status = ${q.status}
+        UNION ALL
+        -- Keyword-filter hits (F7.3 filter, F14.3): no reporter, the filter flagged it.
+        SELECT 'flag' AS kind, f.id, array_to_string(ARRAY(SELECT jsonb_array_elements_text(f.categories)), ', '),
+               NULL, f.status, f.created_at, 'message', f.message_id,
+               m.sender_id, NULL, m.body, c.match_id, c.scope::text, NULL::jsonb
+        FROM chat_flags f
+        JOIN conversations c ON c.id = f.conversation_id
+        LEFT JOIN messages m ON m.id = f.message_id AND m.created_at = f.message_created_at
+        WHERE f.status = ${q.status}
       ) x ORDER BY created_at ASC LIMIT ${q.limit}`);
     return { items: rows.map((r) => ({ ...r, created_at: new Date(r.created_at).toISOString() })) };
   }
@@ -737,7 +751,7 @@ export class AdminService {
    */
   async resolveReports(
     me: AuthedUser,
-    items: Array<{ kind: 'report' | 'message'; id: string }>,
+    items: Array<{ kind: 'report' | 'message' | 'flag'; id: string }>,
     input: { resolution: 'dismissed' | 'actioned'; note: string; sanctionUserId?: string | null },
   ) {
     const now = new Date();
@@ -755,6 +769,13 @@ export class AdminService {
             })
             .where(and(eq(schema.reports.id, item.id), eq(schema.reports.status, 'open')))
             .returning({ id: schema.reports.id });
+          changed += rows.length;
+        } else if (item.kind === 'flag') {
+          const rows = await tx
+            .update(schema.chatFlags)
+            .set({ status: input.resolution })
+            .where(and(eq(schema.chatFlags.id, item.id), eq(schema.chatFlags.status, 'open')))
+            .returning({ id: schema.chatFlags.id });
           changed += rows.length;
         } else {
           const rows = await tx
