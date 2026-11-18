@@ -16,6 +16,7 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { WalletModule } from './wallet/wallet.module';
+import { OpsModule } from './ops/ops.module';
 import { DmModule } from './dm/dm.module';
 import { ReportsModule } from './reports/reports.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -62,6 +63,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     ModerationModule,
     NotificationsModule,
     WalletModule,
+    OpsModule,
     DmModule,
     RealtimeModule,
   ],

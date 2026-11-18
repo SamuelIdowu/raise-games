@@ -46,6 +46,11 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
     this.handlers.push(handler);
   }
 
+  /** Registered consumer names (ops lag alerts, Sprint 15). */
+  consumerNames(): string[] {
+    return this.handlers.map((h) => h.name);
+  }
+
   onApplicationBootstrap(): void {
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     this.schedule();
