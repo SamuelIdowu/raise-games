@@ -55,7 +55,7 @@ Items that need real infrastructure are marked **[staging]**. Everything else is
 
 - `cso` pass over everything shipped since the Sprints 1–11 audit (Sprints 12–14), plus re-check of open audit findings
 - Fix audit #8: rate limits currently fail open when Redis is down; fall back to an in-process limiter so OTP verify and webhooks stay bounded
-- Security headers on the web app (CSP with nonces, `frame-ancestors 'none'`, HSTS, referrer policy); API already uses helmet, so verify its CSP for the docs route only
+- Security headers on the web app: already set in `next.config.ts` (Sprint 0 audit). CSP without nonces, because Cache Components / partial prerendering cannot use nonces (Next.js CSP guide), narrowed to the API, storage, PostHog and Turnstile origins. The API uses helmet with CSP off (JSON only)
 - `pnpm audit --prod` and a secret scan (gitleaks) in CI
 - Owner-held items stay visible, never silently closed (consent gate, audit #2)
 
@@ -93,12 +93,42 @@ Items that need real infrastructure are marked **[staging]**. Everything else is
 
 ## Checklist
 
-- [ ] F15.1 Lighthouse CI budgets on throttled 3G gate the build; **[staging]** real-device signup median under 90 s
-- [ ] F15.2 k6 API script with PRD thresholds; CI smoke green; **[staging]** 500-VU run archived
-- [ ] F15.3 WebSocket load script; CI smoke green; **[staging]** 3,000-socket run archived
-- [ ] F15.4 Request ids, OTel tracing, Sentry and PostHog adapters (env-gated, PII scrubbed)
-- [ ] F15.5 Alert rules (stuck matches, notification failures, outbox lag, dispute backlog, ledger imbalance) with tests and de-duplication
-- [ ] F15.6 Security pass; rate-limit fallback (audit #8); web security headers; audit and secret scan in CI
-- [ ] F15.7 Restore drill script + runbook; CI drill green; **[staging]** PITR restore timed
+- [x] F15.1 Lighthouse CI budgets on throttled 3G gate the build; **[staging, open]** real-device signup median under 90 s
+- [x] F15.2 k6 API script with PRD thresholds; CI smoke green; **[staging, open]** 500-VU run archived
+- [x] F15.3 WebSocket load script; CI smoke green; **[staging, open]** 3,000-socket run archived
+- [x] F15.4 Request ids, OTel tracing, Sentry and PostHog adapters (env-gated, PII scrubbed)
+- [x] F15.5 Alert rules (stuck matches, notification failures, outbox lag, dispute backlog, ledger imbalance) with tests and de-duplication
+- [x] F15.6 Security pass; rate-limit fallback (audit #8); web security headers; audit and secret scan in CI
+- [x] F15.7 Restore drill script + runbook; CI drill green; **[staging, open]** PITR restore timed
 - [ ] Zero open severity-1 issues (or owner + date for each)
 - [ ] `ship` close with PR + CHANGELOG
+
+## Status notes (2026-11-18)
+
+Everything that runs without staging is built and wired into CI. The staging-only items stay **open** until Sprint 0 F0.11 (staging deploy) exists; they reuse the same scripts with bigger numbers:
+
+| Item              | CI (local stack)                                                                                                                            | Staging command                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| First load on 3G  | `perf` job: Lighthouse, simulated Regular 3G; FCP < 3 s gates; LCP / TBT / JS weight warn until budgets are set from the first real numbers | Same config against the staging URL; real low-end Android for the 90 s signup median |
+| API p95           | `load` job: k6 smoke, 50 VUs, p95 < 500 ms                                                                                                  | `PROFILE=full` (500 VUs) with `load-seed.ts 1000` and `LOAD_SEED_ALLOW=1`            |
+| WebSocket fan-out | `load` job: 200 sockets over 2 instances, p95 < 1 s, zero missed                                                                            | `SOCKETS=3000`, `WS_CONNECT_LIMIT_PER_MIN` raised for the generator IPs              |
+| Restore           | `test` job: dump → restore → verify on the filled test database                                                                             | Managed-host PITR per `docs/runbooks/backup-restore.md`                              |
+
+Configuration added (all optional; unset = off): `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `RELEASE_SHA`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME` (start with `node --require ./dist/instrument.js dist/main.js`), `POSTHOG_KEY`, `POSTHOG_HOST`, `ALERT_WEBHOOK_URL`, `OPS_JOBS_DISABLED`, `LEDGER_JOBS_DISABLED`, `WS_CONNECT_LIMIT_PER_MIN`.
+
+### Security pass (Sprints 12–14 and this sprint)
+
+| Area                                     | Finding                                                                                                                                                                                                              | Status                         |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Admin routes                             | Every `/admin` route needs a session, a staff role and MFA (`StaffMfaGuard`); sensitive writes need a code from the last 15 minutes (`@StepUp`); role changes, flags and format pauses are admin-only in the service | OK                             |
+| Sanctions                                | Only admins can sanction staff or skip ladder steps; no self-sanction; bulk applies each item through the same checks                                                                                                | OK                             |
+| MFA                                      | TOTP secret AES-256-GCM encrypted; ±1 step; each step usable once (replay guard); 5 attempts / 5 min per account, failing closed                                                                                     | OK                             |
+| DMs                                      | Blocks either way, friendship or completed match required, suspended players refused; a blocked player sees what a stranger sees                                                                                     | OK                             |
+| Rate limits without Redis                | Audit #8: limits failed open                                                                                                                                                                                         | **Fixed**: in-process fallback |
+| Errors / analytics leaving the API       | PII scrubbed (phones, emails, bearer/JWT/refresh tokens); pseudonymous ids only                                                                                                                                      | OK (unit-tested)               |
+| Dependencies / secrets                   | `pnpm audit --prod` (high+) and gitleaks over full history now gate CI                                                                                                                                               | OK                             |
+| Consent gate (audit #2)                  | Server-side consent check still missing                                                                                                                                                                              | **Open: held by the owner**    |
+| Notification email unverified (audit #3) | Unchanged                                                                                                                                                                                                            | Open                           |
+| Visual regression not in CI (audit #4)   | Unchanged                                                                                                                                                                                                            | Open                           |
+
+Severity-1 list: none open from this pass. Audit #2 is high and owner-held; it must be decided before the closed beta (Sprint 16 onboarding).
