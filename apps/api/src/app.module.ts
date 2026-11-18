@@ -23,29 +23,29 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { HealthController } from './health/health.controller';
 import { env } from './config/env.instance';
 import { appExceptionFilterFactory } from './shared/global-exception.filter';
+import { requestIdFor } from './observability/request-id';
+import { ObservabilityModule } from './observability/observability.module';
 
 @Module({
   imports: [
     LoggerModule.forRoot({
-      pinoHttp:
-        env.NODE_ENV === 'development'
-          ? {
-              transport: { target: 'pino-pretty', options: { singleLine: true } },
-              redact: [
-                'req.headers.authorization',
-                'req.headers.cookie',
-                'req.body.phone',
-                'req.body.code',
-              ],
-            }
-          : {
-              redact: [
-                'req.headers.authorization',
-                'req.headers.cookie',
-                'req.body.phone',
-                'req.body.code',
-              ],
-            },
+      pinoHttp: {
+        ...(env.NODE_ENV === 'development'
+          ? { transport: { target: 'pino-pretty', options: { singleLine: true } } }
+          : {}),
+        // Sprint 15 (F15.4): every log line and response carries a request id. A caller's
+        // id is kept when it looks like one (proxies, the web app), else a new UUIDv7.
+        genReqId: requestIdFor,
+        redact: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.body.phone',
+          'req.body.code',
+          'req.body.refreshToken',
+          'req.body.email',
+          'req.body.turnstileToken',
+        ],
+      },
     }),
     AuthModule,
     ConsentModule,
@@ -64,6 +64,7 @@ import { appExceptionFilterFactory } from './shared/global-exception.filter';
     NotificationsModule,
     WalletModule,
     OpsModule,
+    ObservabilityModule,
     DmModule,
     RealtimeModule,
   ],

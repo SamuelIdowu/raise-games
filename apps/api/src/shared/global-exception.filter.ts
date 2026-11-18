@@ -6,7 +6,8 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { errorReporter } from '../observability/error-reporter';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -20,6 +21,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (status >= 500) {
       this.logger.error(exception);
+      const req = ctx.getRequest<FastifyRequest & { user?: { sub?: string } }>();
+      errorReporter().capture(exception, {
+        requestId: String((req?.raw as { id?: unknown } | undefined)?.id ?? req?.id ?? ''),
+        userId: req?.user?.sub,
+        route: req?.routeOptions?.url,
+        source: 'api',
+      });
     } else if (!isHttp) {
       this.logger.warn(String(exception));
     }

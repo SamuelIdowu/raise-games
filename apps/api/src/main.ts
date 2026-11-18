@@ -6,12 +6,15 @@ import cors from '@fastify/cors';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
 import { env } from './config/env.instance';
+import { initErrorReporter } from './observability/error-reporter';
 
 process.on('unhandledRejection', (reason) => {
   throw reason;
 });
 
 async function bootstrap() {
+  // Sprint 15 (F15.4): Sentry when SENTRY_DSN is set; a no-op otherwise.
+  await initErrorReporter();
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ logger: false }),
@@ -25,6 +28,8 @@ async function bootstrap() {
     credentials: true,
     // @fastify/cors v10+ defaults to GET/HEAD/POST; the API also uses PUT, PATCH and DELETE.
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    // The web app quotes it in error reports so a user's problem can be found in the logs.
+    exposedHeaders: ['x-request-id'],
   });
 
   // WebSocket gateway with Redis fan-out across instances (Sprint 7, F7.1).
