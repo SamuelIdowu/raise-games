@@ -86,8 +86,8 @@ If confirmed: DMs limited to players who completed a match together or accepted 
 - [x] F14.2 Eligibility scoping live (match-completed pair / friend request only); friend requests w/ notifications
 - [x] F14.3 Messages tab + conversation screens reusing F7.3 rules; rate limits + keyword flags connected to F12 queue
 - [x] F14.4 Block/mute/report all enforced + audited; admin sees handler actions
-- [ ] Flag-off regression test green (tab hidden/deep links 404/no entry points)
-- [ ] Testing green; cso/audits pass
+- [x] Flag-off regression test green (tab hidden/deep links 404/no entry points) (`e2e-app/dm.spec.ts`, CI run 44303272643 on `1648ac0`)
+- [x] Testing green; cso/audits pass (unit, integration and two-browser e2e green in CI run 44303272643; self-audit above)
 - [ ] `ship` close with PR + CHANGELOG (sprint file shows outcome if deferred)
 
 ## Outcome (2026-11-17)
