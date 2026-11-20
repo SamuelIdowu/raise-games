@@ -96,11 +96,11 @@ Automated scenarios proving each defence holds, plus a playbook for live attempt
 - [x] F16.1 Invite-only gate (flag, default off), codes per cohort, atomic redemption, waitlist, admin screen
 - [x] F16.2 Metrics dashboard with the six PRD metrics per cohort, funnel, daily series, CSV
 - [x] F16.3 In-app feedback, severity triage, open-S1 count on the dashboard
-- [ ] F16.4 Adversarial pack green; playbook written
+- [x] F16.4 Adversarial pack green; playbook written (`sprint16-adversarial.integration`, CI run 44711989079 on `d51736a`)
 - [x] F16.5 Beta runbook and go/no-go checklist
 - [ ] `[owner/legal]` Legal documents final and linked from onboarding
 - [ ] `[owner]` Cohorts chosen, codes issued, moderator rota staffed; beta opened
-- [ ] Testing green; audits pass
+- [x] Testing green; audits pass (unit, integration, e2e, load and Lighthouse green in CI run 44711989079; audit notes below)
 - [ ] Exit: metrics on track, open S1 = 0 (after the beta has run)
 
 ## Implementation notes (2026-11-18)
@@ -112,3 +112,10 @@ Automated scenarios proving each defence holds, plus a playbook for live attempt
 - **Feedback (F16.3):** "Send feedback" in the sidebar and mobile menu → `/feedback` (page and app version attached). `/admin/feedback` triages severity and status; leaving "new" requires a severity; every change is audited. Open S1–S4 counts appear on the metrics page as the exit gate.
 - **Adversarial (F16.4):** `docs/beta/adversarial-playbook.md` maps 15 attacks to the tests that prove each defence. New: `sprint16-adversarial.integration.test.ts` drives the reused-screenshot and lost-self-opened-dispute auto-limits end to end, the two no earlier suite covered. Open finding: **no new-account cooldown** (PRD mitigation), proposed S3 for Stage 1 and an owner decision before Stage 2.
 - **Runbook (F16.5):** `docs/beta/beta-runbook.md`: go/no-go, opening, daily and weekly checks, closing, rollback.
+
+## Audit (2026-11-20)
+
+- **Gate bypass:** the only code that creates player accounts is `AuthService.findOrCreateUser` (OTP verify), which redeems the invite in the same transaction. The only other `users` insert is `scripts/load-seed.ts` (Sprint 15 load-test seeding, not reachable by any request).
+- **Enumeration:** while the gate is on, `invite_required` is returned only for numbers without an account, so the response reveals whether a number is registered. Accepted for the beta (rate limits on OTP request and wrong codes apply); it disappears when the gate is turned off at launch.
+- **Privacy:** waitlist phones are masked for staff, shown in full only in the invite message an admin sends, and purged after 90 days. Metrics are aggregates; feedback stores page and app version, not message content.
+- **CI fixes on the way:** feedback triage now moves "new" to "triaged" when a severity is set (the admin screen always sends the status); the Sprint 15 load script called a staff-only chat route (fixed to `/matches/:id/chat/messages`); the Sprint 6 cleanup retries on a deadlock with the outbox relay (`test-fixtures/retry.ts`).
