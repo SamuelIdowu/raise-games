@@ -9,6 +9,7 @@ import { eq, inArray, sql } from 'drizzle-orm';
 import { db, pool, schema } from './db/client';
 import { ESCALATION_RULES } from './moderation/ladder';
 import { assertCanPlay, getStanding } from './moderation/standing';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 describe('Sprint 16 adversarial pack — auto-limits', () => {
   let gameId = '';
@@ -105,22 +106,25 @@ describe('Sprint 16 adversarial pack — auto-limits', () => {
   });
 
   afterAll(async () => {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-      if (matchIds.length) {
-        await tx
-          .delete(schema.outboxEvents)
-          .where(inArray(schema.outboxEvents.subjectId, matchIds));
-        await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
+        if (matchIds.length) {
+          await tx
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, matchIds));
+          await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+        }
+      });
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.uploads).where(inArray(schema.uploads.ownerId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
       }
     });
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.uploads).where(inArray(schema.uploads.ownerId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
     // This file opens no Nest app; release the pool it used.
     await pool.end();
   });

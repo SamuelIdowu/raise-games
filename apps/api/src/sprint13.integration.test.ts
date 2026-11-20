@@ -19,6 +19,7 @@ import { FlagsService } from './wallet/flags.service';
 import { ProviderRegistry } from './wallet/provider.registry';
 import { WalletService } from './wallet/wallet.service';
 import { signPayload } from './wallet/webhook-signature';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 const SECRET = 'sprint13-test-webhook-secret';
 
@@ -188,38 +189,43 @@ describe('Sprint 13 - ledger & stage 2 foundations', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-      await tx.delete(schema.ledgerHolds).where(eq(schema.ledgerHolds.currency, CUR));
-      await tx.execute(sql`
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
+        await tx.delete(schema.ledgerHolds).where(eq(schema.ledgerHolds.currency, CUR));
+        await tx.execute(sql`
         DELETE FROM ledger_entries WHERE transaction_id IN
           (SELECT id FROM ledger_transactions WHERE currency = ${CUR})`);
-      await tx.execute(sql`
+        await tx.execute(sql`
         DELETE FROM ledger_transactions WHERE currency = ${CUR} AND reverses_transaction_id IS NOT NULL`);
-      await tx.delete(schema.ledgerTransactions).where(eq(schema.ledgerTransactions.currency, CUR));
-      await tx.delete(schema.ledgerAccounts).where(eq(schema.ledgerAccounts.currency, CUR));
-      await tx
-        .delete(schema.providerWebhookEvents)
-        .where(sql`${schema.providerWebhookEvents.payload}->'data'->>'currency' = ${CUR}`);
-      await tx.delete(schema.feeRules).where(eq(schema.feeRules.currency, CUR));
-      await tx.delete(schema.stakeLimitRules).where(eq(schema.stakeLimitRules.currency, CUR));
-      if (flagIds.length)
-        await tx.delete(schema.featureFlags).where(inArray(schema.featureFlags.id, flagIds));
-      if (matchIds.length) {
         await tx
-          .delete(schema.outboxEvents)
-          .where(inArray(schema.outboxEvents.subjectId, matchIds));
-        await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+          .delete(schema.ledgerTransactions)
+          .where(eq(schema.ledgerTransactions.currency, CUR));
+        await tx.delete(schema.ledgerAccounts).where(eq(schema.ledgerAccounts.currency, CUR));
+        await tx
+          .delete(schema.providerWebhookEvents)
+          .where(sql`${schema.providerWebhookEvents.payload}->'data'->>'currency' = ${CUR}`);
+        await tx.delete(schema.feeRules).where(eq(schema.feeRules.currency, CUR));
+        await tx.delete(schema.stakeLimitRules).where(eq(schema.stakeLimitRules.currency, CUR));
+        if (flagIds.length)
+          await tx.delete(schema.featureFlags).where(inArray(schema.featureFlags.id, flagIds));
+        if (matchIds.length) {
+          await tx
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, matchIds));
+          await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+        }
+      });
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.limitSettings).where(inArray(schema.limitSettings.userId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
       }
+      delete process.env.MOCK_PROVIDER_WEBHOOK_SECRET;
     });
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.limitSettings).where(inArray(schema.limitSettings.userId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
-    delete process.env.MOCK_PROVIDER_WEBHOOK_SECRET;
     await moduleRef?.close();
   }, 60_000);
 

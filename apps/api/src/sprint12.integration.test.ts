@@ -22,6 +22,7 @@ import { getStanding } from './moderation/standing';
 import { OutboxRelay } from './realtime/outbox-relay';
 import { totpAt } from './shared/totp';
 import { ensureRedis, redis } from './cache/redis';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 describe('Sprint 12 - trust & operations', () => {
   let moduleRef: TestingModule;
@@ -159,33 +160,38 @@ describe('Sprint 12 - trust & operations', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-      if (matchIds.length) {
-        await tx
-          .delete(schema.outboxEvents)
-          .where(inArray(schema.outboxEvents.subjectId, matchIds));
-        await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
-      }
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
+        if (matchIds.length) {
+          await tx
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, matchIds));
+          await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+        }
+        if (userIds.length) {
+          await tx
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, userIds));
+          await tx
+            .delete(schema.reputationDebts)
+            .where(inArray(schema.reputationDebts.userId, userIds));
+          await tx.delete(schema.reports).where(inArray(schema.reports.reporterId, userIds));
+          await tx.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
+          await tx.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
+        }
+      });
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      // Challenges created through the service by these players.
       if (userIds.length) {
-        await tx.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, userIds));
-        await tx
-          .delete(schema.reputationDebts)
-          .where(inArray(schema.reputationDebts.userId, userIds));
-        await tx.delete(schema.reports).where(inArray(schema.reports.reporterId, userIds));
-        await tx.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
-        await tx.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
+        await db.delete(schema.challenges).where(inArray(schema.challenges.posterId, userIds));
+        await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
       }
     });
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    // Challenges created through the service by these players.
-    if (userIds.length) {
-      await db.delete(schema.challenges).where(inArray(schema.challenges.posterId, userIds));
-      await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
     await moduleRef?.close();
   }, 60_000);
 

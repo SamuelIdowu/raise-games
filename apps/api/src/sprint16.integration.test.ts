@@ -18,6 +18,7 @@ import { AuthService } from './auth/auth.service';
 import { BetaService } from './beta/beta.service';
 import { BAD_INVITE_LIMIT, INVITE_COPY } from './beta/invites';
 import { ensureRedis, redis } from './cache/redis';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 describe('Sprint 16 - closed beta', () => {
   let moduleRef: TestingModule;
@@ -112,33 +113,36 @@ describe('Sprint 16 - closed beta', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-      if (matchIds.length) {
-        await tx
-          .delete(schema.outboxEvents)
-          .where(inArray(schema.outboxEvents.subjectId, matchIds));
-        await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
+        if (matchIds.length) {
+          await tx
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, matchIds));
+          await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+        }
+      });
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.feedback).where(inArray(schema.feedback.userId, userIds));
+        await db
+          .delete(schema.inviteRedemptions)
+          .where(inArray(schema.inviteRedemptions.userId, userIds));
+        await db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
+        await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
       }
+      if (codeIds.length) {
+        await db
+          .delete(schema.betaWaitlist)
+          .where(inArray(schema.betaWaitlist.inviteCodeId, codeIds));
+        await db.delete(schema.inviteCodes).where(inArray(schema.inviteCodes.id, codeIds));
+      }
+      if (userIds.length) await db.delete(schema.users).where(inArray(schema.users.id, userIds));
     });
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.feedback).where(inArray(schema.feedback.userId, userIds));
-      await db
-        .delete(schema.inviteRedemptions)
-        .where(inArray(schema.inviteRedemptions.userId, userIds));
-      await db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
-      await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-    }
-    if (codeIds.length) {
-      await db
-        .delete(schema.betaWaitlist)
-        .where(inArray(schema.betaWaitlist.inviteCodeId, codeIds));
-      await db.delete(schema.inviteCodes).where(inArray(schema.inviteCodes.id, codeIds));
-    }
-    if (userIds.length) await db.delete(schema.users).where(inArray(schema.users.id, userIds));
     await moduleRef?.close();
   }, 60_000);
 

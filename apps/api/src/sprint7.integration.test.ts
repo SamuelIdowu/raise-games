@@ -30,6 +30,7 @@ import { resetChatRateLimitMemory } from './chat/chat.rate-limit';
 import { CHAT_LOCK_AFTER_MS } from './chat/chat.rules';
 import type { AuthedUser } from './auth/jwt-auth.guard';
 import type { ChatMessageDto, MatchStateEvent } from './realtime/realtime.events';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 interface Instance {
   app: NestFastifyApplication;
@@ -256,37 +257,44 @@ describe('Sprint 7 - match room, gateway & chat', () => {
   beforeEach(clearChatLimits);
 
   afterAll(async () => {
-    for (const s of sockets) s.disconnect();
-    if (matchIds.length) {
-      const convs = await db
-        .select({ id: schema.conversations.id })
-        .from(schema.conversations)
-        .where(inArray(schema.conversations.matchId, matchIds));
-      const convIds = convs.map((c) => c.id);
-      if (convIds.length) {
-        await db.delete(schema.chatFlags).where(inArray(schema.chatFlags.conversationId, convIds));
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      for (const s of sockets) s.disconnect();
+      if (matchIds.length) {
+        const convs = await db
+          .select({ id: schema.conversations.id })
+          .from(schema.conversations)
+          .where(inArray(schema.conversations.matchId, matchIds));
+        const convIds = convs.map((c) => c.id);
+        if (convIds.length) {
+          await db
+            .delete(schema.chatFlags)
+            .where(inArray(schema.chatFlags.conversationId, convIds));
+          await db
+            .delete(schema.messageReports)
+            .where(inArray(schema.messageReports.conversationId, convIds));
+          await db.delete(schema.messages).where(inArray(schema.messages.conversationId, convIds));
+          await db
+            .delete(schema.conversationParticipants)
+            .where(inArray(schema.conversationParticipants.conversationId, convIds));
+          await db.delete(schema.conversations).where(inArray(schema.conversations.id, convIds));
+        }
         await db
-          .delete(schema.messageReports)
-          .where(inArray(schema.messageReports.conversationId, convIds));
-        await db.delete(schema.messages).where(inArray(schema.messages.conversationId, convIds));
-        await db
-          .delete(schema.conversationParticipants)
-          .where(inArray(schema.conversationParticipants.conversationId, convIds));
-        await db.delete(schema.conversations).where(inArray(schema.conversations.id, convIds));
+          .delete(schema.outboxEvents)
+          .where(inArray(schema.outboxEvents.subjectId, matchIds));
+        await db.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
       }
-      await db.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, matchIds));
-      await db.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
-    }
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.userBlocks).where(inArray(schema.userBlocks.blockerId, userIds));
-      await db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
-      await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.id, profileIds));
-      await db.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, userIds));
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.userBlocks).where(inArray(schema.userBlocks.blockerId, userIds));
+        await db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
+        await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.id, profileIds));
+        await db.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, userIds));
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
+      }
+    });
     await one?.app.close();
     await two?.app.close();
     await one?.adapter.dispose();

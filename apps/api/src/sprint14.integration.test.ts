@@ -19,6 +19,7 @@ import { DmEnabledGuard, dmEnabled } from './dm/dm.flag';
 import { DmService } from './dm/dm.service';
 import { DM_COPY, DM_FLAG_KEY, DM_MAX_UNANSWERED } from './dm/dm.rules';
 import { ensureRedis, redis } from './cache/redis';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 describe('Sprint 14 - restricted DMs', () => {
   let moduleRef: TestingModule;
@@ -155,73 +156,80 @@ describe('Sprint 14 - restricted DMs', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await setFlag(flagWasEnabled ?? false);
-    const convs = userIds.length
-      ? await db
-          .selectDistinct({ id: schema.conversationParticipants.conversationId })
-          .from(schema.conversationParticipants)
-          .where(inArray(schema.conversationParticipants.userId, userIds))
-      : [];
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-      if (convs.length) {
-        const ids = convs.map((c) => c.id);
-        const msgIds = (
-          await tx
-            .select({ id: schema.messages.id })
-            .from(schema.messages)
-            .where(inArray(schema.messages.conversationId, ids))
-        ).map((m) => m.id);
-        if (msgIds.length)
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      await setFlag(flagWasEnabled ?? false);
+      const convs = userIds.length
+        ? await db
+            .selectDistinct({ id: schema.conversationParticipants.conversationId })
+            .from(schema.conversationParticipants)
+            .where(inArray(schema.conversationParticipants.userId, userIds))
+        : [];
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
+        if (convs.length) {
+          const ids = convs.map((c) => c.id);
+          const msgIds = (
+            await tx
+              .select({ id: schema.messages.id })
+              .from(schema.messages)
+              .where(inArray(schema.messages.conversationId, ids))
+          ).map((m) => m.id);
+          if (msgIds.length)
+            await tx
+              .delete(schema.outboxEvents)
+              .where(inArray(schema.outboxEvents.subjectId, msgIds));
+          // Cascades: participants, messages, message_reports (+contexts), chat_flags.
+          await tx.delete(schema.conversations).where(inArray(schema.conversations.id, ids));
+        }
+        if (matchIds.length) {
           await tx
             .delete(schema.outboxEvents)
-            .where(inArray(schema.outboxEvents.subjectId, msgIds));
-        // Cascades: participants, messages, message_reports (+contexts), chat_flags.
-        await tx.delete(schema.conversations).where(inArray(schema.conversations.id, ids));
-      }
-      if (matchIds.length) {
-        await tx
-          .delete(schema.outboxEvents)
-          .where(inArray(schema.outboxEvents.subjectId, matchIds));
-        await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
-      }
-      if (userIds.length) {
-        const reqIds = (
+            .where(inArray(schema.outboxEvents.subjectId, matchIds));
+          await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
+        }
+        if (userIds.length) {
+          const reqIds = (
+            await tx
+              .select({ id: schema.friendRequests.id })
+              .from(schema.friendRequests)
+              .where(
+                or(
+                  inArray(schema.friendRequests.requesterId, userIds),
+                  inArray(schema.friendRequests.addresseeId, userIds),
+                ),
+              )
+          ).map((r) => r.id);
+          if (reqIds.length)
+            await tx
+              .delete(schema.outboxEvents)
+              .where(inArray(schema.outboxEvents.subjectId, reqIds));
           await tx
-            .select({ id: schema.friendRequests.id })
-            .from(schema.friendRequests)
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, userIds));
+          await tx
+            .delete(schema.userBlocks)
             .where(
               or(
-                inArray(schema.friendRequests.requesterId, userIds),
-                inArray(schema.friendRequests.addresseeId, userIds),
+                inArray(schema.userBlocks.blockerId, userIds),
+                inArray(schema.userBlocks.blockedId, userIds),
               ),
-            )
-        ).map((r) => r.id);
-        if (reqIds.length)
-          await tx
-            .delete(schema.outboxEvents)
-            .where(inArray(schema.outboxEvents.subjectId, reqIds));
-        await tx.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, userIds));
-        await tx
-          .delete(schema.userBlocks)
-          .where(
-            or(
-              inArray(schema.userBlocks.blockerId, userIds),
-              inArray(schema.userBlocks.blockedId, userIds),
-            ),
-          );
-        await tx.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
-        await tx.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
+            );
+          await tx.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
+          await tx.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
+        }
+      });
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
+        await db
+          .delete(schema.consentRecords)
+          .where(inArray(schema.consentRecords.userId, userIds));
+        // friend_requests and notifications cascade with the user.
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
       }
     });
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-      await db.delete(schema.consentRecords).where(inArray(schema.consentRecords.userId, userIds));
-      // friend_requests and notifications cascade with the user.
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
     await moduleRef?.close();
   }, 60_000);
 
