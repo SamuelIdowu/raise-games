@@ -46,7 +46,7 @@ export class AuthController {
     if (turnstileRequired && !pending && !body.turnstileToken) {
       throw new BadRequestException('Complete the security check');
     }
-    if (body.turnstileToken) {
+    if (turnstileRequired && body.turnstileToken) {
       const valid = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY!, body.turnstileToken);
       if (!valid) throw new UnauthorizedException('Turnstile verification failed');
     }

@@ -4,6 +4,12 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   WEB_ORIGIN: z.string().default('http://localhost:3000'),
+  /**
+   * Number of proxies in front of the API (0 local, 1 host load balancer, 2 Cloudflare plus a
+   * load balancer). Per-IP rate limits read the client IP through this many hops; see
+   * shared/client-ip.ts.
+   */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
   DATABASE_URL: z.string().startsWith('postgres://'),
   REDIS_URL: z.string().startsWith('redis://').default('redis://localhost:6379'),
   JWT_ACCESS_SECRET: z.string().min(32),
@@ -94,5 +100,37 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (!rest.MFA_ENCRYPTION_KEY && env !== 'development' && env !== 'test') {
     throw new Error('MFA_ENCRYPTION_KEY is required outside development/test — refusing to boot');
   }
+  if (env !== 'development' && env !== 'test') {
+    const missing = missingDeploySettings(env, rest);
+    if (missing.length) {
+      throw new Error(`Missing settings for ${env} → ${missing.join('; ')} — refusing to boot`);
+    }
+  }
   return { NODE_ENV: env, OTP_MOCK_ENABLED: otpMock, ...rest };
+}
+
+/**
+ * Audit B4: settings a deployed API cannot run safely without. Each of these silently
+ * degrades when unset in development (Turnstile off, uploads unconfigured, SMS mocked),
+ * which is fine locally and wrong anywhere players are.
+ */
+function missingDeploySettings(
+  env: Env['NODE_ENV'],
+  s: Omit<Env, 'NODE_ENV' | 'OTP_MOCK_ENABLED'>,
+): string[] {
+  const missing: string[] = [];
+  if (s.SMS_PROVIDER === 'mock') missing.push('SMS_PROVIDER must be termii or twilio');
+  if (s.SMS_PROVIDER !== 'mock' && !s.SMS_API_KEY) missing.push('SMS_API_KEY');
+  if (!s.TURNSTILE_SECRET_KEY) missing.push('TURNSTILE_SECRET_KEY (signup bot check)');
+  if (!(s.STORAGE_ENDPOINT || s.R2_ACCOUNT_ID) || !s.R2_ACCESS_KEY_ID || !s.R2_SECRET_ACCESS_KEY) {
+    missing.push('R2_ACCOUNT_ID or STORAGE_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY');
+  }
+  if (env === 'production') {
+    const local = (url: string) =>
+      !url.startsWith('https://') || /localhost|127\.0\.0\.1/.test(url);
+    if (s.WEB_ORIGIN.split(',').some(local))
+      missing.push('WEB_ORIGIN must be https and not localhost');
+    if (local(s.APP_URL)) missing.push('APP_URL must be https and not localhost');
+  }
+  return missing;
 }

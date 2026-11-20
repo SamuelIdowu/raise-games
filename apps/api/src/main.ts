@@ -17,7 +17,13 @@ async function bootstrap() {
   await initErrorReporter();
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: false }),
+    // trustProxy: req.ip is the player, not the proxy (audit B2; shared/client-ip.ts).
+    new FastifyAdapter({
+      logger: false,
+      // Trust the first TRUST_PROXY hops (what a numeric trustProxy means in proxy-addr).
+      trustProxy:
+        env.TRUST_PROXY > 0 ? (_addr: string, hop: number) => hop < env.TRUST_PROXY : false,
+    }),
     // Provider webhook signatures are computed over the exact bytes received (Sprint 13).
     { rawBody: true },
   );
@@ -37,16 +43,20 @@ async function bootstrap() {
   await ioAdapter.connectToRedis();
   app.useWebSocketAdapter(ioAdapter);
 
-  const swagger = await import('@nestjs/swagger');
-  const config = new swagger.DocumentBuilder()
-    .setTitle('RAISE API')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  const document = swagger.SwaggerModule.createDocument(app, config);
-  swagger.SwaggerModule.setup('docs', app, document, {
-    jsonDocumentUrl: 'docs/openapi.json',
-  });
+  // API docs are for development and staging only (audit B7): production does not publish
+  // the full route map.
+  if (env.NODE_ENV !== 'production') {
+    const swagger = await import('@nestjs/swagger');
+    const config = new swagger.DocumentBuilder()
+      .setTitle('RAISE API')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    const document = swagger.SwaggerModule.createDocument(app, config);
+    swagger.SwaggerModule.setup('docs', app, document, {
+      jsonDocumentUrl: 'docs/openapi.json',
+    });
+  }
 
   await app.enableShutdownHooks();
   await app.listen(env.PORT, '0.0.0.0');
