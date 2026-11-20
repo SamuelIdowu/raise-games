@@ -120,6 +120,13 @@
       "when": 1795007363250,
       "tag": "0016_sprint16_beta",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795169308880,
+      "tag": "0017_hardening_idempotency_scope",
+      "breakpoints": true
     }
   ]
 }

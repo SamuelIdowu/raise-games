@@ -181,7 +181,12 @@ export class ChallengesService {
       const existing = await db
         .select({ id: schema.challenges.id })
         .from(schema.challenges)
-        .where(eq(schema.challenges.idempotencyKey, input.idempotencyKey))
+        .where(
+          and(
+            eq(schema.challenges.posterId, posterId),
+            eq(schema.challenges.idempotencyKey, input.idempotencyKey),
+          ),
+        )
         .limit(1);
       if (existing[0]) return { id: existing[0].id };
     }
@@ -289,7 +294,12 @@ export class ChallengesService {
         const [existing] = await db
           .select({ id: schema.challenges.id })
           .from(schema.challenges)
-          .where(eq(schema.challenges.idempotencyKey, input.idempotencyKey))
+          .where(
+            and(
+              eq(schema.challenges.posterId, posterId),
+              eq(schema.challenges.idempotencyKey, input.idempotencyKey),
+            ),
+          )
           .limit(1);
         if (existing) return { id: existing.id };
       }

@@ -374,7 +374,8 @@ export const challenges = pgTable(
     ratingGap: integer('rating_gap'),
     repeatPairCount: integer('repeat_pair_count').notNull().default(0),
     version: integer('version').notNull().default(1),
-    idempotencyKey: uuid('idempotency_key').unique(),
+    /** Unique per poster (audit #6): another player's key never returns their challenge. */
+    idempotencyKey: uuid('idempotency_key'),
     acceptedById: uuid('accepted_by_id').references(() => users.id),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
@@ -386,6 +387,7 @@ export const challenges = pgTable(
     index('challenges_board_idx').on(t.status, t.createdAt, t.id),
     index('challenges_game_board_idx').on(t.gameId, t.status, t.createdAt, t.id),
     index('challenges_poster_idx').on(t.posterId, t.createdAt),
+    uniqueIndex('challenges_poster_idempotency_uq').on(t.posterId, t.idempotencyKey),
     index('challenges_target_idx').on(t.targetPlayerId, t.status),
     index('challenges_deadline_idx').on(t.status, t.acceptanceDeadline),
   ],

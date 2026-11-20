@@ -227,6 +227,25 @@ describe('Sprint 6 - challenge lifecycle & match state machine', () => {
       challengeIds.push(...ids);
     });
 
+    it("another player's idempotency key creates their own challenge (audit #6)", async () => {
+      const a = await player('idem_scope_a');
+      const b = await player('idem_scope_b');
+      const key = uuidv7();
+      const startsAt = new Date(Date.now() + 3600_000);
+      const input = {
+        gameKey,
+        formatKey,
+        rules: '',
+        startsAt: startsAt.toISOString(),
+        endsAt: new Date(startsAt.getTime() + 3600_000).toISOString(),
+        idempotencyKey: key,
+      };
+      const first = await challenges.createChallenge(a, input);
+      const second = await challenges.createChallenge(b, input);
+      challengeIds.push(first.id, second.id);
+      expect(second.id).not.toBe(first.id);
+    });
+
     it('rejects a start in the past and a format from another game', async () => {
       const a = await player('val_a');
       await expect(
