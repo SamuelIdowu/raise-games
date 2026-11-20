@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button, Icon, Sheet } from '@/components/ui';
 import { NAV_ITEMS, NavBadge, useNavBadges, type NavItem } from './BottomNav';
+import { signOut } from '@/lib/session';
 
 export function Sidebar() {
   const badges = useNavBadges();
@@ -45,6 +46,14 @@ export function Sidebar() {
             <Icon name="flag" size={24} aria-hidden />
             <span className="font-display text-body-sm">Send feedback</span>
           </a>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex min-h-11 items-center gap-3 px-3 py-2 text-left text-fg-muted hover:bg-overlay hover:text-fg"
+          >
+            <Icon name="log-out" size={24} aria-hidden />
+            <span className="font-display text-body-sm">Sign out</span>
+          </button>
         </nav>
       </Sheet>
 
@@ -102,6 +111,17 @@ export function Sidebar() {
           <Icon name="flag" size={20} aria-hidden />
           {!collapsed && <span className="font-display text-body-sm">Send feedback</span>}
         </a>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          aria-label={collapsed ? 'Sign out' : undefined}
+          className={`mx-2 mb-2 flex min-h-11 items-center gap-3 rounded-card px-3 py-2 text-left text-fg-muted hover:bg-overlay hover:text-fg ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Icon name="log-out" size={20} aria-hidden />
+          {!collapsed && <span className="font-display text-body-sm">Sign out</span>}
+        </button>
       </aside>
     </>
   );

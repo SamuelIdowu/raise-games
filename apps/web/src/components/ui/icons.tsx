@@ -21,6 +21,7 @@ import {
   Info,
   Loader2,
   Lock,
+  LogOut,
   Mail,
   Menu,
   Minus,
@@ -73,6 +74,7 @@ export type IconName =
   | 'star'
   | 'upload'
   | 'lock'
+  | 'log-out'
   | 'minus'
   | 'camera'
   | 'image'
@@ -113,6 +115,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   star: Star,
   upload: Upload,
   lock: Lock,
+  'log-out': LogOut,
   minus: Minus,
   camera: Camera,
   image: ImageIcon,
