@@ -13,9 +13,21 @@ import type { Server } from 'socket.io';
 export class RealtimePublisher {
   private readonly logger = new Logger(RealtimePublisher.name);
   private server: Server | null = null;
+  private readonly onAttach: Array<() => void> = [];
 
   attach(server: Server): void {
     this.server = server;
+    for (const fn of this.onAttach.splice(0)) fn();
+  }
+
+  /**
+   * Runs `fn` once a socket server is attached (now, if it already is). Consumers whose only
+   * job is a live emit register through this, so a process without a gateway never claims
+   * their outbox events and drops the broadcast for everyone.
+   */
+  whenAttached(fn: () => void): void {
+    if (this.server) fn();
+    else this.onAttach.push(fn);
   }
 
   get attached(): boolean {
