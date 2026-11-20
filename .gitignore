@@ -32,3 +32,4 @@ Thumbs.db
 temp.txt
 .lighthouseci/
 load-tokens.json
+*.stackdump
