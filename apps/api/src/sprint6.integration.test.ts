@@ -27,6 +27,7 @@ import { ChallengeExpiryWorker, expireDueChallenges } from './challenges/challen
 import { startDueMatches } from './matches/match-start';
 import { ReportsService } from './reports/reports.module';
 import { db, schema } from './db/client';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 describe('Sprint 6 - challenge lifecycle & match state machine', () => {
   let moduleRef: TestingModule;
@@ -101,6 +102,12 @@ describe('Sprint 6 - challenge lifecycle & match state machine', () => {
   }, 60_000);
 
   afterAll(async () => {
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(() => cleanup());
+    await moduleRef?.close();
+  }, 120_000);
+
+  async function cleanup() {
     if (challengeIds.length) {
       const ms = await db
         .select({ id: schema.matches.id })
@@ -130,8 +137,7 @@ describe('Sprint 6 - challenge lifecycle & match state machine', () => {
       await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
       await db.delete(schema.users).where(inArray(schema.users.id, userIds));
     }
-    await moduleRef?.close();
-  }, 120_000);
+  }
 
   // ------------------------------------------------------------- F6.1 state machine
   describe('state machine (F6.1)', () => {
