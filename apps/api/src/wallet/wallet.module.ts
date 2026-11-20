@@ -7,6 +7,7 @@ import { RealtimeCoreModule } from '../realtime/realtime-core.module';
 import { FlagsService } from './flags.service';
 import { MockProviderAdapter } from './mock-provider.adapter';
 import { ProviderRegistry } from './provider.registry';
+import { ReconciliationService } from './reconciliation.service';
 import { LimitsController, WebhooksController } from './wallet.controller';
 import { WALLET_EVENT_TYPES, WalletService } from './wallet.service';
 
@@ -21,8 +22,9 @@ import { WALLET_EVENT_TYPES, WalletService } from './wallet.service';
     MockProviderAdapter,
     ProviderRegistry,
     WalletService,
+    ReconciliationService,
   ],
-  exports: [LedgerService, FlagsService, ProviderRegistry, WalletService],
+  exports: [LedgerService, FlagsService, ProviderRegistry, WalletService, ReconciliationService],
 })
 export class WalletModule implements OnModuleInit {
   constructor(

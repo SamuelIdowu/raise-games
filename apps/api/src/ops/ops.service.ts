@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { LedgerService } from '../ledger/ledger.service';
 import { OutboxRelay } from '../realtime/outbox-relay';
+import { ReconciliationService } from '../wallet/reconciliation.service';
 import {
   type Alert,
   DISPUTE_SLA_MS,
@@ -29,6 +30,7 @@ export class OpsService {
   constructor(
     private readonly relay: OutboxRelay,
     private readonly ledger: LedgerService,
+    private readonly reconciliation: ReconciliationService,
   ) {}
 
   async snapshot(now = new Date()): Promise<OpsSnapshot> {
@@ -71,6 +73,8 @@ export class OpsService {
     }
 
     const ledger = await this.ledger.checkInvariants();
+    // Audit B30: books that balance internally but disagree with what happened outside them.
+    const reconciliation = await this.reconciliation.reconcile();
     return {
       stuckMatches: Number(row?.stuck ?? 0),
       notificationAttempts: Number(row?.attempts ?? 0),
@@ -78,7 +82,7 @@ export class OpsService {
       outboxLagMs,
       outboxDead: Number(row?.dead ?? 0),
       disputesOverSla: Number(row?.over_sla ?? 0),
-      ledgerIssues: ledger.issues.length,
+      ledgerIssues: ledger.issues.length + reconciliation.issues.length,
     };
   }
 

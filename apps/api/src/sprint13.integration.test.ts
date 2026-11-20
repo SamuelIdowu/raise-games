@@ -18,6 +18,7 @@ import type { OutboxEvent } from './realtime/outbox-relay';
 import { FlagsService } from './wallet/flags.service';
 import { ProviderRegistry } from './wallet/provider.registry';
 import { WalletService } from './wallet/wallet.service';
+import { ReconciliationService } from './wallet/reconciliation.service';
 import { signPayload } from './wallet/webhook-signature';
 import { retryOnDeadlock } from './test-fixtures/retry';
 
@@ -563,6 +564,34 @@ describe('Sprint 13 - ledger & stage 2 foundations', () => {
       .from(schema.matches)
       .where(eq(schema.matches.id, matchId));
     expect(m!.c).toBeNull();
+  });
+
+  it('reconciliation: applied webhooks have postings; one without is reported (audit B30)', async () => {
+    const u = await player('recon');
+    const { eventId } = await deposit(u, 700);
+    const orphan = uuidv7();
+    // A callback marked applied whose posting never happened (the failure being looked for).
+    await db.insert(schema.providerWebhookEvents).values({
+      id: uuidv7(),
+      provider: 'mock',
+      eventId: orphan,
+      eventType: 'deposit.succeeded',
+      payload: {},
+      processedAt: new Date(),
+      outcome: 'applied',
+    });
+    try {
+      const report = await moduleRef.get(ReconciliationService).reconcile();
+      const unposted = report.issues
+        .filter((i) => i.kind === 'webhook_unposted')
+        .map((i) => (i as { eventId: string }).eventId);
+      expect(unposted).toContain(orphan);
+      expect(unposted).not.toContain(eventId);
+    } finally {
+      await db
+        .delete(schema.providerWebhookEvents)
+        .where(eq(schema.providerWebhookEvents.eventId, orphan));
+    }
   });
 
   it('the nightly check passes: every currency nets to zero and caches match the entries', async () => {
