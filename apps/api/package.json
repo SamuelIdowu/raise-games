@@ -13,7 +13,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:deploy": "node dist/db/migrate.js",
     "db:seed": "tsx src/db/seed.ts",
-    "ratings:verify": "tsx src/scripts/verify-ratings.ts"
+    "ratings:verify": "tsx src/scripts/verify-ratings.ts",
+    "db:seed:demo": "tsx src/scripts/demo-seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",

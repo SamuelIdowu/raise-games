@@ -322,6 +322,8 @@ jobs:
           pnpm --filter @raise/api db:migrate:deploy
           pnpm --filter @raise/api db:seed
           pnpm --filter @raise/api exec tsx src/scripts/load-seed.ts 100 "$GITHUB_WORKSPACE/load-tokens.json"
+          # Demo ladders (audit B27): small, so it proves the seed against the real schema.
+          pnpm --filter @raise/api db:seed:demo 10 20
 
       - name: Start two API instances (shared Redis)
         run: |
@@ -342,6 +344,14 @@ jobs:
       - name: WebSocket fan-out smoke (200 sockets across 2 instances)
         run: |
           SOCKETS=200 ROUNDS=5 WS_URLS=http://localhost:3301,http://localhost:3302             pnpm --filter @raise/api exec tsx src/scripts/ws-load.ts "$GITHUB_WORKSPACE/load-tokens.json"
+
+      # The running APIs' ratings consumer applied the demo matches; the log must replay to
+      # exactly the stored ratings (PRD acceptance), and must not be empty.
+      - name: Demo ladder ratings replay exactly
+        run: |
+          out=$(pnpm --filter @raise/api ratings:verify)
+          echo "$out"
+          echo "$out" | grep -qE 'rating events: [1-9]'
 
       - name: API logs on failure
         if: failure()
