@@ -88,6 +88,8 @@ export type {
 export type {
   AdminUserDetail,
   AdminUserRow,
+  AdminMatchRow,
+  AdminMatchDetail,
   AuditRow,
   Dashboard,
   DisputeViewer,

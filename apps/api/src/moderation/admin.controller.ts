@@ -16,6 +16,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { enforceRateLimit } from '../shared/rate-limit';
 import { AdminService } from './admin.service';
+import { AdminMatchesService } from './admin-matches.service';
 import { MfaService, StaffMfaGuard, StepUp } from './mfa';
 import { SanctionsService } from './sanctions.service';
 import { RULING_OUTCOMES } from '../disputes/disputes.rules';
@@ -78,6 +79,26 @@ const formatBody = z.object({
   name: z.string().trim().min(1).max(64).optional(),
   tiebreakRules: z.string().trim().min(1).max(500).optional(),
 });
+const matchesQ = pageQ.extend({
+  status: z
+    .enum([
+      'accepted',
+      'in_progress',
+      'awaiting_result',
+      'awaiting_confirmation',
+      'confirmed',
+      'disputed',
+      'resolved',
+      'cancelled',
+      'expired',
+      'forfeited',
+      'voided',
+    ])
+    .optional(),
+  stuck: z.enum(['true', 'false']).optional(),
+  q: z.string().trim().max(64).optional(),
+});
+const voidBody = z.object({ reason: z.string().trim().min(10).max(500) });
 const auditQ = pageQ.extend({
   action: z.string().trim().max(64).optional(),
   actorId: z.uuid().optional(),
@@ -132,7 +153,30 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly sanctions: SanctionsService,
+    private readonly matches: AdminMatchesService,
   ) {}
+
+  // ---- matches (audit B22)
+  @Get('matches')
+  matchList(@Query(new ZodValidationPipe(matchesQ)) q: z.infer<typeof matchesQ>) {
+    return this.matches.list({ ...q, stuck: q.stuck === 'true' });
+  }
+
+  @Get('matches/:id')
+  match(@CurrentUser() user: AuthedUser, @Param(new ZodValidationPipe(id)) p: Id) {
+    return this.matches.detail(user, p.id);
+  }
+
+  @Post('matches/:id/void')
+  @HttpCode(200)
+  @StepUp()
+  voidMatch(
+    @CurrentUser() user: AuthedUser,
+    @Param(new ZodValidationPipe(id)) p: Id,
+    @Body(new ZodValidationPipe(voidBody)) b: z.infer<typeof voidBody>,
+  ) {
+    return this.matches.void(user, p.id, b.reason);
+  }
 
   @Get('dashboard')
   dashboard() {

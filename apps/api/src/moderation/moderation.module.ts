@@ -8,6 +8,7 @@ import { OutboxRelay } from '../realtime/outbox-relay';
 import { RealtimeCoreModule } from '../realtime/realtime-core.module';
 import { AdminController, AdminMfaController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminMatchesService } from './admin-matches.service';
 import { MfaService, StaffMfaGuard } from './mfa';
 import { SanctionsService } from './sanctions.service';
 
@@ -18,7 +19,7 @@ import { SanctionsService } from './sanctions.service';
 @Module({
   imports: [AuthModule, DisputesModule, RatingsModule, RealtimeCoreModule],
   controllers: [AdminMfaController, AdminController],
-  providers: [AdminService, MfaService, SanctionsService, StaffMfaGuard],
+  providers: [AdminService, AdminMatchesService, MfaService, SanctionsService, StaffMfaGuard],
   exports: [SanctionsService, StaffMfaGuard, MfaService],
 })
 export class ModerationModule implements OnModuleInit {

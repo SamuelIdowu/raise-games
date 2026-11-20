@@ -129,6 +129,32 @@ export interface DisputeViewer {
   templates: ReadonlyArray<{ key: string; outcome: RulingOutcome | null; text: string }>;
 }
 
+/** Admin matches screen (audit B22). */
+export interface AdminMatchRow {
+  id: string;
+  status: string;
+  game: string;
+  players: string[];
+  createdAt: string;
+  updatedAt: string;
+  stuck: boolean;
+}
+
+export interface AdminMatchDetail {
+  id: string;
+  status: string;
+  version: number;
+  game: string | null;
+  rules: string;
+  winnerSide: number | null;
+  decidedVia: string | null;
+  timeline: Record<string, string | null>;
+  sides: Array<{ side: number; userId: string; displayName: string | null }>;
+  dispute: { id: string; status: string } | null;
+  submissions: Array<{ userId: string; kind: string; result: string; createdAt: string }>;
+  voidable: boolean;
+}
+
 export interface AdminUserRow {
   id: string;
   displayName: string | null;
@@ -290,6 +316,12 @@ export const adminApi = {
   users: (q: { q?: string; cursor?: string; limit?: number } = {}) =>
     apiFetch<{ items: AdminUserRow[]; nextCursor: string | null }>(`/admin/users${qs(q)}`),
   user: (id: string) => apiFetch<AdminUserDetail>(`/admin/users/${id}`),
+  matches: (
+    q: { status?: string; stuck?: boolean; q?: string; cursor?: string; limit?: number } = {},
+  ) => apiFetch<{ items: AdminMatchRow[]; nextCursor: string | null }>(`/admin/matches${qs(q)}`),
+  match: (id: string) => apiFetch<AdminMatchDetail>(`/admin/matches/${id}`),
+  voidMatch: (id: string, reason: string) =>
+    post<{ id: string; status: 'voided' }>(`/admin/matches/${id}/void`, { reason }),
   revealPhone: (id: string, why: string) =>
     post<{ phone: string }>(`/admin/users/${id}/reveal-phone`, { why }),
   sanction: (id: string, reason: string, step?: number) =>

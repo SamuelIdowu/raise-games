@@ -25,6 +25,7 @@ export const WALLET_EVENT_TYPES = [
   'match.confirmed',
   'match.forfeited',
   'match.cancelled',
+  'match.voided',
   'dispute.ruled',
 ] as const;
 
@@ -138,6 +139,12 @@ export class WalletService {
         case 'match.cancelled': {
           const p = event.payload as { matchId: string };
           await this.refund(tx, p.matchId, `match.cancelled:${p.matchId}`);
+          return;
+        }
+        // Audit B22: a moderator voided a live match; every stake goes back.
+        case 'match.voided': {
+          const p = event.payload as { matchId: string };
+          await this.refund(tx, p.matchId, `match.voided:${p.matchId}`);
           return;
         }
         case 'dispute.ruled': {

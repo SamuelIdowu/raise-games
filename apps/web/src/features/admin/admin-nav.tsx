@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 const ITEMS = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/disputes', label: 'Disputes' },
+  { href: '/admin/matches', label: 'Matches' },
   { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/signals', label: 'Fraud signals' },
   { href: '/admin/users', label: 'Players' },

@@ -16,6 +16,7 @@ import type { AuthedUser } from './auth/jwt-auth.guard';
 import { checkSessionActive } from './auth/jwt-auth.guard';
 import { ChallengesService } from './challenges/challenges.service';
 import { AdminService, maskPhone } from './moderation/admin.service';
+import { AdminMatchesService } from './moderation/admin-matches.service';
 import { MfaService, StaffMfaGuard, StepUp } from './moderation/mfa';
 import { SanctionsService } from './moderation/sanctions.service';
 import { getStanding } from './moderation/standing';
@@ -69,8 +70,12 @@ describe('Sprint 12 - trust & operations', () => {
     return { sub: id, sid, role } as AuthedUser;
   }
 
-  /** A disputed match between a (side 0) and b (side 1) with an open dispute. */
-  async function disputed(a: AuthedUser, b: AuthedUser) {
+  /** A disputed match between a (side 0) and b (side 1) with an open dispute (or a live one). */
+  async function disputed(
+    a: AuthedUser,
+    b: AuthedUser,
+    status: 'disputed' | 'in_progress' | 'confirmed' = 'disputed',
+  ) {
     const challengeId = uuidv7();
     const now = new Date();
     await db.insert(schema.challenges).values({
@@ -87,7 +92,7 @@ describe('Sprint 12 - trust & operations', () => {
     });
     challengeIds.push(challengeId);
     const matchId = uuidv7();
-    await db.insert(schema.matches).values({ id: matchId, challengeId, status: 'disputed' });
+    await db.insert(schema.matches).values({ id: matchId, challengeId, status });
     matchIds.push(matchId);
     const profiles = await db
       .select()
@@ -111,6 +116,7 @@ describe('Sprint 12 - trust & operations', () => {
       },
     ]);
     const disputeId = uuidv7();
+    if (status !== 'disputed') return { matchId, disputeId }; // no dispute row
     await db.insert(schema.disputes).values({
       id: disputeId,
       matchId,
@@ -552,6 +558,56 @@ describe('Sprint 12 - trust & operations', () => {
         }),
       );
       expect(typeof d.openReports).toBe('number');
+    });
+  });
+
+  describe('admin matches screen and void (audit B22)', () => {
+    it('lists, inspects and voids a stuck live match; refuses disputed and decided ones', async () => {
+      const mod = await person('voidmod', 'moderator');
+      const a = await person('void_a');
+      const b = await person('void_b');
+      const live = await disputed(a, b, 'in_progress');
+      const service = moduleRef.get(AdminMatchesService);
+
+      const list = await service.list({ q: 'void_a', limit: 50 });
+      expect(list.items.map((m) => m.id)).toContain(live.matchId);
+      const detail = await service.detail(mod, live.matchId);
+      expect(detail).toMatchObject({ status: 'in_progress', voidable: true });
+      expect(detail.sides.map((x) => x.userId)).toEqual([a.sub, b.sub]);
+
+      await expect(service.void(mod, live.matchId, 'Both players report a crash')).resolves.toEqual(
+        {
+          id: live.matchId,
+          status: 'voided',
+        },
+      );
+      const [m] = await db.select().from(schema.matches).where(eq(schema.matches.id, live.matchId));
+      expect(m).toMatchObject({ status: 'voided', decidedVia: 'admin_void', winnerSide: null });
+      const events = await db
+        .select({ type: schema.outboxEvents.type })
+        .from(schema.outboxEvents)
+        .where(eq(schema.outboxEvents.subjectId, live.matchId));
+      expect(events.map((e) => e.type)).toContain('match.voided');
+      const audits = await db
+        .select({ action: schema.auditLog.action })
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.objectId, live.matchId));
+      expect(audits.map((x) => x.action)).toEqual(
+        expect.arrayContaining(['match.read_as_staff', 'match.voided']),
+      );
+
+      // Voiding twice, a disputed match, or a decided one is refused.
+      await expect(service.void(mod, live.matchId, 'second attempt here')).rejects.toMatchObject({
+        status: 409,
+      });
+      const d = await disputed(a, b);
+      await expect(service.void(mod, d.matchId, 'should use the ruling')).rejects.toMatchObject({
+        status: 409,
+      });
+      const done = await disputed(a, b, 'confirmed');
+      await expect(service.void(mod, done.matchId, 'already decided match')).rejects.toMatchObject({
+        status: 409,
+      });
     });
   });
 });
