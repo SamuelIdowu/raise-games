@@ -13,6 +13,7 @@ import {
 import { z } from 'zod';
 import { JwtAuthGuard, type AuthedRequest, type AuthedUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { PlayConsentGuard } from '../consent/play-consent.guard';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { enforceRateLimit } from '../shared/rate-limit';
 import {
@@ -64,6 +65,7 @@ export class DmController {
   }
 
   @Post('friend-requests')
+  @UseGuards(PlayConsentGuard)
   async request(
     @CurrentUser() user: AuthedUser,
     @Body(new ZodValidationPipe(openBody)) b: z.infer<typeof openBody>,
@@ -99,6 +101,7 @@ export class DmController {
   }
 
   @Post('conversations')
+  @UseGuards(PlayConsentGuard)
   async open(
     @CurrentUser() user: AuthedUser,
     @Body(new ZodValidationPipe(openBody)) b: z.infer<typeof openBody>,

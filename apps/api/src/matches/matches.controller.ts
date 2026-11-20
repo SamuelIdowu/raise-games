@@ -12,6 +12,7 @@ import {
 import { z } from 'zod';
 import { JwtAuthGuard, type AuthedUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { PlayConsentGuard } from '../consent/play-consent.guard';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { enforceRateLimit } from '../shared/rate-limit';
 import { MatchesService } from './matches.service';
@@ -75,6 +76,7 @@ export class MatchesController {
 
   @Post(':id/result')
   @HttpCode(200)
+  @UseGuards(PlayConsentGuard)
   async submit(
     @CurrentUser() user: AuthedUser,
     @Param(new ZodValidationPipe(matchIdParamSchema)) params: MatchIdParam,
@@ -86,6 +88,7 @@ export class MatchesController {
 
   @Post(':id/no-show')
   @HttpCode(200)
+  @UseGuards(PlayConsentGuard)
   async noShow(
     @CurrentUser() user: AuthedUser,
     @Param(new ZodValidationPipe(matchIdParamSchema)) params: MatchIdParam,

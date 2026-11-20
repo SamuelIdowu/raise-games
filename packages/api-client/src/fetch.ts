@@ -80,10 +80,19 @@ export async function apiFetch<T>(
       message?: string;
       data?: { reason?: string } | null;
     };
+    const reason = error.data?.reason ?? null;
+    // Play gate (audit #2): the terms changed or were never accepted. Send the player to
+    // re-accept and bring them back to this page afterwards.
+    if (reason === 'consent_required' && typeof window !== 'undefined') {
+      const here = window.location.pathname + window.location.search;
+      if (!window.location.pathname.startsWith('/onboarding/consent')) {
+        window.location.assign('/onboarding/consent?next=' + encodeURIComponent(here));
+      }
+    }
     throw new ApiError(
       error.message ?? `Request failed with status ${res.status}`,
       res.status,
-      error.data?.reason ?? null,
+      reason,
     );
   }
 

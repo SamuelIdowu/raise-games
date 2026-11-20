@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard, type AuthedUser } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { PlayConsentGuard } from '../consent/play-consent.guard';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { enforceRateLimit } from '../shared/rate-limit';
 import { ChallengesService } from './challenges.service';
@@ -50,7 +51,7 @@ export class ChallengesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlayConsentGuard)
   async create(
     @CurrentUser() user: AuthedUser,
     @Body(new ZodValidationPipe(createChallengeSchema)) input: CreateChallengeRequest,
@@ -60,7 +61,7 @@ export class ChallengesController {
   }
 
   @Patch(':id/accept')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlayConsentGuard)
   async accept(
     @CurrentUser() user: AuthedUser,
     @Param(new ZodValidationPipe(challengeIdParamSchema)) params: ChallengeIdParam,
