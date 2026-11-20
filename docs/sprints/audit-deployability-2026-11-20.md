@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20: B1, B2, B4, B7 and B13 are done; B3 is waiting on CI. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20: B1, B2, B4, B6, B7, B13, B26, B27, B30, B31 and B35 are done; B5 and B9 are partly done; B3 is waiting on CI. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -50,8 +50,8 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [x] **B2 Real client IP behind a proxy.** Done in `bba5931`: `TRUST_PROXY` hop count for Fastify and the socket handshake (`shared/client-ip.ts`, unit-tested). Set it per environment (2 for Cloudflare plus a load balancer). Fastify runs without `trustProxy`, and every per-IP limit uses `req.ip`: OTP verify 30/IP, waitlist, invite codes and socket handshakes 60/min/IP. Behind Cloudflare or a host load balancer, **every user shares the proxy's IP**. The first busy minute would lock everyone out. Set `trustProxy` to the host's hop count and read `CF-Connecting-IP` when behind Cloudflare. Apply the same rule to the socket handshake.
 - [~] **B3 Fix the flaky integration suite.** Every suite retries its cleanup (`a273e10`); waiting on three consecutive green CI runs. The deadlock is between test cleanup and the outbox relay (`sprint14.integration`, run 44712981487). Either stop the relay or scheduler during cleanup, or use `test-fixtures/retry.ts` in every suite's cleanup, not only Sprint 6. Exit: three consecutive green runs on the PR.
 - [x] **B4 Production environment validation.** Done in `bba5931`: staging and production refuse to boot without a real SMS provider and key, Turnstile secret and R2 credentials; production also refuses localhost or plain-http `WEB_ORIGIN`/`APP_URL`. Email and VAPID stay optional until the F11.4 decision. `loadEnv` only refuses the mock OTP, the mock webhook secret and a missing MFA key. Outside dev and test it must also require `TURNSTILE_SECRET_KEY` (today Turnstile is **silently off** when the key is unset: `auth.controller.ts:44`), the R2 credentials (otherwise uploads are "unconfigured"), the SMS provider key, the JWT secrets, `APP_URL` and `WEB_ORIGIN`. Decide whether email (`RESEND_API_KEY`) and VAPID are required.
-- [ ] **B5 Production-grade images.** Both Dockerfiles copy the whole workspace, dev dependencies included, run as root and have no `HEALTHCHECK`. The API `CMD` skips `--require ./dist/instrument.js`, so OTel never starts. Web is not on Next `output: 'standalone'`. `NEXT_PUBLIC_API_URL` is baked in at build time, so each environment needs its own web image (document this, or move to runtime config).
-- [ ] **B6 Migrations on deploy.** Define a release step that runs migrations before new instances take traffic (expand-contract rule), plus the `db:seed` reference data for games and formats.
+- [~] **B5 Production-grade images.** Partly done in `c9e2c70`: both images run as `node`, have HEALTHCHECKs, the API starts through `instrument.js`, and both build on every PR with an API smoke run. Still open: images carry the whole workspace and dev dependencies; web is not on `output: standalone`. Both Dockerfiles copy the whole workspace, dev dependencies included, run as root and have no `HEALTHCHECK`. The API `CMD` skips `--require ./dist/instrument.js`, so OTel never starts. Web is not on Next `output: 'standalone'`. `NEXT_PUBLIC_API_URL` is baked in at build time, so each environment needs its own web image (document this, or move to runtime config).
+- [x] **B6 Migrations on deploy.** Done in `c9e2c70`: `node dist/db/migrate.js` (`db:migrate:deploy`), advisory-locked, reads only `DATABASE_URL`; CI migrates a clean database with it. Define a release step that runs migrations before new instances take traffic (expand-contract rule), plus the `db:seed` reference data for games and formats.
 - [x] **B7 Lock down `/docs`.** Done in `bba5931`: not served in production. Swagger UI and `openapi.json` are public in every environment. Disable them in production or put them behind staff auth.
 - [ ] **B8 Legal pages.** No `/terms`, `/privacy` or `/community-rules` route exists. The consent page shows "[legal] Draft terms for Stage 1". The ToS amendment for staff reading match chat (`docs/legal/tos-amendment-match-chat.md`) needs legal review. The Delivery Plan requires ToS, privacy policy, community rules and an age policy **before beta**.
 
@@ -69,7 +69,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ### P1 — before the closed beta (Sprint 16 go/no-go)
 
-- [ ] **B9 Account settings page.** Sign out, sign out everywhere, notification email, theme. Notification preferences can stay in Inbox.
+- [~] **B9 Account settings page.** Sign out is in the menu (`8338b43`). Still open: sign out everywhere, notification email, theme on one settings page. Sign out, sign out everywhere, notification email, theme. Notification preferences can stay in Inbox.
 - [x] **B13 Challenge idempotency scope (audit #6).** Done in `efae6ce` (migration 0017, integration test). Make the unique index `(poster_id, idempotency_key)` and scope the lookup to the poster.
 - [ ] **B14 Verify the notification email (audit #3).** Send a confirmation link and email only confirmed addresses. This depends on the email vendor decision (F11.4).
 - [ ] **B15 Minimum age.** The PRD and TA store an age-verification field, but signup asks nothing. Add an age confirmation to consent once the legal track sets the minimum age. `[legal]`
@@ -81,15 +81,15 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ### P1 — before the public launch (write the missing Sprint 17)
 
-- [ ] **B26 Write `docs/sprints/sprint-17-launch.md`.** Scope from the Delivery Plan M5: seeded local ladders, moderators staffed for the SLA, launch dashboards (stuck matches, dispute backlog, notification delivery), turning `beta.invite_only` off, the launch checklist and Stage 1 exit metrics.
-- [ ] **B27 Demo and local-ladder seed script.** The Delivery Plan lists it under "day-one code" and launch needs it. Today only `load-seed.ts` (load testing) and the reference-data `seed.ts` exist.
+- [x] **B26 Write `docs/sprints/sprint-17-launch.md`.** Done. Scope from the Delivery Plan M5: seeded local ladders, moderators staffed for the SLA, launch dashboards (stuck matches, dispute backlog, notification delivery), turning `beta.invite_only` off, the launch checklist and Stage 1 exit metrics.
+- [x] **B27 Demo and local-ladder seed script.** Done in `2751eed`: `db:seed:demo` (dev/staging only); ratings come from the real consumer and CI checks the replay. Launch ladders stay real players (Sprint 17 F17.2). The Delivery Plan lists it under "day-one code" and launch needs it. Today only `load-seed.ts` (load testing) and the reference-data `seed.ts` exist.
 - [ ] **B28 Data retention and deletion.** Retention periods for screenshots and chat are still an open owner decision (TA and Delivery Plan). Once set, add purge jobs. Add an account-deletion and data-request path for the Nigeria Data Protection Act, which a public launch with phone numbers will need. `[owner/legal]`
 - [ ] **B29 Beta exit.** Metrics on track and open S1 = 0, as in the Sprint 16 checklist.
 
 ### P1 — PRD and TA foundations not yet built
 
-- [ ] **B30 Ledger reconciliation job.** PRD "Early technical foundations": "…webhook signature checks, idempotency, **and a reconciliation job**". Only the nightly net-zero check exists. Add a daily reconciliation of mock-provider records against ledger entries, with an alert.
-- [ ] **B31 KYC provider port.** TA and Delivery Plan M3 call for "identity tiers and KYC port". Tiers and caps exist, but there is no `KycProviderPort` or mock adapter (only schema columns). Add the interface and a mock so Stage 2 is an adapter swap.
+- [x] **B30 Ledger reconciliation job.** Done in `2a1bf85`: feeds the `ledger_imbalance` alert every 5 minutes. PRD "Early technical foundations": "…webhook signature checks, idempotency, **and a reconciliation job**". Only the nightly net-zero check exists. Add a daily reconciliation of mock-provider records against ledger entries, with an alert.
+- [x] **B31 KYC provider port.** Done in `7895316`: port, mock, tier rules and `KycService.applyResult`. TA and Delivery Plan M3 call for "identity tiers and KYC port". Tiers and caps exist, but there is no `KycProviderPort` or mock adapter (only schema columns). Add the interface and a mock so Stage 2 is an adapter swap.
 
 ### P2 — quality and hygiene
 
@@ -100,14 +100,14 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [ ] **B32 Board over the socket.** F5.4 planned to switch the board from 15–30 s polling to the Sprint 7 socket. It never switched (`play/page.tsx:103` `setInterval`).
 - [ ] **B33 `pnpm dev` for the API.** It is still `tsx watch`, which emits no decorator metadata, so Nest DI is undefined (Sprint 7 note). Switch to `nest start --watch` or SWC.
 - [ ] **B34 Automate the socket-down fallback test.** Socket-down → polling → reconnect is verified manually only (Sprint 7 notes).
-- [ ] **B35 Remove tracked junk.** `apps/api/bash.exe.stackdump` and `.commandcode/` are tracked. Root `api.log`, `web.log` and `temp.txt` are untracked; add them to `.gitignore`.
+- [x] **B35 Remove tracked junk.** Done in `635d040` (`.commandcode/` left alone: it may be another tool's tracked config). `apps/api/bash.exe.stackdump` and `.commandcode/` are tracked. Root `api.log`, `web.log` and `temp.txt` are untracked; add them to `.gitignore`.
 - [ ] **B36 Uncaught rejections.** `main.ts` rethrows every unhandled rejection, so one stray promise kills the instance. Decide this on purpose (fine with a restart policy and Sentry), and document it in the runbook.
 
 ### P2 — documentation alignment
 
 - [ ] **B37 Product Brief.** It still reads "planning complete, pre-build" (v1). The PRD v2 says it needs aligning.
 - [ ] **B38 Stale root reports.** `SPRINT_AUDIT_REPORT.md` (2026-11-10, says Sprint 2 not started) and `DIFFERENTIAL_REVIEW_SPRINT_3_4.md` contradict the current state. Move them to `docs/sprints/archive/` or delete them.
-- [ ] **B39 Sprint README.** It indexes a missing Sprint 17 file (fixed by B26). `docs/sessions.md` is one line: fill it or remove it.
+- [~] **B39 Sprint README.** The Sprint 17 file now exists. `docs/sessions.md` is still one line. It indexes a missing Sprint 17 file (fixed by B26). `docs/sessions.md` is one line: fill it or remove it.
 - [ ] **B40 Setup Guide.** Update it for the dev script (B33), SeaweedFS storage and the env vars added in Sprints 11–16.
 
 ---
