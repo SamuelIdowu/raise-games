@@ -431,17 +431,25 @@ describe('Sprint 11 - notifications', () => {
     const b = await user('vic');
     const cid = await challenge(a, { targetPlayerId: b });
     const ev = await event('challenge.created', cid, { challengeId: cid, targetPlayerId: b });
-    for (let i = 0; i < 20; i++) if ((await relay.drain()) === 0) break;
-    const [state] = await db
-      .select()
-      .from(schema.outboxDeliveries)
-      .where(
-        and(
-          eq(schema.outboxDeliveries.consumer, 'notifications'),
-          eq(schema.outboxDeliveries.eventId, ev.id),
-        ),
-      );
-    expect(state?.status).toBe('done');
+    // drain() also returns 0 while another suite's relay holds this consumer's advisory lock,
+    // so wait for the delivery row instead of stopping at the first empty drain.
+    const deliveryState = async () => {
+      const [row] = await db
+        .select()
+        .from(schema.outboxDeliveries)
+        .where(
+          and(
+            eq(schema.outboxDeliveries.consumer, 'notifications'),
+            eq(schema.outboxDeliveries.eventId, ev.id),
+          ),
+        );
+      return row?.status;
+    };
+    const deadline = Date.now() + 15_000;
+    while ((await deliveryState()) !== 'done' && Date.now() < deadline) {
+      if ((await relay.drain()) === 0) await new Promise((r) => setTimeout(r, 200));
+    }
+    expect(await deliveryState()).toBe('done');
     expect(await rows(b)).toHaveLength(1);
   });
 });

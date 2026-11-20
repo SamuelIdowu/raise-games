@@ -399,14 +399,20 @@ describe('Sprint 7 - match room, gateway & chat', () => {
         subjectId: matchId,
         payload: { matchId },
       });
-      // Other suites may leave events queued; drain until ours is processed.
-      for (let i = 0; i < 20; i++) {
-        if ((await relay.drain()) === 0) break;
+      // Other suites may leave events queued, and drain() returns 0 while another suite's
+      // relay holds the consumer lock: wait for our conversation instead of the first 0.
+      const findConv = async () =>
+        (
+          await db
+            .select()
+            .from(schema.conversations)
+            .where(eq(schema.conversations.matchId, matchId))
+        )[0];
+      const deadline = Date.now() + 15_000;
+      while (!(await findConv()) && Date.now() < deadline) {
+        if ((await relay.drain()) === 0) await new Promise((r) => setTimeout(r, 200));
       }
-      const [conv] = await db
-        .select()
-        .from(schema.conversations)
-        .where(eq(schema.conversations.matchId, matchId));
+      const conv = await findConv();
       expect(conv?.scope).toBe('match');
       const parts = await db
         .select()
