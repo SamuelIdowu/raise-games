@@ -44,16 +44,18 @@ describe('Sprint 16 - closed beta', () => {
       },
     );
 
-  async function clearOtp(local: string, ip: string) {
+  /** Clears OTP limits for a fresh attempt; `keepBadInvite` keeps the wrong-code counter. */
+  async function clearOtp(local: string, ip: string, keepBadInvite = false) {
     const p = intl(local);
-    await redis.del(
+    const keys = [
       `otp:pending:${p}`,
       `otp:resend:${p}`,
       `otp:attempts:${p}`,
       `otp:rate:phone:${p}`,
       `otp:rate:ip:${ip}`,
-      `beta:invite:bad:${ip}`,
-    );
+    ];
+    if (!keepBadInvite) keys.push(`beta:invite:bad:${ip}`);
+    await redis.del(...keys);
   }
 
   /** Full mock-OTP signup; returns the created user id or the refusal reason. */
@@ -228,7 +230,7 @@ describe('Sprint 16 - closed beta', () => {
       const outcomes: string[] = [];
       for (let i = 0; i <= BAD_INVITE_LIMIT.max; i++) {
         const local = phone();
-        await clearOtp(local, ip);
+        await clearOtp(local, ip, true);
         await redis.del(`otp:rate:ip:${ip}`);
         outcomes.push(await reason(auth.requestOtp(local, ip, 'test', 'ABCDEFGH')));
       }

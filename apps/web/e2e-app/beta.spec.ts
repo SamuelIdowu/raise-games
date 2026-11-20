@@ -115,7 +115,7 @@ test.describe.serial('Sprint 16 — closed beta', () => {
     await expect(row).toBeVisible();
     await row.getByLabel('Severity').selectOption('S1');
     await row.getByRole('button', { name: 'Save' }).click();
-    await expect(mp.getByText('Saved')).toBeVisible();
+    await expect(mp.getByText('Saved', { exact: true }).first()).toBeVisible();
 
     const [fb] = await query<{ severity: string; status: string }>(
       `SELECT severity, status FROM feedback WHERE body = $1`,

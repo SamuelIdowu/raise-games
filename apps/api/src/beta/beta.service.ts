@@ -270,8 +270,9 @@ export class BetaService {
     if (!before) throw new NotFoundException('Feedback not found');
     const severity = input.severity ?? before.severity;
     // Leaving "new" means it has been looked at: it needs a severity.
-    const status =
-      input.status ?? (input.severity && before.status === 'new' ? 'triaged' : before.status);
+    // Setting a severity on a "new" report triages it, even if the screen echoes "new".
+    let status = input.status ?? before.status;
+    if (status === 'new' && input.severity) status = 'triaged';
     if (status !== 'new' && !severity)
       throw new BadRequestException('Set a severity when triaging');
     const [after] = await db

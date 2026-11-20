@@ -64,7 +64,7 @@ export default function () {
 
   group('match room', () => {
     ok(http.get(`${BASE}/matches/${p.matchId}`, auth), 'match');
-    ok(http.get(`${BASE}/matches/${p.matchId}/chat`, auth), 'chat history');
+    ok(http.get(`${BASE}/matches/${p.matchId}/chat/messages?limit=50`, auth), 'chat history');
   });
   sleep(2 + Math.random() * 2);
 }
