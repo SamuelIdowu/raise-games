@@ -23,6 +23,9 @@ RUN pnpm turbo run build --filter=@raise/web...
 
 FROM base AS runner
 ENV NODE_ENV=production
-COPY --from=build /app ./
+# Not root (audit B5). next start writes its cache under .next, so the app is owned by node.
+COPY --from=build --chown=node:node /app ./
+USER node
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD node -e "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 CMD ["pnpm", "--filter", "@raise/web", "start"]
