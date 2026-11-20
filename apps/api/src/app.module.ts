@@ -16,6 +16,7 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { WalletModule } from './wallet/wallet.module';
+import { KycModule } from './kyc/kyc.module';
 import { OpsModule } from './ops/ops.module';
 import { DmModule } from './dm/dm.module';
 import { BetaModule } from './beta/beta.module';
@@ -64,6 +65,7 @@ import { ObservabilityModule } from './observability/observability.module';
     ModerationModule,
     NotificationsModule,
     WalletModule,
+    KycModule,
     OpsModule,
     ObservabilityModule,
     DmModule,
