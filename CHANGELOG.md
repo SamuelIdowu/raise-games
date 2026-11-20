@@ -4,6 +4,14 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 16 — Closed beta tooling
+
+- Invite-only signup for the closed beta, behind `beta.invite_only` (off by default): new players need an invite code from their campus or community; existing players always sign in. Codes have use limits and expiry and can be paused; each account records its cohort.
+- No code? Players can join a waitlist (kept 90 days); staff invite from it.
+- Beta metrics for staff: the PRD's Stage 1 success metrics per cohort against their targets, a signup funnel, daily activity and a CSV export.
+- "Send feedback" from the menu; staff triage reports by severity, and open severity-1 issues are shown as the beta's exit gate.
+- Adversarial playbook and beta runbook; new tests for the screenshot-reuse and dispute-abuse auto-limits.
+
 ### Sprint 14 — Restricted DMs (behind the `messaging.dm` flag, off by default)
 
 - Direct messages between players who finished a match together or accepted a friend request. Nobody else can start one.

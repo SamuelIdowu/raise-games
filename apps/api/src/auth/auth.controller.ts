@@ -53,7 +53,7 @@ export class AuthController {
     const ua = Array.isArray(req.headers['user-agent'])
       ? req.headers['user-agent'][0]
       : req.headers['user-agent'];
-    return this.auth.requestOtp(body.phone, req.ip ?? 'unknown', ua);
+    return this.auth.requestOtp(body.phone, req.ip ?? 'unknown', ua, body.inviteCode);
   }
 
   @Post('otp/verify')
@@ -67,11 +67,16 @@ export class AuthController {
     const ua = Array.isArray(req.headers['user-agent'])
       ? req.headers['user-agent'][0]
       : req.headers['user-agent'];
-    const tokens = await this.auth.verifyOtp(body.phone, body.code, {
-      userAgent: ua,
-      ip: req.ip,
-      deviceId: req.headers['x-device-id'] as string | undefined,
-    });
+    const tokens = await this.auth.verifyOtp(
+      body.phone,
+      body.code,
+      {
+        userAgent: ua,
+        ip: req.ip,
+        deviceId: req.headers['x-device-id'] as string | undefined,
+      },
+      body.inviteCode,
+    );
     if (!tokens) throw new UnauthorizedException('Invalid or expired code');
     return tokens;
   }

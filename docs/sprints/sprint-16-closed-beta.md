@@ -39,7 +39,7 @@ Run a closed beta of **100 to 200 players** seeded through a few campuses or com
 | Dispute rate < 10%, median resolution < 24 h             | Disputes opened ÷ matches decided; median ruled − opened (reuses Sprint 9 metrics)                                         |
 | 25% of players who finish a match still active in week 4 | Players whose first completed match was 28+ days ago and who created, accepted or completed a match in days 22–28 after it |
 
-- Targets are scaled to the beta: count targets are shown pro rata to cohort size and weeks elapsed (the PRD says "revisit after the closed beta"); rate targets apply as is.
+- Count targets are the 8-week launch targets, judged against the **pace for the weeks elapsed** (target × weeks ÷ 8). The beta is far smaller than launch, so counts read "behind" by design and the rates are the real signal; the PRD says to revisit the targets after the closed beta. Rate targets apply as is.
 - Daily series for signups, challenges and completed matches; a funnel (signed up → game ID → first challenge → first completed match).
 - CSV export for the retro.
 
@@ -93,12 +93,22 @@ Automated scenarios proving each defence holds, plus a playbook for live attempt
 
 ## Checklist
 
-- [ ] F16.1 Invite-only gate (flag, default off), codes per cohort, atomic redemption, waitlist, admin screen
-- [ ] F16.2 Metrics dashboard with the six PRD metrics per cohort, funnel, daily series, CSV
-- [ ] F16.3 In-app feedback, severity triage, open-S1 count on the dashboard
+- [x] F16.1 Invite-only gate (flag, default off), codes per cohort, atomic redemption, waitlist, admin screen
+- [x] F16.2 Metrics dashboard with the six PRD metrics per cohort, funnel, daily series, CSV
+- [x] F16.3 In-app feedback, severity triage, open-S1 count on the dashboard
 - [ ] F16.4 Adversarial pack green; playbook written
-- [ ] F16.5 Beta runbook and go/no-go checklist
+- [x] F16.5 Beta runbook and go/no-go checklist
 - [ ] `[owner/legal]` Legal documents final and linked from onboarding
 - [ ] `[owner]` Cohorts chosen, codes issued, moderator rota staffed; beta opened
 - [ ] Testing green; audits pass
 - [ ] Exit: metrics on track, open S1 = 0 (after the beta has run)
+
+## Implementation notes (2026-11-18)
+
+- **Gate (F16.1):** `apps/api/src/beta/invites.ts` (pure functions, no Nest DI, so `AuthService` uses them without a module cycle). `AuthService.inviteRequiredFor()` applies only when `beta.invite_only` is on **and** the number has no account. The code is checked at OTP request (before any SMS) and again at verify (before the OTP code is spent), then redeemed with a conditional `uses + 1 … WHERE uses < max_uses` **inside the transaction that creates the user**, so a code that runs out rolls the account back. Errors carry `invite_required` / `invite_invalid`; wrong codes are limited to 10 per IP per hour. The existing OTP limits (atomic attempt budget, per-IP verify cap) are untouched.
+- **Tables** (`apps/api/src/db/schema-beta.ts`, migration 0016, which also seeds `beta.invite_only` **off**): `invite_codes`, `invite_redemptions` (cohort per account), `beta_waitlist` (phones purged after 90 days on every write and list, masked for staff), `feedback`.
+- **Test seam:** `AuthService.gate()` wraps the flag read so the integration test turns the gate on for its own module instance. Flipping the shared flag row would break other test files that sign up in parallel. E2E (one worker) toggles the real flag.
+- **Metrics (F16.2):** `GET /admin/metrics?cohort&since` computes the six PRD metrics in one query (definitions in the table above), plus funnel, daily series and open feedback by severity. Targets and the on-track rule are in `beta/metrics.rules.ts` (unit-tested). `/admin/metrics` shows text markers (never colour alone) and exports CSV. The window defaults to the first invite redemption, or 56 days back.
+- **Feedback (F16.3):** "Send feedback" in the sidebar and mobile menu → `/feedback` (page and app version attached). `/admin/feedback` triages severity and status; leaving "new" requires a severity; every change is audited. Open S1–S4 counts appear on the metrics page as the exit gate.
+- **Adversarial (F16.4):** `docs/beta/adversarial-playbook.md` maps 15 attacks to the tests that prove each defence. New: `sprint16-adversarial.integration.test.ts` drives the reused-screenshot and lost-self-opened-dispute auto-limits end to end, the two no earlier suite covered. Open finding: **no new-account cooldown** (PRD mitigation), proposed S3 for Stage 1 and an owner decision before Stage 2.
+- **Runbook (F16.5):** `docs/beta/beta-runbook.md`: go/no-go, opening, daily and weekly checks, closing, rollback.

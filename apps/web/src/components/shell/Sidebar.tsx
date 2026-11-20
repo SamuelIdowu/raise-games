@@ -38,6 +38,13 @@ export function Sidebar() {
               <span className="font-display text-body-sm">{item.label}</span>
             </a>
           ))}
+          <a
+            href="/feedback"
+            className="mt-2 flex items-center gap-3 border-t border-line px-3 py-2 pt-3 text-fg-muted hover:bg-overlay hover:text-fg"
+          >
+            <Icon name="flag" size={24} aria-hidden />
+            <span className="font-display text-body-sm">Send feedback</span>
+          </a>
         </nav>
       </Sheet>
 
@@ -84,6 +91,17 @@ export function Sidebar() {
             </a>
           ))}
         </nav>
+        {/* Sprint 16: beta feedback, one tap from anywhere. */}
+        <a
+          href="/feedback"
+          aria-label={collapsed ? 'Send feedback' : undefined}
+          className={`m-2 flex items-center gap-3 rounded-card border-t border-line px-3 py-2 text-fg-muted hover:bg-overlay hover:text-fg ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Icon name="flag" size={20} aria-hidden />
+          {!collapsed && <span className="font-display text-body-sm">Send feedback</span>}
+        </a>
       </aside>
     </>
   );

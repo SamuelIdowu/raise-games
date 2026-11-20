@@ -24,6 +24,7 @@ export { uploadsApi } from './uploads';
 export { disputesApi } from './disputes';
 export { notificationsApi } from './notifications';
 export { dmApi } from './dm';
+export { betaApi } from './beta';
 export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
@@ -100,3 +101,14 @@ export type {
   Standing,
   ViewerPlayer,
 } from './admin';
+export type {
+  BetaMetric,
+  BetaMetrics,
+  FeedbackItem,
+  FeedbackStatus,
+  InviteCode,
+  OpenBySeverity,
+  Severity,
+  TrackStatus,
+  WaitlistEntry,
+} from './beta';

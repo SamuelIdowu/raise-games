@@ -39,10 +39,12 @@ export default function OtpPage() {
       if (!phone) {
         throw new Error('Session expired. Please start over.');
       }
-      const data = await authApi.verifyOtp(phone, otp);
+      const invite = sessionStorage.getItem('onboarding_invite') ?? undefined;
+      const data = await authApi.verifyOtp(phone, otp, invite);
       setTokens(data.accessToken, data.refreshToken);
-      // Clear onboarding phone
+      // Clear onboarding phone and invite
       sessionStorage.removeItem('onboarding_phone');
+      sessionStorage.removeItem('onboarding_invite');
       router.push('/onboarding/username');
     } catch (err) {
       setError(
@@ -62,7 +64,11 @@ export default function OtpPage() {
     }
     setResending(true);
     try {
-      await authApi.requestOtp(phone);
+      await authApi.requestOtp(
+        phone,
+        undefined,
+        sessionStorage.getItem('onboarding_invite') ?? undefined,
+      );
       setResendSeconds(30);
       setOtp('');
     } catch (err) {

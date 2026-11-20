@@ -1,14 +1,19 @@
 import { z } from 'zod';
 import { phoneSchema } from '@raise/schemas';
 
+/** Closed-beta invite code (Sprint 16); validated against the alphabet in beta/invites. */
+const inviteCodeField = z.string().trim().max(32).optional();
+
 export const otpRequestSchema = z.object({
   phone: phoneSchema,
   turnstileToken: z.string().optional(),
+  inviteCode: inviteCodeField,
 });
 
 export const otpVerifySchema = z.object({
   phone: phoneSchema,
   code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
+  inviteCode: inviteCodeField,
 });
 
 export const refreshSchema = z.object({ refreshToken: z.string().min(1) });

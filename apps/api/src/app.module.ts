@@ -18,6 +18,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { WalletModule } from './wallet/wallet.module';
 import { OpsModule } from './ops/ops.module';
 import { DmModule } from './dm/dm.module';
+import { BetaModule } from './beta/beta.module';
 import { ReportsModule } from './reports/reports.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { HealthController } from './health/health.controller';
@@ -66,6 +67,7 @@ import { ObservabilityModule } from './observability/observability.module';
     OpsModule,
     ObservabilityModule,
     DmModule,
+    BetaModule,
     RealtimeModule,
   ],
   controllers: [HealthController],

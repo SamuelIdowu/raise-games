@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { Button, Input, Banner } from '@/components/ui';
-import { authApi } from '@raise/api-client';
+import { ApiError, authApi, betaApi } from '@raise/api-client';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
@@ -30,6 +30,37 @@ export default function PhoneEntryPage() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  // Closed beta (Sprint 16): new numbers need an invite while the gate is on.
+  const [inviteOnly, setInviteOnly] = useState(false);
+  const [invite, setInvite] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [waitlist, setWaitlist] = useState<'closed' | 'open' | 'joined'>('closed');
+  const [place, setPlace] = useState('');
+
+  useEffect(() => {
+    betaApi
+      .status()
+      .then((s) => setInviteOnly(s.inviteOnly))
+      .catch(() => undefined);
+  }, []);
+
+  const joinWaitlist = async () => {
+    setError('');
+    const cleaned = phone.replace(/\D/g, '');
+    if (!/^0[789]\d{9}$/.test(cleaned)) {
+      setError('Enter a valid Nigerian mobile number (e.g., 0801 234 5678)');
+      return;
+    }
+    setSending(true);
+    try {
+      await betaApi.joinWaitlist(cleaned, place.trim() || undefined);
+      setWaitlist('joined');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not join the waitlist');
+    } finally {
+      setSending(false);
+    }
+  };
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileReady, setTurnstileReady] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
@@ -82,15 +113,26 @@ export default function PhoneEntryPage() {
       return;
     }
     setSending(true);
+    setInviteError('');
     try {
-      await authApi.requestOtp(cleaned, turnstileToken || undefined);
+      await authApi.requestOtp(cleaned, turnstileToken || undefined, invite.trim() || undefined);
       // If turnstile required but not provided, backend will throw error handled below.
-      // Store phone for OTP page
+      // Store phone (and the invite, needed again when the account is created) for OTP page
       sessionStorage.setItem('onboarding_phone', cleaned);
+      if (invite.trim()) sessionStorage.setItem('onboarding_invite', invite.trim());
+      else sessionStorage.removeItem('onboarding_invite');
       resetTurnstile();
       router.push('/onboarding/otp');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send code');
+      if (
+        err instanceof ApiError &&
+        (err.reason === 'invite_required' || err.reason === 'invite_invalid')
+      ) {
+        setInviteOnly(true);
+        setInviteError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to send code');
+      }
       resetTurnstile();
     } finally {
       setSending(false);
@@ -115,6 +157,62 @@ export default function PhoneEntryPage() {
           helper="We'll send a 6-digit code via SMS"
           autoComplete="tel"
         />
+
+        {inviteOnly && waitlist === 'closed' ? (
+          <div className="space-y-1">
+            <Input
+              label="Invite code"
+              placeholder="ABCD 2345"
+              value={invite}
+              onChange={(e) => setInvite(e.target.value)}
+              autoComplete="off"
+              autoCapitalize="characters"
+              error={inviteError || undefined}
+              helper="RAISE is in a closed beta. New players need an invite code. Already have an account? Leave this empty."
+            />
+            <button
+              type="button"
+              onClick={() => setWaitlist('open')}
+              className="min-h-11 text-body-sm font-semibold text-accent hover:underline"
+            >
+              No code? Join the waitlist
+            </button>
+          </div>
+        ) : null}
+
+        {waitlist === 'open' ? (
+          <section
+            aria-labelledby="waitlist-heading"
+            className="space-y-3 rounded-card border border-line bg-surface p-4"
+          >
+            <h2 id="waitlist-heading" className="font-display text-h3 font-semibold text-fg">
+              Join the waitlist
+            </h2>
+            <p className="text-body-sm text-fg-muted">
+              We’ll text this number when a place opens. We keep it for up to 90 days.
+            </p>
+            <Input
+              label="Campus or city (optional)"
+              value={place}
+              onChange={(e) => setPlace(e.target.value)}
+              maxLength={80}
+            />
+            <div className="flex gap-2">
+              <Button type="button" loading={sending} onClick={() => void joinWaitlist()}>
+                Join the waitlist
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setWaitlist('closed')}>
+                I have a code
+              </Button>
+            </div>
+          </section>
+        ) : null}
+
+        {waitlist === 'joined' ? (
+          <Banner variant="system">
+            You’re on the waitlist. We’ll text you when a place opens.
+          </Banner>
+        ) : null}
 
         {TURNSTILE_SITE_KEY && <div ref={turnstileRef} className="mx-auto max-w-[300px]" />}
 
