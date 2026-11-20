@@ -134,3 +134,7 @@ The ops layer M3 calls "trust and operations": admin dashboard and dispute queue
 **Data minimisation:** search returns masked phones and matches phones only on the full number. Revealing a number is admin-only, needs a fresh code and a reason, and is audited.
 
 **Open:** a moderator queue staffing roster (Delivery Plan staffing) is operational, not code. Sprint 13 picks up holds and payouts in the decision dialog's Stage 2 line.
+
+## Audit (2026-11-20)
+
+The "Testing green" tick rests on one green CI run. The suite was flaky: run 44712981487 on `0cbbb28` failed on a cleanup deadlock with the outbox relay (`sprint14.integration`). Every suite now retries its cleanup (`a273e10`); re-confirm with three consecutive green runs (A11, B3; see `audit-deployability-2026-11-20.md`).

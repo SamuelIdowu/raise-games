@@ -165,7 +165,7 @@ Per Setup Guide §8/§10.3:
 - [x] F0.6 Five packages each `build` via Turbo; tokens/schemas/types importable from web and api
 - [x] F0.7 Sign-in endpoint creates user + session via mock OTP; refresh rotation works
 - [x] F0.8 First migration created + applied; all 11 day-one tables exist with UUIDv7/timestamptz/minor-units conventions
-- [x] F0.9 CI green on `main`; branch protection enforced (github MCP screenshot/dashboard proof)
+- [~] F0.9 CI green on `main`; branch protection enforced (github MCP screenshot/dashboard proof). **Audit 2026-11-20:** protection requires 0 approvals (spec: 1); E2E, perf, load and gitleaks are not required checks; no OpenAPI client regeneration job (A6, B17, B18; see `audit-deployability-2026-11-20.md`)
 - [ ] F0.10 Region latency numbers recorded; hosting provider chosen `[owner decision]` issue closed
 - [ ] F0.11 Staging deployed; Turnstile/Sentry/PostHog/ToS stub live; secrets from manager; OTP mock asserted off
 - [ ] F0.12 M0 exit proof recorded (staging login walkthrough) → **Delivery Plan M0 exit met**

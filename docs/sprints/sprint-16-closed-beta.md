@@ -119,3 +119,7 @@ Automated scenarios proving each defence holds, plus a playbook for live attempt
 - **Enumeration:** while the gate is on, `invite_required` is returned only for numbers without an account, so the response reveals whether a number is registered. Accepted for the beta (rate limits on OTP request and wrong codes apply); it disappears when the gate is turned off at launch.
 - **Privacy:** waitlist phones are masked for staff, shown in full only in the invite message an admin sends, and purged after 90 days. Metrics are aggregates; feedback stores page and app version, not message content.
 - **CI fixes on the way:** feedback triage now moves "new" to "triaged" when a severity is set (the admin screen always sends the status); the Sprint 15 load script called a staff-only chat route (fixed to `/matches/:id/chat/messages`); the Sprint 6 cleanup retries on a deadlock with the outbox relay (`test-fixtures/retry.ts`).
+
+## Audit (2026-11-20)
+
+The "Testing green" tick rests on one green CI run. The suite was flaky: run 44712981487 on `0cbbb28` failed on a cleanup deadlock with the outbox relay (`sprint14.integration`). Every suite now retries its cleanup (`a273e10`); re-confirm with three consecutive green runs (A11, B3; see `audit-deployability-2026-11-20.md`).

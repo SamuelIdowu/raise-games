@@ -91,7 +91,7 @@ Challenge received · challenge accepted/declined · challenge expiring · resul
 ## Checklist
 
 - [x] F11.1 Outbox consumer + channels (in-app/web push/email) with dedupe, backoff retries, batch/quiet hours; DeliveryAttempt records
-- [x] F11.2 Full Stage 1 catalog implemented + localized + tap-through deep links
+- [x] F11.2 Full Stage 1 catalog implemented + i18n-ready (English only, no second locale yet) + tap-through deep links (A9)
 - [x] F11.3 Inbox UI per Design §8; matches-badge real; Messages tab (match chats, DM-free until F14 decision); preferences screen
 - [ ] F11.4 Web push (SW + VAPID) + email adapter live; vendor decided `[owner decision]`; iOS-PWA/email fallback documented
 - [x] F11.5 Realtime unread/badge sync works across tabs and on socket reconnect

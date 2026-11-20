@@ -98,7 +98,7 @@ Per PRD "Early technical foundations" + TA §Ledger: double-entry ledger with ho
 - [x] F13.2 WalletProviderPort + MockProviderAdapter; challenge→ledger semantics identical for later adapter swap; webhook route with signature/idempotency/replay safety; replay test green
 - [x] F13.3 Identity tiers functional + stake caps by tier enforced in validation; responsible-gaming LimitSetting fields present (no UI required)
 - [x] F13.4 Jurisdiction feature flags per-state live; default Nigeria/NGN mapping; flag toggles respected at runtime
-- [~] F13.5 competition_id column live on matches; LimitSetting fields + gated endpoints. **F3 consent closure not done**: the server-side consent gate is audit finding #2 (`audit-sprints-01-11.md`), deferred on the owner's instruction
+- [x] F13.5 competition_id column live on matches; LimitSetting fields + gated endpoints. F3 consent closure done 2026-11-20 (`PlayConsentGuard`, commit `bd2cb83`, audit #2)
 - [x] F13.6 Withdrawal/refund/payout state machines documented in docs/ with PRD gate language
 - [x] Invariant evidence pack archived (fuzz runs + webhook replay + net-zero): `ledger.math.test.ts` (10,000 postings × 3 seeds) and `sprint13.integration.test.ts`, green in CI run [44196482334](https://github.com/SamuelIdowu/raise-games/actions/runs/44196482334) on `9d0b758`
 - [x] Audits pass (cso + differential, zero open critical): see Status notes
@@ -124,3 +124,7 @@ Per PRD "Early technical foundations" + TA §Ledger: double-entry ledger with ho
 | Event ordering                      | A result processed before its hold (relay retry) places the holds first, then settles. Test included                                                                                                       | Fixed during review |
 | Authorisation                       | No ledger read or write endpoint is exposed to players; limits endpoints need a session and are flag-gated                                                                                                 | OK                  |
 | Rate limits fail open without Redis | Project-wide (audit finding #8); webhooks are still signature-checked                                                                                                                                      | Tracked             |
+
+## Audit (2026-11-20)
+
+The "Testing green" tick rests on one green CI run. The suite was flaky: run 44712981487 on `0cbbb28` failed on a cleanup deadlock with the outbox relay (`sprint14.integration`). Every suite now retries its cleanup (`a273e10`); re-confirm with three consecutive green runs (A11, B3; see `audit-deployability-2026-11-20.md`).

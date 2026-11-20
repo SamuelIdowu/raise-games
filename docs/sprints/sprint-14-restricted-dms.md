@@ -118,3 +118,7 @@ Harassment and abuse surface:
 - **Flag-off:** API 404 on every `/dm/*` route; no profile, inbox or block-list affordance; deep links not found (e2e `dm.spec.ts`).
 
 Tests: `dm.rules.test.ts` (matrix, transitions, cooldown, unanswered cap); `sprint14.integration.test.ts` (flag gate, eligibility incl. forfeit-only pairs, friend lifecycle and notifications, dedupe, unanswered cap and pair burst, keyword flag in the queue, block both ways without reveal plus history and audit, suspension pause, mute suppression, report context); e2e `dm.spec.ts` (flag-off sweep, two-browser live DM, stranger refused, block/unblock, friend request → DM).
+
+## Audit (2026-11-20)
+
+The "Testing green" tick rests on one green CI run. The suite was flaky: run 44712981487 on `0cbbb28` failed on a cleanup deadlock with the outbox relay (`sprint14.integration`). Every suite now retries its cleanup (`a273e10`); re-confirm with three consecutive green runs (A11, B3; see `audit-deployability-2026-11-20.md`).
