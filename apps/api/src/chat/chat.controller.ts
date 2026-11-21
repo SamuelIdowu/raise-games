@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -13,6 +14,7 @@ import { JwtAuthGuard, type AuthedRequest, type AuthedUser } from '../auth/jwt-a
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { StaffMfaGuard } from '../moderation/mfa';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { enforceRateLimit } from '../shared/rate-limit';
 import { ChatService } from './chat.service';
@@ -74,15 +76,33 @@ export class ChatController {
   async block(
     @CurrentUser() user: AuthedUser,
     @Param(new ZodValidationPipe(userParamSchema)) params: UserParam,
+    @Req() req: AuthedRequest,
   ) {
     await enforceRateLimit(`rl:blocks:${user.sub}`, 30, 3_600_000);
-    await this.chat.block(user, params.userId);
+    await this.chat.block(user, params.userId, req.ip);
+  }
+
+  @Delete('blocks/:userId')
+  @HttpCode(204)
+  async unblock(
+    @CurrentUser() user: AuthedUser,
+    @Param(new ZodValidationPipe(userParamSchema)) params: UserParam,
+    @Req() req: AuthedRequest,
+  ) {
+    await enforceRateLimit(`rl:blocks:${user.sub}`, 30, 3_600_000);
+    await this.chat.unblock(user, params.userId, req.ip);
+  }
+
+  @Get('blocks')
+  async blocks(@CurrentUser() user: AuthedUser) {
+    await enforceRateLimit(`rl:blocks:list:${user.sub}`, 60, 60_000);
+    return { items: await this.chat.blockList(user) };
   }
 }
 
 /** Staff evidence read (F7.4). Moderator or admin; every read is audited. */
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, StaffMfaGuard)
 @Roles('moderator', 'admin')
 export class AdminChatController {
   constructor(private readonly chat: ChatService) {}

@@ -108,12 +108,12 @@ Real accounts: phone OTP signup and login, session/token lifecycle, roles, conse
 ## Checklist
 
 - [x] F3.1 Request/verify OTP live; codes hashed + expiring + capped; rate limits per phone+IP; audit log entries
-- [x] F3.2 Access/refresh with rotation + reuse detection; logout, logout-all; revocation on suspension
-- [x] F3.3 Guard + roles; sanction gate; consent gate blocks Play
+- [x] F3.2 Access/refresh with rotation + reuse detection; logout, logout-all; revocation on suspension (API only: the web app has no sign-out control yet, A3, B9)
+- [x] F3.3 Guard + roles; sanction gate; consent gate blocks Play (**was not enforced until 2026-11-20**: `PlayConsentGuard`, commit `bd2cb83`, audit #2)
 - [x] F3.4 Turnstile verified server-side; duplicate-account signals recorded
 - [x] F3.5 Jurisdiction state, KYC/age fields, identity tier default present on `users`
 - [x] F3.6 UI wired: OTP cells + countdown + paste; session expiry prompts; api-client authed calls
-- [x] F3.7 Consent version + record table; re-accept endpoint; gate UI
+- [x] F3.7 Consent version + record table; re-accept endpoint; gate UI (gate UI added 2026-11-20 in `bd2cb83`: `consent_required` redirects to re-accept and back; the page now accepts the current versions instead of a hard-coded 1.0)
 - [x] Testing block green incl. concurrency + abuse sims (42 integration tests passing locally + CI)
 - [x] Audit block: cso + differential-review findings closed or filed; log PII scrub verified
 - [x] SMS vendor decided `[owner decision]`, staging SMS path (or documented allow-list) works: Termii on the DND route, Twilio fallback (`docs/decisions/0001-sms-vendor.md`); `SMS_ALLOWLIST` staging gate built and unit-tested. The live staging proof lands with Sprint 0's F0.11 (staging deploy)

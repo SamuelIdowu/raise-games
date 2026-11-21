@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Chakra_Petch } from 'next/font/google';
 import { Shell } from '@/components/shell';
 import { ToastProvider } from '@/components/ui';
+import { ErrorReporting } from '@/components/error-reporting';
 import { themeInitScript } from '@/lib/theme';
 import './globals.css';
 
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="flex min-h-full flex-col bg-bg text-fg">
+        <ErrorReporting />
         <ToastProvider>
           <Shell>{children}</Shell>
         </ToastProvider>

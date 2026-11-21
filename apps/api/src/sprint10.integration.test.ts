@@ -14,6 +14,7 @@ import { LeaderboardsService } from './ratings/leaderboards.service';
 import { ReputationService } from './ratings/reputation.service';
 import { MatchesService } from './matches/matches.service';
 import { OutboxRelay, type OutboxEvent } from './realtime/outbox-relay';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 describe('Sprint 10 - ratings & leaderboards', () => {
   let moduleRef: TestingModule;
@@ -183,22 +184,25 @@ describe('Sprint 10 - ratings & leaderboards', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-      if (matchIds.length) {
-        await tx
-          .delete(schema.outboxEvents)
-          .where(inArray(schema.outboxEvents.subjectId, matchIds));
-        await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds)); // cascades rating_events
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
+        if (matchIds.length) {
+          await tx
+            .delete(schema.outboxEvents)
+            .where(inArray(schema.outboxEvents.subjectId, matchIds));
+          await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds)); // cascades rating_events
+        }
+      });
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
       }
     });
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
     await moduleRef?.close();
   }, 60_000);
 
@@ -412,7 +416,12 @@ describe('Sprint 10 - ratings & leaderboards', () => {
         .insert(schema.outboxEvents)
         .values({ id: e.id, type: e.type, subjectId: m, payload: e.payload });
       const start = performance.now();
-      for (let i = 0; i < 40 && (await events(m)).length === 0; i++) await relay.drain();
+      // drain() returns 0 at once while another drain holds this consumer (this
+      // instance's timer, or another test file's relay on the shared database), so poll.
+      while ((await events(m)).length === 0 && performance.now() - start < 5000) {
+        await relay.drain();
+        await new Promise((r) => setTimeout(r, 25));
+      }
       const elapsed = performance.now() - start;
       expect(await events(m)).toHaveLength(2);
       expect(elapsed).toBeLessThan(5000);

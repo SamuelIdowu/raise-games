@@ -99,11 +99,42 @@ The ops layer M3 calls "trust and operations": admin dashboard and dispute queue
 
 ## Checklist
 
-- [ ] F12.1 Admin routes role-gated; TOTP MFA on admin accounts; dashboard counters; flag admin; users admin w/ sanction ladder + audit; audit-log viewer; game config admin
-- [ ] F12.2 Dispute queue w/ assignment + SLA clock; viewer per Design §8 (evidence/zoom/hash flags/chat transcript/dispute history); decision panel + confirmation dialog seeded effects text
-- [ ] F12.3 Reputation engine live + badges everywhere; sanctions enforced + sessions revocation on ban; late-cancel debt resolved
-- [ ] F12.4 Fraud surfaces live: reused-image hash flags, collusion signals, report queue, escalation auto-limits `[owner decision]` recorded
-- [ ] F12.5 Bulk ops + queue health + empty/error states
-- [ ] Moderator-seeded-dispute walkthrough e2e green; PRD M3 exit condition proven
-- [ ] Testing green; cso/differential audits closed
+- [x] F12.1 Admin routes role-gated; TOTP MFA on admin accounts; dashboard counters; flag admin; users admin w/ sanction ladder + audit; audit-log viewer; game config admin
+- [x] F12.2 Dispute queue w/ assignment + SLA clock; viewer per Design §8 (evidence/zoom/hash flags/chat transcript/dispute history); decision panel + confirmation dialog seeded effects text
+- [x] F12.3 Reputation engine live + badges everywhere; sanctions enforced + sessions revocation on ban; late-cancel debt resolved
+- [x] F12.4 Fraud surfaces live: reused-image hash flags, collusion signals, report queue, escalation auto-limits `[owner decision]` recorded (decision 0005)
+- [x] F12.5 Bulk ops + queue health + empty/error states
+- [x] Moderator-seeded-dispute walkthrough e2e green; PRD M3 exit condition proven (`e2e-app/admin.spec.ts`, CI run 44182414790 on `7abadfd`)
+- [x] Testing green; cso/differential audits closed (unit, integration and e2e green in CI run 44182414790; audit notes above)
 - [ ] `ship` close with PR + CHANGELOG
+
+## Implementation notes (2026-11-17)
+
+- **API:** `apps/api/src/moderation/` covers the admin console (`/admin/*`), staff MFA, the sanction ladder, account standing (sanction plus auto-limit), and the `reputation-debts` outbox consumer. Sprint 7's admin chat read and Sprint 9's moderator dispute routes now also require MFA.
+- **Web:** `/admin` has a dashboard, disputes queue and viewer, reports, fraud signals, players, flags, games and the audit log. Everything sits behind the MFA gate, and sensitive actions ask for a fresh code (`useStepUp`).
+- **Atomic decisions:** Sprint 9's `recordRuling` can join an outer transaction, so a ruling and its sanction commit together. The ruling emits `dispute.ruled` (ratings in Sprint 10, notifications in Sprint 11) and the sanction emits `sanction.applied` (Sprint 11), both in that transaction.
+- **Behaviour change:** only bans block sign-in now. Before this sprint, any active sanction, even a warning, locked the account. Suspensions block play instead (decision 0005).
+- **Decisions:** 0005 (ladder, auto-limits, staff MFA, phone masking); reputation thresholds from 0003.
+
+## Audit (2026-11-17)
+
+**cso pass on the admin surface**
+
+| Area               | Control                                                                                                                                                                                                                                                                           | Proof                                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Authz              | Every `/admin/*` route: JWT, staff role and MFA (`StaffMfaGuard`). Admin-only actions (role change, phone reveal, flags, game config, skipping ladder steps, sanctioning staff) are checked in the service too. Players get 403 at `GET /admin/mfa` as well.                      | Integration: guard matrix; e2e: a player cannot open the console            |
+| MFA                | TOTP verified against the RFC 6238 and RFC 4226 vectors. Encrypted at rest (AES-256-GCM, tamper-evident). No code replay. 5 attempts per 5 minutes, failing closed. 12h session, 15-minute step-up for sensitive routes. Production refuses to boot without `MFA_ENCRYPTION_KEY`. | Unit (`totp.test.ts`); integration (setup → enable → session age → step-up) |
+| Concurrency        | Dispute claim is a conditional update: two moderators cannot both hold one dispute. A moderator cannot rule on a dispute someone else holds.                                                                                                                                      | Integration: racing claims                                                  |
+| Atomicity          | Ruling plus sanction in one transaction. A failed sanction leaves the match disputed with no ruling.                                                                                                                                                                              | Integration: rollback test                                                  |
+| Ban                | A permanent ban revokes every session in the same transaction; demotion from staff revokes sessions too.                                                                                                                                                                          | Integration                                                                 |
+| Audit completeness | assign, unassign, note, ruling, evidence read, sanction applied or revoked, role change, phone reveal, flag toggle, format change, report resolution, fraud clear and MFA enable or verify all write `audit_log`.                                                                 | Integration and e2e trace the moderator walkthrough's audit rows            |
+
+**Fairness:** reputation debts come only from the player's own late cancels and no-show forfeits (the opponent showed up). Auto-limits pause new challenges but never sanction, and a moderator clears them. Warnings are never "active", so a warning alone restricts nothing. The thresholds are public in decision 0005, ready for the community-rules page.
+
+**Data minimisation:** search returns masked phones and matches phones only on the full number. Revealing a number is admin-only, needs a fresh code and a reason, and is audited.
+
+**Open:** a moderator queue staffing roster (Delivery Plan staffing) is operational, not code. Sprint 13 picks up holds and payouts in the decision dialog's Stage 2 line.
+
+## Audit (2026-11-20)
+
+The "Testing green" tick rests on one green CI run. The suite was flaky: run 44712981487 on `0cbbb28` failed on a cleanup deadlock with the outbox relay (`sprint14.integration`). Every suite now retries its cleanup (`a273e10`); re-confirm with three consecutive green runs (A11, B3; see `audit-deployability-2026-11-20.md`).

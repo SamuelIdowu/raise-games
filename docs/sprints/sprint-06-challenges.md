@@ -97,7 +97,7 @@ States per Design §7/UX shell listing: Open, Accepted, In progress, Awaiting re
 
 ## Checklist
 
-- [x] F6.1 State machine domain-enforced + DB-guarded; version + optimistic locks; idempotency keys on all mutating routes; outbox events emitted
+- [x] F6.1 State machine domain-enforced + DB-guarded; version + optimistic locks; idempotency keys on create, result and no-show (accept, decline and cancel are idempotent by state, audit #7); outbox events emitted. Create keys are scoped per poster since 2026-11-20 (`efae6ce`, audit #6)
 - [x] F6.2 Open + direct challenge create with validation, rate limits, zero-stake fields + fee-schedule version persisted
 - [x] F6.3 Atomic accept proven (concurrency test, 1 winner); decline/cancel/appropriate reputation-debt record; expiry via BullMQ delay + sweeper (Redis-kill chaos test green)
 - [x] F6.4 UI wired: sheet + board actions + detail + confirmation dialog + pendant states

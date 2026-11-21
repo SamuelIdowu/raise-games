@@ -12,6 +12,14 @@ export const ServerEvents = {
   ChatLocked: 'chat:locked',
   MatchState: 'match:state',
   Notification: 'notification',
+  /** Sprint 11: a persisted notification (NotificationDto). */
+  NotificationNew: 'notification:new',
+  /** Sprint 11: { unread } — keeps every tab's badge in sync. */
+  NotificationUnread: 'notification:unread',
+  /** Sprint 14: a direct message (DmMessageDto), sent to both players' user rooms. */
+  DmMessage: 'dm:message',
+  /** Audit B32: a challenge appeared on or left the board (BoardChangedEvent). */
+  BoardChanged: 'board:changed',
 } as const;
 
 export const ClientEvents = {
@@ -55,6 +63,14 @@ export interface NotificationEvent {
 }
 
 export const matchRoom = (matchId: string) => `match:${matchId}`;
+/** Every socket joins this room on connect: open-board changes (audit B32). */
+export const BOARD_ROOM = 'board';
+
+export interface BoardChangedEvent {
+  challengeId: string;
+  gameId: string | null;
+  change: 'created' | 'removed';
+}
 export const userRoom = (userId: string) => `user:${userId}`;
 
 /** Ack shape for client → server events. */

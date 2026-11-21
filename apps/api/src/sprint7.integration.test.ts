@@ -30,6 +30,7 @@ import { resetChatRateLimitMemory } from './chat/chat.rate-limit';
 import { CHAT_LOCK_AFTER_MS } from './chat/chat.rules';
 import type { AuthedUser } from './auth/jwt-auth.guard';
 import type { ChatMessageDto, MatchStateEvent } from './realtime/realtime.events';
+import { retryOnDeadlock } from './test-fixtures/retry';
 
 interface Instance {
   app: NestFastifyApplication;
@@ -117,6 +118,8 @@ describe('Sprint 7 - match room, gateway & chat', () => {
       displayName: name,
       role,
       tosVersionAccepted: '1.0',
+      // Sprint 12: staff routes need MFA; staff fixtures are enrolled and verified.
+      mfaEnabledAt: role === 'player' ? null : new Date(),
     });
     userIds.push(id);
     const profileId = uuidv7();
@@ -134,6 +137,7 @@ describe('Sprint 7 - match room, gateway & chat', () => {
       userId: id,
       refreshTokenHash: `test-${sid}`,
       expiresAt: new Date(Date.now() + 3600_000),
+      mfaVerifiedAt: role === 'player' ? null : new Date(),
     });
     sessionIds.push(sid);
     const token = await jwt.signAsync({ sub: id, sid });
@@ -253,37 +257,44 @@ describe('Sprint 7 - match room, gateway & chat', () => {
   beforeEach(clearChatLimits);
 
   afterAll(async () => {
-    for (const s of sockets) s.disconnect();
-    if (matchIds.length) {
-      const convs = await db
-        .select({ id: schema.conversations.id })
-        .from(schema.conversations)
-        .where(inArray(schema.conversations.matchId, matchIds));
-      const convIds = convs.map((c) => c.id);
-      if (convIds.length) {
-        await db.delete(schema.chatFlags).where(inArray(schema.chatFlags.conversationId, convIds));
+    // Retried as a whole on a deadlock with the outbox relay (see test-fixtures/retry).
+    await retryOnDeadlock(async () => {
+      for (const s of sockets) s.disconnect();
+      if (matchIds.length) {
+        const convs = await db
+          .select({ id: schema.conversations.id })
+          .from(schema.conversations)
+          .where(inArray(schema.conversations.matchId, matchIds));
+        const convIds = convs.map((c) => c.id);
+        if (convIds.length) {
+          await db
+            .delete(schema.chatFlags)
+            .where(inArray(schema.chatFlags.conversationId, convIds));
+          await db
+            .delete(schema.messageReports)
+            .where(inArray(schema.messageReports.conversationId, convIds));
+          await db.delete(schema.messages).where(inArray(schema.messages.conversationId, convIds));
+          await db
+            .delete(schema.conversationParticipants)
+            .where(inArray(schema.conversationParticipants.conversationId, convIds));
+          await db.delete(schema.conversations).where(inArray(schema.conversations.id, convIds));
+        }
         await db
-          .delete(schema.messageReports)
-          .where(inArray(schema.messageReports.conversationId, convIds));
-        await db.delete(schema.messages).where(inArray(schema.messages.conversationId, convIds));
-        await db
-          .delete(schema.conversationParticipants)
-          .where(inArray(schema.conversationParticipants.conversationId, convIds));
-        await db.delete(schema.conversations).where(inArray(schema.conversations.id, convIds));
+          .delete(schema.outboxEvents)
+          .where(inArray(schema.outboxEvents.subjectId, matchIds));
+        await db.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
       }
-      await db.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, matchIds));
-      await db.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
-    }
-    if (challengeIds.length)
-      await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-    if (userIds.length) {
-      await db.delete(schema.userBlocks).where(inArray(schema.userBlocks.blockerId, userIds));
-      await db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
-      await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
-      await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.id, profileIds));
-      await db.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, userIds));
-      await db.delete(schema.users).where(inArray(schema.users.id, userIds));
-    }
+      if (challengeIds.length)
+        await db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
+      if (userIds.length) {
+        await db.delete(schema.userBlocks).where(inArray(schema.userBlocks.blockerId, userIds));
+        await db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
+        await db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
+        await db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.id, profileIds));
+        await db.delete(schema.outboxEvents).where(inArray(schema.outboxEvents.subjectId, userIds));
+        await db.delete(schema.users).where(inArray(schema.users.id, userIds));
+      }
+    });
     await one?.app.close();
     await two?.app.close();
     await one?.adapter.dispose();
@@ -388,14 +399,20 @@ describe('Sprint 7 - match room, gateway & chat', () => {
         subjectId: matchId,
         payload: { matchId },
       });
-      // Other suites may leave events queued; drain until ours is processed.
-      for (let i = 0; i < 20; i++) {
-        if ((await relay.drain()) === 0) break;
+      // Other suites may leave events queued, and drain() returns 0 while another suite's
+      // relay holds the consumer lock: wait for our conversation instead of the first 0.
+      const findConv = async () =>
+        (
+          await db
+            .select()
+            .from(schema.conversations)
+            .where(eq(schema.conversations.matchId, matchId))
+        )[0];
+      const deadline = Date.now() + 15_000;
+      while (!(await findConv()) && Date.now() < deadline) {
+        if ((await relay.drain()) === 0) await new Promise((r) => setTimeout(r, 200));
       }
-      const [conv] = await db
-        .select()
-        .from(schema.conversations)
-        .where(eq(schema.conversations.matchId, matchId));
+      const conv = await findConv();
       expect(conv?.scope).toBe('match');
       const parts = await db
         .select()
@@ -667,9 +684,16 @@ describe('Sprint 7 - match room, gateway & chat', () => {
         subjectId: matchId,
         payload: { matchId },
       });
-      for (let i = 0; i < 20; i++) if ((await relay.drain()) === 0) break;
+      // drain() returns 0 at once while another drain holds the lock (this instance's
+      // timer, or another test file's relay on the shared database), so keep polling.
+      let done = false;
+      const both = Promise.all([gotA, gotB]).finally(() => (done = true));
+      while (!done) {
+        await relay.drain();
+        await new Promise((r) => setTimeout(r, 25));
+      }
 
-      const [ea, eb] = await Promise.all([gotA, gotB]);
+      const [ea, eb] = await both;
       expect(ea).toMatchObject({
         matchId,
         status: 'in_progress',

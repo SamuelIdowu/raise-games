@@ -4,6 +4,53 @@ All notable changes to RAISE. Grouped by sprint (see `docs/sprints/`). Dates are
 
 ## Unreleased
 
+### Sprint 16 — Closed beta tooling
+
+- Invite-only signup for the closed beta, behind `beta.invite_only` (off by default): new players need an invite code from their campus or community; existing players always sign in. Codes have use limits and expiry and can be paused; each account records its cohort.
+- No code? Players can join a waitlist (kept 90 days); staff invite from it.
+- Beta metrics for staff: the PRD's Stage 1 success metrics per cohort against their targets, a signup funnel, daily activity and a CSV export.
+- "Send feedback" from the menu; staff triage reports by severity, and open severity-1 issues are shown as the beta's exit gate.
+- Adversarial playbook and beta runbook; new tests for the screenshot-reuse and dispute-abuse auto-limits.
+
+### Sprint 14 — Restricted DMs (behind the `messaging.dm` flag, off by default)
+
+- Direct messages between players who finished a match together or accepted a friend request. Nobody else can start one.
+- Friend requests from a player's profile, with notifications. Declining is silent; the same player can ask again after 30 days.
+- Inbox Messages tab lists friend requests and direct messages alongside match chats; conversations reuse the match chat (500 characters, no link previews, report and block on each message).
+- Block from a profile or a conversation: neither side can message or send requests, any friendship ends, and the blocked player is never told. Messages are kept as evidence. Unblock from Blocked players.
+- Mute a conversation to stop its notifications. Floods are throttled per pair, including a cap on unanswered messages.
+- Reported DMs reach the moderator queue with the surrounding conversation frozen at report time; keyword-filter hits now appear in the queue too.
+- With the flag off, every DM screen and endpoint is a 404 and no DM button appears anywhere.
+
+### Sprint 13 — Stage 2 foundations (no player-facing change)
+
+- Double-entry ledger with holds: immutable entries, idempotent postings, row locking, and the database itself refusing unbalanced transactions. A nightly check confirms the books net to zero.
+- Wallet provider port with a mock provider. Every challenge already runs through it with a zero stake, so Stage 2 is an adapter swap plus a flag.
+- Signed, replay-safe provider webhooks.
+- Stake limits by identity tier (and zero for fraud-limited or self-excluded players) as data; real-money flags per state, all off.
+- Responsible-gaming limits and self-exclusion stored, behind a flag until Stage 2.
+- Matches carry an optional competition id for Stage 3; withdrawal, refund and payout flows designed (decision 0006).
+
+### Sprint 12 — Trust & operations
+
+- Moderator console at `/admin`: dashboard (queue, SLA, stuck matches, success metrics), dispute queue with claiming and a 24-hour SLA clock, and a dispute viewer with screenshots, hash flags, chat transcript, player history, reason templates and a confirm-before-apply ruling.
+- Staff accounts need two-factor (authenticator app); sensitive actions ask for a fresh code.
+- Sanction ladder: warning → 7-day → 30-day suspension → permanent ban. Suspended players keep their account but cannot start new challenges; a ban signs them out everywhere. Players are told in plain language.
+- Fraud signals: reused and near-duplicate screenshots, win-trading risk, shared devices, repeat pairings. Repeated late cancels, reused screenshots, upheld reports or lost disputes pause new challenges until a moderator reviews.
+- Reports queue with bulk actions; player records with masked phones; feature flags, game format pausing and an audit log viewer.
+
+### Sprint 11 — Notifications & Inbox
+
+- Every Stage 1 notification type is live: challenges (received, accepted, declined, expiring),
+  results (needs confirmation, auto-confirmed), no-shows, disputes (opened, ruled), new messages
+  (batched per chat) and account actions.
+- Delivered in-app instantly to every open tab, plus web push and email by preference, with
+  retries, quiet hours, and critical types that always get through.
+- Inbox: notifications grouped by day with unread dots and deep links; match chats in Messages;
+  a preferences screen for channels, quiet hours, email and push on this device.
+- Real badges: Inbox unread and Matches needing your action, kept in sync live; the needs-action
+  banner now shows real matches.
+
 ### Sprint 10 — Elo ratings, leaderboards & profile stats
 
 - Per-game Elo per the PRD: start 1000, K 32 then 20 after 20 matches, provisional until 10, and diminishing gains after 3 matches against the same opponent in 7 days (decision 0004).

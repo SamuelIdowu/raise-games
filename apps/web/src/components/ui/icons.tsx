@@ -3,6 +3,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Ban,
+  BellOff,
   Camera,
   Check,
   CheckCircle2,
@@ -20,6 +21,8 @@ import {
   Info,
   Loader2,
   Lock,
+  LogOut,
+  Settings,
   Mail,
   Menu,
   Minus,
@@ -33,6 +36,7 @@ import {
   Undo2,
   Upload,
   User,
+  UserPlus,
   WifiOff,
   X,
   type LucideIcon,
@@ -66,9 +70,13 @@ export type IconName =
   | 'trophy'
   | 'mail'
   | 'user'
+  | 'user-plus'
+  | 'bell-off'
   | 'star'
   | 'upload'
   | 'lock'
+  | 'log-out'
+  | 'settings'
   | 'minus'
   | 'camera'
   | 'image'
@@ -104,9 +112,13 @@ const ICONS: Record<IconName, LucideIcon> = {
   trophy: Trophy,
   mail: Mail,
   user: User,
+  'user-plus': UserPlus,
+  'bell-off': BellOff,
   star: Star,
   upload: Upload,
   lock: Lock,
+  'log-out': LogOut,
+  settings: Settings,
   minus: Minus,
   camera: Camera,
   image: ImageIcon,

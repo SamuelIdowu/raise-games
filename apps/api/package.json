@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "node scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
@@ -11,8 +11,10 @@
     "lint": "eslint src --ext .ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:deploy": "node dist/db/migrate.js",
     "db:seed": "tsx src/db/seed.ts",
-    "ratings:verify": "tsx src/scripts/verify-ratings.ts"
+    "ratings:verify": "tsx src/scripts/verify-ratings.ts",
+    "db:seed:demo": "tsx src/scripts/demo-seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",
@@ -27,9 +29,13 @@
     "@nestjs/platform-socket.io": "^11.2.10",
     "@nestjs/swagger": "^11.2.2",
     "@nestjs/websockets": "^11.2.10",
+    "@opentelemetry/auto-instrumentations-node": "^0.83.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.301.2",
+    "@opentelemetry/sdk-node": "^0.301.2",
     "@raise/game-configs": "workspace:*",
     "@raise/schemas": "workspace:*",
     "@raise/types": "workspace:*",
+    "@sentry/node": "^9.47.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "argon2": "^0.44.0",
     "bullmq": "^6.7.6",
@@ -47,11 +53,13 @@
     "sharp": "^0.35.5",
     "socket.io": "^4.8.4",
     "uuid": "^11.1.0",
+    "web-push": "^3.6.7",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.2.9",
     "@types/pg": "^8.15.7",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^0.31.8",
     "socket.io-client": "^4.8.4",
     "tsx": "^4.21.0",

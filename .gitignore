@@ -30,3 +30,6 @@ blob-report/
 Thumbs.db
 *.log
 temp.txt
+.lighthouseci/
+load-tokens.json
+*.stackdump

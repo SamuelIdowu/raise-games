@@ -14,6 +14,8 @@ import { canonicalPair, ratingGapBetween } from './pairing';
 import { scheduleChallengeExpiry, cancelChallengeExpiry } from './challenges.queue';
 import type { BoardQuery, CreateChallengeRequest } from './challenges.schemas';
 import { v7 as uuidv7 } from 'uuid';
+import { assertCanPlay } from '../moderation/standing';
+import { WalletService } from '../wallet/wallet.service';
 
 interface BoardCursor {
   createdAt: string;
@@ -36,6 +38,8 @@ function isUniqueViolation(error: unknown): boolean {
 
 @Injectable()
 export class ChallengesService {
+  constructor(private readonly wallet: WalletService) {}
+
   async listBoard(viewerId: string, query: BoardQuery): Promise<BoardResult> {
     const now = new Date();
     const mine = query.mine === 'true';
@@ -177,7 +181,12 @@ export class ChallengesService {
       const existing = await db
         .select({ id: schema.challenges.id })
         .from(schema.challenges)
-        .where(eq(schema.challenges.idempotencyKey, input.idempotencyKey))
+        .where(
+          and(
+            eq(schema.challenges.posterId, posterId),
+            eq(schema.challenges.idempotencyKey, input.idempotencyKey),
+          ),
+        )
         .limit(1);
       if (existing[0]) return { id: existing[0].id };
     }
@@ -231,21 +240,11 @@ export class ChallengesService {
     if ((openCount[0]?.value ?? 0) >= 5)
       throw new BadRequestException('Maximum 5 open challenges allowed');
 
-    // Check for sanctions
-    const sanction = await db
-      .select({ id: schema.sanctions.id })
-      .from(schema.sanctions)
-      .where(
-        and(
-          eq(schema.sanctions.userId, posterId),
-          eq(schema.sanctions.type, 'suspension'),
-          lt(schema.sanctions.startsAt, new Date()),
-          or(isNull(schema.sanctions.endsAt), gt(schema.sanctions.endsAt, new Date())),
-          isNull(schema.sanctions.revokedAt),
-        ),
-      )
-      .limit(1);
-    if (sanction[0]) throw new ForbiddenException('Account suspended');
+    // Sanctions and fraud auto-limits (Sprint 12): suspended or limited players cannot post.
+    await assertCanPlay(posterId);
+    // Sprint 13: tier caps, restrictions and jurisdiction flags (a zero stake always passes
+    // unless the currency is not allowed in the poster's state).
+    await this.wallet.assertStake(posterId, input.stakeAmountMinor ?? 0, input.currency ?? 'NGN');
 
     const acceptanceDeadline = new Date(Date.now() + ACCEPTANCE_WINDOW_MS);
     const id = uuidv7();
@@ -264,8 +263,8 @@ export class ChallengesService {
           startsAt: startsAt,
           endsAt: endsAt,
           acceptanceDeadline,
-          stakeAmountMinor: 0,
-          currency: 'NGN',
+          stakeAmountMinor: input.stakeAmountMinor ?? 0,
+          currency: input.currency ?? 'NGN',
           feeScheduleVersion: 1,
           ratingGap: null,
           repeatPairCount: 0,
@@ -295,7 +294,12 @@ export class ChallengesService {
         const [existing] = await db
           .select({ id: schema.challenges.id })
           .from(schema.challenges)
-          .where(eq(schema.challenges.idempotencyKey, input.idempotencyKey))
+          .where(
+            and(
+              eq(schema.challenges.posterId, posterId),
+              eq(schema.challenges.idempotencyKey, input.idempotencyKey),
+            ),
+          )
           .limit(1);
         if (existing) return { id: existing.id };
       }
@@ -422,6 +426,8 @@ export class ChallengesService {
         gameId: schema.challenges.gameId,
         startsAt: schema.challenges.startsAt,
         acceptanceDeadline: schema.challenges.acceptanceDeadline,
+        stakeAmountMinor: schema.challenges.stakeAmountMinor,
+        currency: schema.challenges.currency,
       })
       .from(schema.challenges)
       .where(eq(schema.challenges.id, challengeId))
@@ -438,6 +444,10 @@ export class ChallengesService {
     }
     if (c.status !== 'open') throw new ConflictException('Challenge is not open');
     if (c.acceptanceDeadline <= new Date()) throw new ConflictException('Challenge has expired');
+    // Sprint 12: suspended or auto-limited players cannot accept either.
+    await assertCanPlay(acceptorId);
+    // Sprint 13: the acceptor puts up the same stake, so their caps apply too.
+    await this.wallet.assertStake(acceptorId, c.stakeAmountMinor, c.currency);
 
     const profiles = await db
       .select({ id: schema.gameProfiles.id, userId: schema.gameProfiles.userId })

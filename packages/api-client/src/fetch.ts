@@ -76,9 +76,23 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(
-      (error as { message?: string }).message ?? `Request failed with status ${res.status}`,
+    const error = (await res.json().catch(() => ({ message: res.statusText }))) as {
+      message?: string;
+      data?: { reason?: string } | null;
+    };
+    const reason = error.data?.reason ?? null;
+    // Play gate (audit #2): the terms changed or were never accepted. Send the player to
+    // re-accept and bring them back to this page afterwards.
+    if (reason === 'consent_required' && typeof window !== 'undefined') {
+      const here = window.location.pathname + window.location.search;
+      if (!window.location.pathname.startsWith('/onboarding/consent')) {
+        window.location.assign('/onboarding/consent?next=' + encodeURIComponent(here));
+      }
+    }
+    throw new ApiError(
+      error.message ?? `Request failed with status ${res.status}`,
+      res.status,
+      reason,
     );
   }
 
@@ -91,3 +105,15 @@ export function isAuthenticated(): boolean {
 }
 
 export { getAccessToken, getRefreshToken, setTokens, clearTokens };
+
+/** Failed API call. `reason` is a machine-readable code when the API sends one (e.g. 'mfa_required'). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly reason: string | null,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}

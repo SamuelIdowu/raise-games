@@ -94,12 +94,37 @@ Per PRD "Early technical foundations" + TA §Ledger: double-entry ledger with ho
 
 ## Checklist
 
-- [ ] F13.1 LedgerAccount/LedgerEntry final immutable schema; idempotency + row locking; net-zero nightly check; property tests hitting the invariant
-- [ ] F13.2 WalletProviderPort + MockProviderAdapter; challenge→ledger semantics identical for later adapter swap; webhook route with signature/idempotency/replay safety; replay test green
-- [ ] F13.3 Identity tiers functional + stake caps by tier enforced in validation; responsible-gaming LimitSetting fields present (no UI required)
-- [ ] F13.4 Jurisdiction feature flags per-state live; default Nigeria/NGN mapping; flag toggles respected at runtime
-- [ ] F13.5 competition_id column live on matches; F3 consent records closure
-- [ ] F13.6 Withdrawal/refund/payout state machines documented in docs/ with PRD gate language
-- [ ] Invariant evidence pack archived (fuzz runs + webhook replay + net-zero)
-- [ ] Audits pass (cso + differential, zero open critical)
+- [x] F13.1 LedgerAccount/LedgerEntry final immutable schema; idempotency + row locking; net-zero nightly check; property tests hitting the invariant
+- [x] F13.2 WalletProviderPort + MockProviderAdapter; challenge→ledger semantics identical for later adapter swap; webhook route with signature/idempotency/replay safety; replay test green
+- [x] F13.3 Identity tiers functional + stake caps by tier enforced in validation; responsible-gaming LimitSetting fields present (no UI required)
+- [x] F13.4 Jurisdiction feature flags per-state live; default Nigeria/NGN mapping; flag toggles respected at runtime
+- [x] F13.5 competition_id column live on matches; LimitSetting fields + gated endpoints. F3 consent closure done 2026-11-20 (`PlayConsentGuard`, commit `bd2cb83`, audit #2)
+- [x] F13.6 Withdrawal/refund/payout state machines documented in docs/ with PRD gate language
+- [x] Invariant evidence pack archived (fuzz runs + webhook replay + net-zero): `ledger.math.test.ts` (10,000 postings × 3 seeds) and `sprint13.integration.test.ts`, green in CI run [44196482334](https://github.com/SamuelIdowu/raise-games/actions/runs/44196482334) on `9d0b758`
+- [x] Audits pass (cso + differential, zero open critical): see Status notes
 - [ ] `ship` close with PR + CHANGELOG
+
+## Status notes (2026-11-17)
+
+- Design record: [`docs/decisions/0006-ledger-and-stage2-money-flows.md`](../decisions/0006-ledger-and-stage2-money-flows.md) (ledger rules, provider port, stake policy, flags, Stage 2 state machines).
+- Migrations `0013_sprint13_ledger_prep` (drops the Sprint 0 placeholder columns; the table held no rows) and `0014_sprint13_ledger`.
+- Challenges accept `stakeAmountMinor` + `currency` (default 0 / NGN) and check both players' stakes on create and accept. In Stage 1 any stake above zero is refused (`real_money_disabled`); above the tier cap it is refused first (`above_cap`).
+- Flag cache: `FlagsService` caches for 30 seconds, so a flag toggled from the admin console applies within 30 seconds.
+- Placeholder caps and the inactive fee schedule v2 are owner decisions (PRD "Revenue model"); none is defaulted into use.
+
+### Audit (cso + differential, ledger path)
+
+| Area                                | Finding                                                                                                                                                                                                    | Status              |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Concurrent postings                 | Accounts locked `FOR UPDATE` in id order; a duplicate that commits while another waits is caught by a second replay check and the unique key. Test: 20 parallel holds, balance for 10 → exactly 10 succeed | OK                  |
+| Idempotency key reuse               | Same key with different contents → 409 (request hash), never a silent second posting                                                                                                                       | OK                  |
+| Webhook replay / forgery            | HMAC over raw body + timestamp, 5-minute tolerance, timing-safe compare; `(provider, event_id)` unique; stored and applied in one transaction                                                              | OK                  |
+| Mock in production                  | `MOCK_PROVIDER_WEBHOOK_SECRET` refused at boot in production; no secret → 404                                                                                                                              | OK                  |
+| Live provider by accident           | Registry needs a registered adapter **and** the flag; none registered                                                                                                                                      | OK                  |
+| Event ordering                      | A result processed before its hold (relay retry) places the holds first, then settles. Test included                                                                                                       | Fixed during review |
+| Authorisation                       | No ledger read or write endpoint is exposed to players; limits endpoints need a session and are flag-gated                                                                                                 | OK                  |
+| Rate limits fail open without Redis | Project-wide (audit finding #8); webhooks are still signature-checked                                                                                                                                      | Tracked             |
+
+## Audit (2026-11-20)
+
+The "Testing green" tick rests on one green CI run. The suite was flaky: run 44712981487 on `0cbbb28` failed on a cleanup deadlock with the outbox relay (`sprint14.integration`). Every suite now retries its cleanup (`a273e10`); re-confirm with three consecutive green runs (A11, B3; see `audit-deployability-2026-11-20.md`).

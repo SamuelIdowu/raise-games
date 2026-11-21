@@ -1,0 +1,52 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://localhost:3200/",
+        "http://localhost:3200/onboarding/phone",
+        "http://localhost:3200/play",
+        "http://localhost:3200/leaderboard"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "formFactor": "mobile",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 360,
+          "height": 740,
+          "deviceScaleFactor": 2,
+          "disabled": false
+        },
+        "throttlingMethod": "simulate",
+        "throttling": {
+          "rttMs": 300,
+          "throughputKbps": 700,
+          "cpuSlowdownMultiplier": 4
+        },
+        "onlyCategories": ["performance"],
+        "chromeFlags": "--no-sandbox --headless=new"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "first-contentful-paint": [
+          "error",
+          { "maxNumericValue": 3000, "aggregationMethod": "median-run" }
+        ],
+        "largest-contentful-paint": [
+          "warn",
+          { "maxNumericValue": 3000, "aggregationMethod": "median-run" }
+        ],
+        "total-blocking-time": [
+          "warn",
+          { "maxNumericValue": 600, "aggregationMethod": "median-run" }
+        ],
+        "resource-summary:script:size": [
+          "warn",
+          { "maxNumericValue": 204800, "aggregationMethod": "median-run" }
+        ]
+      }
+    },
+    "upload": { "target": "filesystem", "outputDir": "./.lighthouseci" }
+  }
+}

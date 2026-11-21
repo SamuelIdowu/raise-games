@@ -26,16 +26,17 @@ export interface UpdateMeRequest {
 }
 
 export const authApi = {
-  requestOtp: (phone: string, turnstileToken?: string) =>
+  /** `inviteCode` is needed for new numbers while the closed beta is invite-only (Sprint 16). */
+  requestOtp: (phone: string, turnstileToken?: string, inviteCode?: string) =>
     apiFetch<OtpRequestResponse>('/auth/otp/request', {
       method: 'POST',
-      body: JSON.stringify({ phone, turnstileToken }),
+      body: JSON.stringify({ phone, turnstileToken, inviteCode: inviteCode || undefined }),
     }),
 
-  verifyOtp: (phone: string, code: string) =>
+  verifyOtp: (phone: string, code: string, inviteCode?: string) =>
     apiFetch<OtpVerifyResponse>('/auth/otp/verify', {
       method: 'POST',
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({ phone, code, inviteCode: inviteCode || undefined }),
     }),
 
   refresh: (refreshToken: string) =>

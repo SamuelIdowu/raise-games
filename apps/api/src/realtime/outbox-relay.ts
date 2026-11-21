@@ -46,6 +46,11 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
     this.handlers.push(handler);
   }
 
+  /** Registered consumer names (ops lag alerts, Sprint 15). */
+  consumerNames(): string[] {
+    return this.handlers.map((h) => h.name);
+  }
+
   onApplicationBootstrap(): void {
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     this.schedule();
@@ -157,12 +162,30 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
     attempts: number,
     lastError: string | null,
   ) {
-    await tx
-      .insert(schema.outboxDeliveries)
-      .values({ consumer, eventId, status, attempts, lastError, updatedAt: new Date() })
-      .onConflictDoUpdate({
-        target: [schema.outboxDeliveries.consumer, schema.outboxDeliveries.eventId],
-        set: { status, attempts, lastError, updatedAt: new Date() },
+    try {
+      // Savepoint: if the event was purged mid-drain, only this row is lost, not the batch.
+      await tx.transaction(async (sp) => {
+        await sp
+          .insert(schema.outboxDeliveries)
+          .values({ consumer, eventId, status, attempts, lastError, updatedAt: new Date() })
+          .onConflictDoUpdate({
+            target: [schema.outboxDeliveries.consumer, schema.outboxDeliveries.eventId],
+            set: { status, attempts, lastError, updatedAt: new Date() },
+          });
       });
+    } catch (error) {
+      if (pgCode(error) !== '23503') throw error; // foreign key: the event no longer exists
+    }
   }
+}
+
+function pgCode(error: unknown): string | undefined {
+  for (
+    let e = error as { code?: unknown; cause?: unknown } | undefined;
+    e;
+    e = e.cause as typeof e
+  ) {
+    if (typeof e.code === 'string') return e.code;
+  }
+  return undefined;
 }

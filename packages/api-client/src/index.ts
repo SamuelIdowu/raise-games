@@ -1,4 +1,5 @@
 export {
+  ApiError,
   API_BASE_URL,
   apiFetch,
   isAuthenticated,
@@ -17,9 +18,13 @@ export { playersApi } from './players';
 export { reportsApi } from './reports';
 export { matchesApi, isParticipantView } from './matches';
 export { leaderboardsApi } from './leaderboards';
+export { adminApi } from './admin';
 export { chatApi } from './chat';
 export { uploadsApi } from './uploads';
 export { disputesApi } from './disputes';
+export { notificationsApi } from './notifications';
+export { dmApi } from './dm';
+export { betaApi } from './beta';
 export { ServerEvents, ClientEvents } from './realtime';
 export type { MeResponse, UpdateMeRequest } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
@@ -50,7 +55,21 @@ export type {
   SubmitResultResponse,
 } from './matches';
 export type { ChatMessage, MessagePage, SendResult, ReportReason } from './chat';
-export type { MatchStateEvent, ChatLockedEvent, NotificationEvent, Ack } from './realtime';
+export type {
+  DmConversation,
+  DmConversationItem,
+  DmMessage,
+  DmRelationship,
+  FriendRequestItem,
+  FriendState,
+} from './dm';
+export type {
+  MatchStateEvent,
+  BoardChangedEvent,
+  ChatLockedEvent,
+  NotificationEvent,
+  Ack,
+} from './realtime';
 export type { PresignedUpload, UploadInfo, UploadPurpose } from './uploads';
 export type {
   DisputeCategory,
@@ -66,3 +85,38 @@ export type {
   LeaderboardRow,
   ReputationLevel,
 } from './leaderboards';
+export type {
+  InboxConversation,
+  NotificationItem,
+  NotificationSettings,
+  NotificationType,
+} from './notifications';
+export type {
+  AdminUserDetail,
+  AdminUserRow,
+  AdminMatchRow,
+  AdminMatchDetail,
+  AuditRow,
+  Dashboard,
+  DisputeViewer,
+  LadderPreview,
+  MfaStatus,
+  QueueItem,
+  QueueState,
+  ReportContextMessage,
+  ReportItem,
+  Sla,
+  Standing,
+  ViewerPlayer,
+} from './admin';
+export type {
+  BetaMetric,
+  BetaMetrics,
+  FeedbackItem,
+  FeedbackStatus,
+  InviteCode,
+  OpenBySeverity,
+  Severity,
+  TrackStatus,
+  WaitlistEntry,
+} from './beta';

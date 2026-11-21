@@ -98,7 +98,7 @@ Two-sided result submission with screenshot proof, matching auto-confirm, confli
 ## Checklist
 
 - [x] F8.1 Result submission endpoint append-only + per-game schema validation + active-submission side rule
-- [x] F8.2 Upload pipeline: client compression, presign to private bucket, MIME/size/EXIF/hash checks, resumable where practical; signed-read-only views; Procfile/host notes
+- [x] F8.2 Upload pipeline: client compression, presign to private bucket, MIME/size/EXIF/hash checks; signed-read-only views. **Audit 2026-11-20:** uploads retry whole files (not resumable/chunked) and no host notes exist (A8)
 - [x] F8.3 Sheet UI complete with offline/failed/retry/submitted states + doc-correct error copy
 - [x] F8.4 Matching auto-confirm ≤5s incl. rating event handoff; conflict → dispute auto-open; silent-24h auto-confirm timer proven
 - [x] F8.5 No-show (20-min gate, proof required), forfeit + ratings/reputation-debt records; voided reserved for admin

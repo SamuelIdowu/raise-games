@@ -11,7 +11,9 @@ import { REPUTATION_WINDOW, reputationLevel, type ReputationLevel } from './repu
  * - completed: confirmed or resolved, or forfeited where they were the winner (an
  *   opponent no-show never counts against the player who showed up).
  * - disputesLost: resolved by a ruling with the other side as winner.
- * Voided, cancelled and still-live matches are ignored.
+ * - late cancels (Sprint 12 reputation debts, last 90 days) count as matches the player
+ *   did not complete.
+ * Voided, cancelled and still-live matches are otherwise ignored.
  */
 @Injectable()
 export class ReputationService {
@@ -40,7 +42,10 @@ export class ReputationService {
         WHERE s.user_id IN (${ids})
       )
       SELECT u.id AS user_id,
-        count(*) FILTER (WHERE r.status IN ('confirmed','resolved','forfeited'))::int AS finished,
+        (count(*) FILTER (WHERE r.status IN ('confirmed','resolved','forfeited'))
+          + (SELECT count(*) FROM reputation_debts rd
+               WHERE rd.user_id = u.id AND rd.reason = 'late_cancel'
+                 AND rd.created_at > now() - interval '90 days'))::int AS finished,
         count(*) FILTER (
           WHERE r.status IN ('confirmed','resolved')
              OR (r.status = 'forfeited' AND r.winner_side = r.side)

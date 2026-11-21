@@ -27,9 +27,22 @@ function memoryHit(key: string, windowMs: number, now: number): number {
 
 /** Returns true when the user may send now; counts the attempt either way. */
 export async function allowChatSend(userId: string, now: number = Date.now()): Promise<boolean> {
+  return allowWindows(`rl:chat`, userId, CHAT_LIMITS, now);
+}
+
+/**
+ * Fixed-window limits under `${prefix}:${window name}:${subject}`. Redis first; an
+ * in-memory window per instance when Redis is down (never "no limit" on an abuse surface).
+ */
+export async function allowWindows(
+  prefix: string,
+  subject: string,
+  limits: ReadonlyArray<{ name: string; max: number; windowMs: number }>,
+  now: number = Date.now(),
+): Promise<boolean> {
   let allowed = true;
-  for (const limit of CHAT_LIMITS) {
-    const key = `rl:chat:${limit.name}:${userId}`;
+  for (const limit of limits) {
+    const key = `${prefix}:${limit.name}:${subject}`;
     let count: number;
     try {
       await ensureRedis();

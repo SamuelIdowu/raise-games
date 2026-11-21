@@ -21,6 +21,12 @@ RUN pnpm turbo run build --filter=@raise/api...
 
 FROM base AS runner
 ENV NODE_ENV=production
+# Not root (audit B5). The API writes nothing to disk, so root-owned files are fine to read.
 COPY --from=build /app ./
+USER node
+WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["node", "apps/api/dist/main.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3001)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+# instrument.js starts OpenTelemetry only when OTEL_EXPORTER_OTLP_ENDPOINT is set (F15.4).
+# Migrations are a separate release step: node dist/db/migrate.js (audit B6).
+CMD ["node", "--require", "./dist/instrument.js", "dist/main.js"]

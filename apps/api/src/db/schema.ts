@@ -20,6 +20,7 @@ import {
   pgEnum,
   primaryKey,
   bigserial,
+  bigint,
   doublePrecision,
 } from 'drizzle-orm/pg-core';
 
@@ -45,12 +46,20 @@ export const users = pgTable(
     id: uuid('id').primaryKey(),
     phone: text('phone').notNull(),
     displayName: text('display_name'),
+    /** Optional; notification email channel (Sprint 11). Never shown to other players. */
+    email: text('email'),
     jurisdictionState: text('jurisdiction_state'),
     identityTier: identityTierEnum('identity_tier').notNull().default('tier1_phone_verified'),
     kycStatus: kycStatusEnum('kyc_status').notNull().default('none'),
     ageVerificationStatus: ageStatusEnum('age_verification_status').notNull().default('pending'),
     role: roleEnum('role').notNull().default('player'),
     tosVersionAccepted: text('tos_version_accepted'),
+    /** Sprint 12: staff TOTP secret, AES-256-GCM encrypted (shared/secret-box). */
+    mfaSecretEnc: text('mfa_secret_enc'),
+    /** Set once the first TOTP code verifies; staff routes require it. */
+    mfaEnabledAt: timestamp('mfa_enabled_at', { withTimezone: true }),
+    /** Fraud signals before this time no longer count toward auto-limits (moderator clear). */
+    fraudClearedAt: timestamp('fraud_cleared_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -67,6 +76,13 @@ export const sanctions = pgTable(
       .references(() => users.id),
     type: sanctionTypeEnum('type').notNull().default('suspension'),
     reason: text('reason').notNull(),
+    /** Sprint 12 ladder step (1 warning, 2 = 7 days, 3 = 30 days, 4 = permanent ban). */
+    step: integer('step'),
+    /** dispute | report | manual | bulk | auto */
+    source: text('source').notNull().default('manual'),
+    sourceId: uuid('source_id'),
+    issuedById: uuid('issued_by_id').references(() => users.id),
+    revokedById: uuid('revoked_by_id').references(() => users.id),
     startsAt: timestamp('starts_at', { withTimezone: true }).notNull().defaultNow(),
     endsAt: timestamp('ends_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
@@ -91,6 +107,8 @@ export const sessions = pgTable(
     deviceId: text('device_id'),
     userAgent: text('user_agent'),
     ip: text('ip'),
+    /** Sprint 12: last TOTP check on this session's refresh family (staff step-up). */
+    mfaVerifiedAt: timestamp('mfa_verified_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
@@ -175,34 +193,80 @@ export const featureFlags = pgTable(
   ],
 );
 
+/**
+ * Sprint 13 (F13.1): double-entry ledger. Entries are immutable; corrections are reversing
+ * transactions. `balance_minor` is a cache updated under row lock with every posting; the
+ * nightly check proves it equals the sum of entries and that every currency nets to zero.
+ *
+ * Account refs: `user:<id>:available`, `user:<id>:held`, `platform:fees`,
+ * `provider:<name>:clearing`. Only clearing accounts may go negative (they mirror money
+ * held outside the platform).
+ */
 export const ledgerAccounts = pgTable(
   'ledger_accounts',
   {
     id: uuid('id').primaryKey(),
     accountRef: text('account_ref').notNull(),
-    accountType: text('account_type').notNull(), // 'user', 'platform_fee', 'escrow', 'provider'
+    /** 'user_available' | 'user_held' | 'platform_fee' | 'provider_clearing' */
+    accountType: text('account_type').notNull(),
+    /** Owning user for user_* accounts. */
+    ownerId: uuid('owner_id').references(() => users.id),
     currency: text('currency').notNull(),
+    balanceMinor: bigint('balance_minor', { mode: 'number' }).notNull().default(0),
+    allowNegative: boolean('allow_negative').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('ledger_accounts_ref_currency_uq').on(t.accountRef, t.currency),
+    index('ledger_accounts_owner_idx').on(t.ownerId),
+  ],
+);
+
+/** One balanced posting. The idempotency key makes every money movement replay-safe. */
+export const ledgerTransactions = pgTable(
+  'ledger_transactions',
+  {
+    id: uuid('id').primaryKey(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    /** 'hold' | 'release' | 'refund' | 'deposit' | 'withdrawal' | 'reversal' | 'adjustment' */
+    kind: text('kind').notNull(),
+    currency: text('currency').notNull(),
+    /** What caused it, e.g. ('match', matchId) or ('provider_event', eventId). */
+    referenceType: text('reference_type'),
+    referenceId: text('reference_id'),
+    /** A reversal points at the transaction it cancels; each can be reversed once. */
+    reversesTransactionId: uuid('reverses_transaction_id'),
+    /** SHA-256 of the canonical request, so a replay with different contents is refused. */
+    requestHash: text('request_hash').notNull(),
+    meta: jsonb('meta'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('ledger_accounts_ref_currency_uq').on(t.accountRef, t.currency)],
+  (t) => [
+    uniqueIndex('ledger_transactions_idempotency_uq').on(t.idempotencyKey),
+    uniqueIndex('ledger_transactions_reverses_uq').on(t.reversesTransactionId),
+    index('ledger_transactions_reference_idx').on(t.referenceType, t.referenceId),
+  ],
 );
 
 export const ledgerEntries = pgTable(
   'ledger_entries',
   {
     id: uuid('id').primaryKey(),
+    transactionId: uuid('transaction_id')
+      .notNull()
+      .references(() => ledgerTransactions.id),
     accountId: uuid('account_id')
       .notNull()
       .references(() => ledgerAccounts.id),
-    amountMinor: integer('amount_minor').notNull(), // signed; sums to zero across an idempotent transfer group
-    entryType: text('entry_type').notNull(), // 'hold', 'release', 'refund', 'fee', 'transfer'
-    idempotencyKey: text('idempotency_key').notNull(),
-    meta: jsonb('meta'),
+    /** Signed minor units, non-zero. A transaction's entries sum to zero (DB-enforced). */
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('ledger_entries_idempotency_uq').on(t.idempotencyKey),
     index('ledger_entries_account_idx').on(t.accountId),
+    index('ledger_entries_transaction_idx').on(t.transactionId),
   ],
 );
 
@@ -310,7 +374,8 @@ export const challenges = pgTable(
     ratingGap: integer('rating_gap'),
     repeatPairCount: integer('repeat_pair_count').notNull().default(0),
     version: integer('version').notNull().default(1),
-    idempotencyKey: uuid('idempotency_key').unique(),
+    /** Unique per poster (audit #6): another player's key never returns their challenge. */
+    idempotencyKey: uuid('idempotency_key'),
     acceptedById: uuid('accepted_by_id').references(() => users.id),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
@@ -322,6 +387,7 @@ export const challenges = pgTable(
     index('challenges_board_idx').on(t.status, t.createdAt, t.id),
     index('challenges_game_board_idx').on(t.gameId, t.status, t.createdAt, t.id),
     index('challenges_poster_idx').on(t.posterId, t.createdAt),
+    uniqueIndex('challenges_poster_idempotency_uq').on(t.posterId, t.idempotencyKey),
     index('challenges_target_idx').on(t.targetPlayerId, t.status),
     index('challenges_deadline_idx').on(t.status, t.acceptanceDeadline),
   ],
@@ -397,17 +463,105 @@ export const matches = pgTable(
     winnerSide: integer('winner_side'),
     /** How the match was decided: agreement | auto_timeout | no_show_conceded | no_show_timeout. */
     decidedVia: text('decided_via'),
+    /** Sprint 13 (F13.5): Stage 3 bracket/competition slot; null for 1v1 challenges. */
+    competitionId: uuid('competition_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex('matches_challenge_id_uq').on(t.challengeId),
+    index('matches_competition_idx').on(t.competitionId),
     index('matches_status_idx').on(t.status),
     index('matches_deadline_idx').on(t.status, t.updatedAt),
     index('matches_start_idx').on(t.status, t.scheduledStartAt),
     index('matches_confirmation_deadline_idx').on(t.status, t.confirmationDeadline),
   ],
 );
+
+/** Stake held for one player of one challenge (TA "Hold"), and how it was settled. */
+export const ledgerHolds = pgTable(
+  'ledger_holds',
+  {
+    id: uuid('id').primaryKey(),
+    // Cascades: holds are bookkeeping for the challenge. Production never hard-deletes
+    // challenges, matches or users (users are soft-deleted); test purges do.
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id, { onDelete: 'cascade' }),
+    matchId: uuid('match_id').references(() => matches.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    currency: text('currency').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    /** 'held' | 'released' | 'refunded' */
+    status: text('status').notNull().default('held'),
+    holdTransactionId: uuid('hold_transaction_id').references(() => ledgerTransactions.id),
+    settleTransactionId: uuid('settle_transaction_id').references(() => ledgerTransactions.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('ledger_holds_challenge_user_uq').on(t.challengeId, t.userId),
+    index('ledger_holds_match_idx').on(t.matchId),
+  ],
+);
+
+/** F13.2: every provider webhook, stored before processing; (provider, event_id) dedupes. */
+export const providerWebhookEvents = pgTable(
+  'provider_webhook_events',
+  {
+    id: uuid('id').primaryKey(),
+    provider: text('provider').notNull(),
+    eventId: text('event_id').notNull(),
+    eventType: text('event_type').notNull(),
+    payload: jsonb('payload').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    /** 'applied' | 'ignored' | 'failed: <reason>' */
+    outcome: text('outcome'),
+  },
+  (t) => [uniqueIndex('provider_webhook_events_uq').on(t.provider, t.eventId)],
+);
+
+/**
+ * F13.3: stake caps as data. scope 'tier' keys by identity tier; scope 'restriction' keys
+ * by an account restriction (e.g. 'fraud_limited' from F12.4). The effective cap is the
+ * lowest active rule that applies; no tier rule means no stakes (fail closed).
+ */
+export const stakeLimitRules = pgTable(
+  'stake_limit_rules',
+  {
+    id: uuid('id').primaryKey(),
+    scope: text('scope').notNull(),
+    key: text('key').notNull(),
+    currency: text('currency').notNull(),
+    maxStakeMinor: bigint('max_stake_minor', { mode: 'number' }).notNull(),
+    version: integer('version').notNull().default(1),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('stake_limit_rules_uq').on(t.scope, t.key, t.currency, t.version)],
+);
+
+/**
+ * F13.5: responsible-gaming limits and self-exclusion (TA LimitSetting). Lowering a limit
+ * applies at once; raising one waits out a cooling-off period (`pending_*`).
+ */
+export const limitSettings = pgTable('limit_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id),
+  currency: text('currency').notNull().default('NGN'),
+  dailyStakeLimitMinor: bigint('daily_stake_limit_minor', { mode: 'number' }),
+  weeklyStakeLimitMinor: bigint('weekly_stake_limit_minor', { mode: 'number' }),
+  monthlyStakeLimitMinor: bigint('monthly_stake_limit_minor', { mode: 'number' }),
+  pendingLimits: jsonb('pending_limits'),
+  pendingEffectiveAt: timestamp('pending_effective_at', { withTimezone: true }),
+  selfExcludedUntil: timestamp('self_excluded_until', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const matchSides = pgTable(
   'match_sides',
@@ -518,10 +672,14 @@ export const disputes = pgTable(
     ruledAt: timestamp('ruled_at', { withTimezone: true }),
     appealedAt: timestamp('appealed_at', { withTimezone: true }),
     finalAt: timestamp('final_at', { withTimezone: true }),
+    /** Sprint 12 queue: the moderator who claimed it (optimistic, one claimant). */
+    assignedToId: uuid('assigned_to_id').references(() => users.id),
+    assignedAt: timestamp('assigned_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    index('disputes_assigned_idx').on(t.assignedToId, t.status),
     /** One dispute per match: auto-opened conflicts and player disputes share it. */
     uniqueIndex('disputes_match_uq').on(t.matchId),
     index('disputes_raised_by_idx').on(t.raisedById),
@@ -644,7 +802,11 @@ export const reports = pgTable(
     subjectId: uuid('subject_id').notNull(),
     reason: text('reason').notNull(),
     note: text('note'),
+    /** open | dismissed | actioned */
     status: text('status').notNull().default('open'),
+    resolvedById: uuid('resolved_by_id').references(() => users.id),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolution: text('resolution'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -896,4 +1058,143 @@ export const ratingEvents = pgTable(
     index('rating_events_apply_idx').on(t.applyId),
     index('rating_events_reverses_idx').on(t.reversesApplyId),
   ],
+);
+
+// ---------------------------------------------------------------------------
+// Notifications — Sprint 11 (F11.1–F11.5)
+// ---------------------------------------------------------------------------
+
+/** One row per (recipient, source event, type): the source of record, created before any delivery. */
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Catalog type, e.g. challenge_received, result_needs_confirmation (notifications/catalog.ts). */
+    type: text('type').notNull(),
+    /** Dedupe key: the outbox event id, or a synthetic key for timers (e.g. expiring:<challengeId>). */
+    sourceKey: text('source_key').notNull(),
+    /** Template params; the client re-renders with the same catalog (i18n). */
+    params: jsonb('params').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    /** In-app deep link to the related object (Design §8: tapping opens it). */
+    link: text('link').notNull(),
+    /** Batching: messages in the same conversation fold into one unread item. */
+    groupKey: text('group_key'),
+    groupCount: integer('group_count').notNull().default(1),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('notifications_dedupe_uq').on(t.userId, t.sourceKey, t.type),
+    index('notifications_user_created_idx').on(t.userId, t.createdAt),
+    index('notifications_user_unread_idx').on(t.userId, t.readAt),
+  ],
+);
+
+/** Per-type channel switches. Missing row = catalog defaults. In-app is always on. */
+export const notificationPreferences = pgTable(
+  'notification_preferences',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    push: boolean('push').notNull(),
+    email: boolean('email').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.type] })],
+);
+
+/** Quiet hours (minutes from local midnight) and timezone, per user. */
+export const notificationSettings = pgTable('notification_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  quietStartMinute: integer('quiet_start_minute'),
+  quietEndMinute: integer('quiet_end_minute'),
+  timeZone: text('time_zone').notNull().default('Africa/Lagos'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Every attempt to deliver a notification on a channel (ops alert on failures, M4). */
+export const deliveryAttempts = pgTable(
+  'delivery_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    notificationId: uuid('notification_id')
+      .notNull()
+      .references(() => notifications.id, { onDelete: 'cascade' }),
+    /** in_app | push | email */
+    channel: text('channel').notNull(),
+    /** sent | failed | skipped | deferred */
+    status: text('status').notNull(),
+    attempt: integer('attempt').notNull().default(1),
+    detail: text('detail'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('delivery_attempts_notification_idx').on(t.notificationId),
+    index('delivery_attempts_status_idx').on(t.status, t.createdAt),
+  ],
+);
+
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    keys: jsonb('keys').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('push_subscriptions_endpoint_uq').on(t.endpoint),
+    index('push_subscriptions_user_idx').on(t.userId),
+  ],
+);
+
+/**
+ * Sprint 12 (F12.3): reputation debts from late cancels and no-show forfeits
+ * (`reputation.debt` outbox events, Sprints 6 and 8). Feeds reputation and auto-limits.
+ */
+export const reputationDebts = pgTable(
+  'reputation_debts',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** late_cancel | no_show | … (the event's reason) */
+    reason: text('reason').notNull(),
+    matchId: uuid('match_id'),
+    /** Outbox event id: one debt per event. */
+    sourceEventId: uuid('source_event_id').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('reputation_debts_user_idx').on(t.userId, t.createdAt)],
+);
+
+/** Sprint 12 (F12.2): internal moderator notes on a dispute. Never shown to players. */
+export const moderatorNotes = pgTable(
+  'moderator_notes',
+  {
+    id: uuid('id').primaryKey(),
+    disputeId: uuid('dispute_id')
+      .notNull()
+      .references(() => disputes.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id')
+      .notNull()
+      .references(() => users.id),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('moderator_notes_dispute_idx').on(t.disputeId, t.createdAt)],
 );

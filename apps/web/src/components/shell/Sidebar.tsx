@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { Button, Icon, Sheet } from '@/components/ui';
-import { NAV_ITEMS, type NavItem } from './BottomNav';
+import { NAV_ITEMS, NavBadge, useNavBadges, type NavItem } from './BottomNav';
+import { signOut } from '@/lib/session';
 
 export function Sidebar() {
+  const badges = useNavBadges();
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -37,6 +39,28 @@ export function Sidebar() {
               <span className="font-display text-body-sm">{item.label}</span>
             </a>
           ))}
+          <a
+            href="/settings"
+            className="mt-2 flex items-center gap-3 border-t border-line px-3 py-2 pt-3 text-fg-muted hover:bg-overlay hover:text-fg"
+          >
+            <Icon name="settings" size={24} aria-hidden />
+            <span className="font-display text-body-sm">Settings</span>
+          </a>
+          <a
+            href="/feedback"
+            className="flex items-center gap-3 px-3 py-2 text-fg-muted hover:bg-overlay hover:text-fg"
+          >
+            <Icon name="flag" size={24} aria-hidden />
+            <span className="font-display text-body-sm">Send feedback</span>
+          </a>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex min-h-11 items-center gap-3 px-3 py-2 text-left text-fg-muted hover:bg-overlay hover:text-fg"
+          >
+            <Icon name="log-out" size={24} aria-hidden />
+            <span className="font-display text-body-sm">Sign out</span>
+          </button>
         </nav>
       </Sheet>
 
@@ -70,17 +94,51 @@ export function Sidebar() {
                 collapsed ? 'justify-center' : ''
               }`}
             >
-              <Icon
-                name={item.icon as import('@/components/ui').IconName}
-                size={24}
-                className="shrink-0"
-              />
+              <span className="relative shrink-0">
+                <Icon name={item.icon as import('@/components/ui').IconName} size={24} />
+                <NavBadge
+                  count={badges[item.href] ?? 0}
+                  label={item.href === '/inbox' ? 'unread' : 'need your action'}
+                />
+              </span>
               {!collapsed && (
                 <span className="font-display text-body-sm truncate">{item.label}</span>
               )}
             </a>
           ))}
         </nav>
+        <a
+          href="/settings"
+          aria-label={collapsed ? 'Settings' : undefined}
+          className={`mx-2 mt-2 flex items-center gap-3 rounded-card border-t border-line px-3 py-2 text-fg-muted hover:bg-overlay hover:text-fg ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Icon name="settings" size={20} aria-hidden />
+          {!collapsed && <span className="font-display text-body-sm">Settings</span>}
+        </a>
+        {/* Sprint 16: beta feedback, one tap from anywhere. */}
+        <a
+          href="/feedback"
+          aria-label={collapsed ? 'Send feedback' : undefined}
+          className={`m-2 flex items-center gap-3 rounded-card border-t border-line px-3 py-2 text-fg-muted hover:bg-overlay hover:text-fg ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Icon name="flag" size={20} aria-hidden />
+          {!collapsed && <span className="font-display text-body-sm">Send feedback</span>}
+        </a>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          aria-label={collapsed ? 'Sign out' : undefined}
+          className={`mx-2 mb-2 flex min-h-11 items-center gap-3 rounded-card px-3 py-2 text-left text-fg-muted hover:bg-overlay hover:text-fg ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Icon name="log-out" size={20} aria-hidden />
+          {!collapsed && <span className="font-display text-body-sm">Sign out</span>}
+        </button>
       </aside>
     </>
   );

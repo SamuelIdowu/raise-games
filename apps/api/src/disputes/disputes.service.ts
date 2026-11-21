@@ -500,10 +500,12 @@ export class DisputesService {
     staff: AuthedUser,
     disputeId: string,
     input: { outcome: RulingOutcome; justification: string; sanctionNote?: string },
+    /** Sprint 12: run inside the caller's transaction (ruling + sanction commit together). */
+    conn?: Tx,
   ): Promise<DisputeRuledEvent> {
     this.requireStaff(staff);
     const now = new Date();
-    return db.transaction(async (tx) => {
+    const run = async (tx: Tx) => {
       const [d] = await tx
         .select()
         .from(schema.disputes)
@@ -640,7 +642,8 @@ export class DisputesService {
         },
       );
       return event;
-    });
+    };
+    return conn ? run(conn) : db.transaction(run);
   }
 
   /**

@@ -7,6 +7,12 @@ export const ServerEvents = {
   ChatLocked: 'chat:locked',
   MatchState: 'match:state',
   Notification: 'notification',
+  NotificationNew: 'notification:new',
+  NotificationUnread: 'notification:unread',
+  /** Sprint 14: a direct message (DmMessageDto), sent to both players' user rooms. */
+  DmMessage: 'dm:message',
+  /** Audit B32: a challenge appeared on or left the board (BoardChangedEvent). */
+  BoardChanged: 'board:changed',
   AuthRevoked: 'auth:revoked',
 } as const;
 
@@ -21,6 +27,12 @@ export interface MatchStateEvent {
   status: string;
   version: number;
   cause: string;
+}
+
+export interface BoardChangedEvent {
+  challengeId: string;
+  gameId: string | null;
+  change: 'created' | 'removed';
 }
 
 export interface ChatLockedEvent {

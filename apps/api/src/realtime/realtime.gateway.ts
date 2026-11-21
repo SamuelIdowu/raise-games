@@ -1,3 +1,4 @@
+import { env } from '../config/env.instance';
 import { HttpException, Logger, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -12,6 +13,7 @@ import { z } from 'zod';
 import { v7 as uuidv7 } from 'uuid';
 import { db, schema } from '../db/client';
 import { enforceRateLimit } from '../shared/rate-limit';
+import { clientIpFrom } from '../shared/client-ip';
 import {
   AccessDeniedError,
   checkSessionActive,
@@ -22,7 +24,7 @@ import { ChatService } from '../chat/chat.service';
 import { sendMessageSchema } from '../chat/chat.schemas';
 import { MatchesService } from '../matches/matches.service';
 import { RealtimePublisher } from './realtime.publisher';
-import { ClientEvents, matchRoom, userRoom, type Ack } from './realtime.events';
+import { BOARD_ROOM, ClientEvents, matchRoom, userRoom, type Ack } from './realtime.events';
 
 interface SocketData {
   user: AuthedUser;
@@ -88,11 +90,12 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
         return next(new Error('unauthenticated'));
       }
       // Each accepted handshake costs ~3 DB reads; cap attempts per IP before doing them.
-      enforceRateLimit(`rl:ws:connect:${socket.handshake.address}`, 60, 60_000)
+      enforceRateLimit(`rl:ws:connect:${handshakeIp(socket)}`, env.WS_CONNECT_LIMIT_PER_MIN, 60_000)
         .then(() => verifyAccessToken(this.jwt, token))
         .then((user) => {
           (socket as AppSocket).data.user = user;
           void socket.join(userRoom(user.sub));
+          void socket.join(BOARD_ROOM);
           next();
         })
         .catch((error: unknown) => {
@@ -173,7 +176,7 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
           objectType: 'match',
           objectId: matchId,
           after: { socketId: socket.id, role: socket.data.user.role },
-          ip: socket.handshake.address ?? null,
+          ip: handshakeIp(socket),
         });
       }
       // Current state in the ack, so a (re)subscribing client never misses a transition
@@ -208,4 +211,13 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
       return fail(error);
     }
   }
+}
+
+/** The player's IP for a socket, through the same TRUST_PROXY hops as HTTP (audit B2). */
+function handshakeIp(socket: Socket): string {
+  return clientIpFrom(
+    socket.handshake.address,
+    socket.handshake.headers['x-forwarded-for'],
+    env.TRUST_PROXY,
+  );
 }

@@ -29,6 +29,7 @@ import {
   type UpdateMe,
 } from './auth.schemas';
 import { verifyTurnstileToken } from './turnstile';
+import { enforceRateLimit } from '../shared/rate-limit';
 
 @Controller('auth')
 export class AuthController {
@@ -45,14 +46,14 @@ export class AuthController {
     if (turnstileRequired && !pending && !body.turnstileToken) {
       throw new BadRequestException('Complete the security check');
     }
-    if (body.turnstileToken) {
+    if (turnstileRequired && body.turnstileToken) {
       const valid = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY!, body.turnstileToken);
       if (!valid) throw new UnauthorizedException('Turnstile verification failed');
     }
     const ua = Array.isArray(req.headers['user-agent'])
       ? req.headers['user-agent'][0]
       : req.headers['user-agent'];
-    return this.auth.requestOtp(body.phone, req.ip ?? 'unknown', ua);
+    return this.auth.requestOtp(body.phone, req.ip ?? 'unknown', ua, body.inviteCode);
   }
 
   @Post('otp/verify')
@@ -61,14 +62,21 @@ export class AuthController {
     @Body(new ZodValidationPipe(otpVerifySchema)) body: OtpVerify,
     @Req() req: FastifyRequest,
   ) {
+    // Per-IP cap across phones (the per-phone cap is the attempt budget in the service).
+    await enforceRateLimit(`otp:rate:ip:verify:${req.ip ?? 'unknown'}`, 30, 10 * 60_000);
     const ua = Array.isArray(req.headers['user-agent'])
       ? req.headers['user-agent'][0]
       : req.headers['user-agent'];
-    const tokens = await this.auth.verifyOtp(body.phone, body.code, {
-      userAgent: ua,
-      ip: req.ip,
-      deviceId: req.headers['x-device-id'] as string | undefined,
-    });
+    const tokens = await this.auth.verifyOtp(
+      body.phone,
+      body.code,
+      {
+        userAgent: ua,
+        ip: req.ip,
+        deviceId: req.headers['x-device-id'] as string | undefined,
+      },
+      body.inviteCode,
+    );
     if (!tokens) throw new UnauthorizedException('Invalid or expired code');
     return tokens;
   }

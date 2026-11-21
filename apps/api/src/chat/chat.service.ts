@@ -24,6 +24,7 @@ import { decodeCursor, encodeCursor } from '../shared/cursor';
 import { isChatLocked, validateBody, type MatchStatus } from './chat.rules';
 import { FILTER_VERSION, runKeywordFilter } from './keyword-filter';
 import { allowChatSend } from './chat.rate-limit';
+import { pairKey } from '../dm/dm.rules';
 
 type MessageRow = typeof schema.messages.$inferSelect;
 
@@ -340,10 +341,12 @@ export class ChatService {
   }
 
   /**
-   * Records a block (F7.3 overflow menu). Enforcement — hiding messages, stopping DMs —
-   * lands with Sprint 14 (F14.4); match chat stays usable so the match can be played.
+   * Block (F7.3 overflow menu, F14.4). Either side's block stops DMs and friend requests
+   * both ways and ends any friendship or pending request between the pair. Match chat stays
+   * usable so a live match can still be played and reported. Messages are never deleted:
+   * they remain dispute and report evidence. Audited.
    */
-  async block(blocker: AuthedUser, blockedId: string): Promise<void> {
+  async block(blocker: AuthedUser, blockedId: string, ip?: string): Promise<void> {
     if (blocker.sub === blockedId) throw new BadRequestException('You cannot block yourself');
     const [target] = await db
       .select({ id: schema.users.id })
@@ -352,19 +355,85 @@ export class ChatService {
       .limit(1);
     if (!target) throw new NotFoundException('Player not found');
 
-    const inserted = await db
-      .insert(schema.userBlocks)
-      .values({ blockerId: blocker.sub, blockedId })
-      .onConflictDoNothing()
-      .returning({ blockerId: schema.userBlocks.blockerId });
-    if (inserted.length > 0) {
-      await db.insert(schema.outboxEvents).values({
+    await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(schema.userBlocks)
+        .values({ blockerId: blocker.sub, blockedId })
+        .onConflictDoNothing()
+        .returning({ blockerId: schema.userBlocks.blockerId });
+      if (inserted.length === 0) return;
+      const fr = schema.friendRequests;
+      const ended = await tx
+        .update(fr)
+        .set({
+          status: sql`case when ${fr.status} = 'accepted' then 'removed' else 'cancelled' end`,
+          respondedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(fr.pairKey, pairKey(blocker.sub, blockedId)),
+            sql`${fr.status} in ('pending', 'accepted')`,
+          ),
+        )
+        .returning({ id: fr.id });
+      await tx.insert(schema.outboxEvents).values({
         id: uuidv7(),
         type: 'user.blocked',
         subjectId: blockedId,
         payload: { blockerId: blocker.sub, blockedId },
       });
-    }
+      await tx.insert(schema.auditLog).values({
+        id: uuidv7(),
+        actorId: blocker.sub,
+        action: 'user.blocked',
+        objectType: 'user',
+        objectId: blockedId,
+        after: { endedFriendRequests: ended.map((r) => r.id) },
+        ip: ip ?? null,
+      });
+    });
+  }
+
+  /** Undo a block (the "blocked by mistake" path). Friendship is not restored. Audited. */
+  async unblock(blocker: AuthedUser, blockedId: string, ip?: string): Promise<void> {
+    const removed = await db
+      .delete(schema.userBlocks)
+      .where(
+        and(
+          eq(schema.userBlocks.blockerId, blocker.sub),
+          eq(schema.userBlocks.blockedId, blockedId),
+        ),
+      )
+      .returning({ blockedId: schema.userBlocks.blockedId });
+    if (removed.length === 0) throw new NotFoundException('Not on your block list');
+    await db.insert(schema.auditLog).values({
+      id: uuidv7(),
+      actorId: blocker.sub,
+      action: 'user.unblocked',
+      objectType: 'user',
+      objectId: blockedId,
+      ip: ip ?? null,
+    });
+  }
+
+  /** The caller's own block list (only ever their own: who blocked you is never shown). */
+  async blockList(me: AuthedUser) {
+    const rows = await db
+      .select({
+        userId: schema.userBlocks.blockedId,
+        name: schema.users.displayName,
+        blockedAt: schema.userBlocks.createdAt,
+      })
+      .from(schema.userBlocks)
+      .innerJoin(schema.users, eq(schema.users.id, schema.userBlocks.blockedId))
+      .where(eq(schema.userBlocks.blockerId, me.sub))
+      .orderBy(desc(schema.userBlocks.createdAt))
+      .limit(200);
+    return rows.map((r) => ({
+      userId: r.userId,
+      name: r.name ?? 'Player',
+      blockedAt: r.blockedAt.toISOString(),
+    }));
   }
 
   /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, Suspense, useState } from 'react';
 import { Banner } from '@/components/ui';
 import { FEATURE_FLAGS } from '@/lib/feature-flags';
 import { BottomNav } from './BottomNav';
@@ -18,7 +18,10 @@ export function Shell({ children }: { children: ReactNode }) {
           Play credits, not cash. No deposit or withdrawal actions available in Stage 1.
         </Banner>
       )}
-      <NeedsActionBanner />
+      {/* Reads usePathname(): runtime data, so behind Suspense under Cache Components. */}
+      <Suspense fallback={null}>
+        <NeedsActionBanner />
+      </Suspense>
 
       <header className="sticky top-0 z-30 h-14 bg-raised border-b border-line flex items-center justify-between px-4">
         <div className="flex items-center gap-3">

@@ -58,11 +58,15 @@ export class MatchStateBroadcaster implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.relay.register({
-      name: 'match-state-broadcast',
-      matches: isMatchStateEvent,
-      handle: (event) => this.handle(event),
-    });
+    // Only an instance that can emit consumes these events: one without a socket server
+    // (a worker, a test module) would mark them done and the broadcast would be lost.
+    this.publisher.whenAttached(() =>
+      this.relay.register({
+        name: 'match-state-broadcast',
+        matches: isMatchStateEvent,
+        handle: (event) => this.handle(event),
+      }),
+    );
   }
 
   async handle(event: OutboxEvent): Promise<void> {

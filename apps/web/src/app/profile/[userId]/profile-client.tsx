@@ -15,6 +15,7 @@ import {
   type ReputationLevel,
   type TierLevel,
 } from '@/components/ui';
+import { DmActions } from '@/features/dm/dm-kit';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -142,6 +143,9 @@ export function ProfileClient() {
           <Button>Challenge</Button>
         </div>
       </header>
+
+      {/* Sprint 14: friend / message / block. Nothing renders while DMs are off. */}
+      <DmActions userId={userId} name={p?.displayName ?? 'this player'} />
 
       {profiles.length > 1 ? (
         <div role="tablist" aria-label="Games" className="flex gap-2 border-b border-line">
