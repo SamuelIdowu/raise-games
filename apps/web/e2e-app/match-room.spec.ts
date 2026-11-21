@@ -47,6 +47,38 @@ test.describe('Sprint 7 — match room, gateway and chat (two browsers)', () => 
     await expect(messagesA.getByText('yes, room is up')).toBeVisible({ timeout: 2_000 });
   });
 
+  // Audit B34: the polling fallback was only ever checked by hand. Bob's WebSocket is
+  // refused before his page loads, so everything he sees must arrive over HTTP polling.
+  test('without a socket, the room falls back to polling and still gets chat', async ({
+    browser,
+  }) => {
+    const a = await createPlayer('sade');
+    const b = await createPlayer('obi');
+    const matchId = await createStartedMatch(a, b);
+    const pageA = await openRoom(browser, a, matchId);
+
+    const contextB = await browser.newContext();
+    await signIn(contextB, b);
+    const pageB = await contextB.newPage();
+    await pageB.routeWebSocket(/socket\.io/, (ws) => ws.close());
+    await pageB.goto(`/matches/${matchId}`);
+    await expect(pageB.getByRole('heading', { level: 1 })).toContainText('eFootball');
+    await expect(pageB.getByText('Live updates paused')).toBeVisible({ timeout: 10_000 });
+
+    const text = `polling check ${Date.now()}`;
+    await sendMessage(pageA, text);
+    // One poll interval (5 s) plus margin; no reload.
+    await expect(pageB.getByRole('list', { name: 'Messages' }).getByText(text)).toBeVisible({
+      timeout: 8_000,
+    });
+
+    // And Bob can still send: HTTP is the send fallback too.
+    await sendMessage(pageB, 'got it over polling');
+    await expect(
+      pageA.getByRole('list', { name: 'Messages' }).getByText('got it over polling'),
+    ).toBeVisible({ timeout: 4_000 });
+  });
+
   test('a result submitted in one room flips the other room live', async ({ browser }) => {
     const a = await createPlayer('tolu');
     const b = await createPlayer('emeka');
