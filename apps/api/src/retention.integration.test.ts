@@ -131,23 +131,33 @@ describe('retention purge (audit B28)', () => {
     formatId = format!.id;
   });
 
+  // Short independent statements, never one long transaction: a long cleanup transaction
+  // can hold rows another suite's relay handler waits for (see account.integration.test.ts).
   afterAll(async () => {
-    await retryOnDeadlock(async () => {
-      await db.transaction(async (tx) => {
-        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-        if (matchIds.length) {
-          await tx.delete(schema.uploads).where(inArray(schema.uploads.matchId, matchIds));
-          await tx.delete(schema.disputes).where(inArray(schema.disputes.matchId, matchIds));
+    const step = (run: () => Promise<unknown>) => retryOnDeadlock(run);
+    if (matchIds.length) {
+      await step(() => db.delete(schema.uploads).where(inArray(schema.uploads.matchId, matchIds)));
+      await step(() =>
+        db.delete(schema.disputes).where(inArray(schema.disputes.matchId, matchIds)),
+      );
+      await step(() =>
+        db.transaction(async (tx) => {
+          await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
           await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds)); // cascades chat
-        }
-        if (challengeIds.length)
-          await tx.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-        if (userIds.length) {
-          await tx.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-          await tx.delete(schema.users).where(inArray(schema.users.id, userIds));
-        }
-      });
-    });
+        }),
+      );
+    }
+    if (challengeIds.length) {
+      await step(() =>
+        db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds)),
+      );
+    }
+    if (userIds.length) {
+      await step(() =>
+        db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds)),
+      );
+      await step(() => db.delete(schema.users).where(inArray(schema.users.id, userIds)));
+    }
   });
 
   it('does nothing while no period is set', async () => {
