@@ -9,13 +9,70 @@
 
 2026-11-20/21: B1–B7, B9, B13, B14, B16, B17, B22, B26, B27, B30–B36, B38 and B40 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
-## Where things stand
+## Remaining work, sorted (2026-11-21)
 
-- **The code covers most of the Stage 1 features.** Auth, profiles, the board, challenges, match room and chat, results, disputes, Elo, notifications, admin and trust tools, ledger foundations, DMs (dark) and beta tooling all exist and have tests.
-- **None of it is deployed.** There is no staging or production environment, no deploy pipeline and no hosting decision. Sprint 0's M0 exit was never met.
-- **`main` is 49 commits behind.** Only Sprints 0–5 are merged. Sprints 6–16 sit in the open PR stack #7 → #13, so every `ship` box from Sprint 6 onward is open.
-- **CI is red on HEAD.** Run 44712981487 failed: a deadlock in the `sprint14.integration` cleanup (`delete from outbox_events`, racing the outbox relay). The "Testing green" ticks in Sprints 12, 13, 14 and 16 each cite a single green run. The suite is flaky.
-- **The `sprint-17-launch.md` file is missing.** The README indexes it, but it was never written.
+18 items are open. They are listed in the order they can happen: each step needs the one before it. Code work that needed no decision is finished.
+
+### Step 1: decisions and approvals (nothing blocks these; they unblock everything else)
+
+| Item                                     | What is needed                                                                                                                                               | Who           | Unblocks                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- | ----------------------------------------------------------------------------------- |
+| **B20** Merge the PR stack               | Approval to merge #7 → #8 → #9 → #10 → #12 → #13, then #14, into `main`; close #11                                                                           | Owner         | Releases, the `ship` boxes, CD from `main` (B12)                                    |
+| **B10** Hosting and region               | Pick the provider and region (run the Lagos latency probe), record it as decision 0008                                                                       | Owner         | B11, B12, B12a, B12b, B19, B23, B24                                                 |
+| **B23** (part 1) Email vendor            | Resend or SES                                                                                                                                                | Owner         | Real email delivery (confirmation links and notifications already work on the mock) |
+| **B21** New-account cooldown             | Build it, or defer it in writing                                                                                                                             | Owner         | Closes the Sprint 16 open finding                                                   |
+| **B18** Branch protection                | Whether `main` requires 1 approval (a solo maintainer could not merge their own PRs), and adding E2E, perf, load, Visual and gitleaks to the required checks | Owner         | Enforced CI on `main`                                                               |
+| **B8 / B15 / B28** Start the legal track | Terms, privacy policy, community rules, minimum age and age policy, retention periods for screenshots and chat; review of the staff chat-reading amendment   | Owner + legal | Step 4                                                                              |
+| **B11** (part 1) Termii sender ID        | Apply for the DND sender ID now: approval takes time                                                                                                         | Owner         | Real OTP SMS in staging and production                                              |
+
+### Step 2: infrastructure (after B10)
+
+| Item                                       | What is needed                                                                                                                                                                                                                       | Who              | Unblocks                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | --------------------------- |
+| **B11** Provision staging, then production | Managed Postgres with PITR, Redis, private R2 bucket, Cloudflare (DNS, WAF, Turnstile), secrets manager, domain, Sentry, PostHog, email domain (SPF/DKIM), VAPID keys, `ALERT_WEBHOOK_URL`. Settings list: `docs/runbooks/deploy.md` | Owner + engineer | B12                         |
+| **B12** Continuous deployment              | `main` deploys to staging automatically; production by promotion; the release step runs `node dist/db/migrate.js`                                                                                                                    | Engineer         | B12a                        |
+| **B12a** M0 exit proof                     | Staff login walkthrough on staging behind Cloudflare; then close Sprint 0 F0.10–F0.12                                                                                                                                                | Engineer         | Delivery Plan M0 exit       |
+| **B12b** Staging runs (Sprint 15)          | 500-VU k6, 3,000 sockets, real low-end Android signup median under 90 s, timed PITR restore, Redis-kill timer test                                                                                                                   | Engineer         | Sprint 15 `[staging]` boxes |
+| **B19** Lighthouse budgets                 | Promote LCP, TBT and JS weight to `error` from the first staging numbers; add a match-room URL                                                                                                                                       | Engineer         | Sprint 15 F15.1             |
+| **B23** (part 2) Push and email end to end | VAPID keys per environment; prove both channels on staging                                                                                                                                                                           | Engineer         | Sprint 11 F11.4             |
+
+### Step 3: on staging, with people
+
+| Item                            | What is needed                                                                              | Who              | Unblocks              |
+| ------------------------------- | ------------------------------------------------------------------------------------------- | ---------------- | --------------------- |
+| **B24** Player sessions (F2.11) | 8–10 real players through the three target flows on low-end Android over 3G; findings filed | Owner + designer | Delivery Plan M1 exit |
+
+### Step 4: when the legal text exists (Step 1)
+
+| Item                           | What is needed                                                                                      | Who      | Unblocks      |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- | -------- | ------------- |
+| **B8** Legal pages             | `/terms`, `/privacy`, `/community-rules`, linked from onboarding consent                            | Engineer | B25           |
+| **B15** Minimum age            | Age confirmation in the consent step                                                                | Engineer | B25           |
+| **B28** Retention and deletion | Purge jobs for the agreed periods; account deletion and data requests (Nigeria Data Protection Act) | Engineer | Public launch |
+
+### Step 5: closed beta
+
+| Item                    | What is needed                                                                                                              | Who          | Unblocks  |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------ | --------- |
+| **B25** Beta operations | Cohorts chosen, invite codes issued, moderator rota staffed, `beta.invite_only` on; go/no-go in `docs/beta/beta-runbook.md` | Owner        | B29       |
+| **B29** Beta exit       | Metrics on track, open S1 = 0                                                                                               | Owner + team | Sprint 17 |
+
+### Step 6: public launch
+
+Work order: `docs/sprints/sprint-17-launch.md` (production readiness, real local ladders, moderators, dashboards, signups opened).
+
+### Any time (documentation)
+
+| Item                       | What is needed                                                    | Who                                |
+| -------------------------- | ----------------------------------------------------------------- | ---------------------------------- |
+| **B37** Product Brief      | Align with PRD v2 (it still reads "planning complete, pre-build") | Owner (it is the owner's document) |
+| **B39** `docs/sessions.md` | It holds one tool session id: keep, fill or remove                | Owner                              |
+
+## Where things stand (2026-11-21)
+
+- **The code covers the Stage 1 features**, including every item in this audit that needed no decision. CI is green on every job (lint, typecheck, unit and integration, two-browser E2E, Storybook visual and a11y, load smoke, Lighthouse, both Docker images).
+- **None of it is deployed.** Staging, production and the deploy pipeline wait on the hosting decision (B10). The deploy runbook is ready: `docs/runbooks/deploy.md`.
+- **`main` holds only Sprints 0–5.** Sprints 6–16 and the earlier audit fixes are in PR #13 (stack #7 → #13); the later audit fixes are in draft PR #14, stacked on #13. Merging needs approval (B20).
 
 ---
 
@@ -107,7 +164,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 - [ ] **B37 Product Brief.** It still reads "planning complete, pre-build" (v1). The PRD v2 says it needs aligning.
 - [x] **B38 Stale root reports.** Done (`f0fff23`): moved to `docs/sprints/archive/` with a README pointing to the current audits.
-- [~] **B39 Sprint README.** The Sprint 17 file now exists. `docs/sessions.md` is still one line. It indexes a missing Sprint 17 file (fixed by B26). `docs/sessions.md` is one line: fill it or remove it.
+- [~] **B39 Sprint README.** The Sprint 17 file now exists (B26). Still open: `docs/sessions.md` holds one tool session id; the owner decides whether to keep, fill or remove it.
 - [x] **B40 Setup Guide.** A dated "what changed" note at the top points to `.env.example`, the storage service, the new dev script, demo seed, the deploy runbook and the client contract test.
 
 ---
@@ -131,9 +188,4 @@ Out of scope for Stage 1, gated on Stage 2: fee percentage and payer, stake band
 
 ## Suggested order
 
-1. B3 (green CI) → B20 (merge the stack to `main`).
-2. B1, B2, B4–B7, B13 (code blockers) in one hardening PR.
-3. Owner decisions in section C: hosting first.
-4. B10–B12a (staging up, M0 exit) → B12b and B24 on staging.
-5. B8, B9, B14, B15, B21–B23, B25 → closed beta.
-6. B26–B31 → public launch. P2 items go in alongside, wherever they fit.
+Superseded by **Remaining work, sorted** at the top of this file (the original order's code steps are done).
