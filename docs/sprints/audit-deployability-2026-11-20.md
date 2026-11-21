@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20/21: B1–B4, B6, B7, B9, B13, B22, B26, B27, B30–B33 and B35 are done; B5 is partly done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20/21: B1–B7, B9, B13, B22, B26, B27, B30–B33, B35 and B38 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -50,7 +50,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [x] **B2 Real client IP behind a proxy.** Done in `bba5931`: `TRUST_PROXY` hop count for Fastify and the socket handshake (`shared/client-ip.ts`, unit-tested). Set it per environment (2 for Cloudflare plus a load balancer). Fastify runs without `trustProxy`, and every per-IP limit uses `req.ip`: OTP verify 30/IP, waitlist, invite codes and socket handshakes 60/min/IP. Behind Cloudflare or a host load balancer, **every user shares the proxy's IP**. The first busy minute would lock everyone out. Set `trustProxy` to the host's hop count and read `CF-Connecting-IP` when behind Cloudflare. Apply the same rule to the socket handshake.
 - [x] **B3 Fix the flaky integration suite.** Done. Three causes fixed: cleanup deadlocks with the outbox relay (`a273e10`), tests stopping at the first empty drain (`8a76ced`), and test processes without a socket server swallowing match-state broadcasts (`7d5b5dd`). Three consecutive green runs: 44763028655 (twice) and 44771129331.
 - [x] **B4 Production environment validation.** Done in `bba5931`: staging and production refuse to boot without a real SMS provider and key, Turnstile secret and R2 credentials; production also refuses localhost or plain-http `WEB_ORIGIN`/`APP_URL`. Email and VAPID stay optional until the F11.4 decision. `loadEnv` only refuses the mock OTP, the mock webhook secret and a missing MFA key. Outside dev and test it must also require `TURNSTILE_SECRET_KEY` (today Turnstile is **silently off** when the key is unset: `auth.controller.ts:44`), the R2 credentials (otherwise uploads are "unconfigured"), the SMS provider key, the JWT secrets, `APP_URL` and `WEB_ORIGIN`. Decide whether email (`RESEND_API_KEY`) and VAPID are required.
-- [~] **B5 Production-grade images.** Partly done in `c9e2c70`: both images run as `node`, have HEALTHCHECKs, the API starts through `instrument.js`, and both build on every PR with an API smoke run. Still open: images carry the whole workspace and dev dependencies; web is not on `output: standalone`. Both Dockerfiles copy the whole workspace, dev dependencies included, run as root and have no `HEALTHCHECK`. The API `CMD` skips `--require ./dist/instrument.js`, so OTel never starts. Web is not on Next `output: 'standalone'`. `NEXT_PUBLIC_API_URL` is baked in at build time, so each environment needs its own web image (document this, or move to runtime config).
+- [x] **B5 Production-grade images.** Done: non-root, health checks, OTel preload (`c9e2c70`); lean images (`df1eac0`): API from `pnpm deploy --prod` with a files allowlist, web from Next standalone (~30 MB), every `NEXT_PUBLIC_*` a build arg. Also fixed: `.dockerignore` matched `.env` only at the root, so `apps/api/.env` could reach a locally built image.
 - [x] **B6 Migrations on deploy.** Done in `c9e2c70`: `node dist/db/migrate.js` (`db:migrate:deploy`), advisory-locked, reads only `DATABASE_URL`; CI migrates a clean database with it. Define a release step that runs migrations before new instances take traffic (expand-contract rule), plus the `db:seed` reference data for games and formats.
 - [x] **B7 Lock down `/docs`.** Done in `bba5931`: not served in production. Swagger UI and `openapi.json` are public in every environment. Disable them in production or put them behind staff auth.
 - [ ] **B8 Legal pages.** No `/terms`, `/privacy` or `/community-rules` route exists. The consent page shows "[legal] Draft terms for Stage 1". The ToS amendment for staff reading match chat (`docs/legal/tos-amendment-match-chat.md`) needs legal review. The Delivery Plan requires ToS, privacy policy, community rules and an age policy **before beta**.
@@ -106,7 +106,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 ### P2 — documentation alignment
 
 - [ ] **B37 Product Brief.** It still reads "planning complete, pre-build" (v1). The PRD v2 says it needs aligning.
-- [ ] **B38 Stale root reports.** `SPRINT_AUDIT_REPORT.md` (2026-11-10, says Sprint 2 not started) and `DIFFERENTIAL_REVIEW_SPRINT_3_4.md` contradict the current state. Move them to `docs/sprints/archive/` or delete them.
+- [x] **B38 Stale root reports.** Done (`f0fff23`): moved to `docs/sprints/archive/` with a README pointing to the current audits.
 - [~] **B39 Sprint README.** The Sprint 17 file now exists. `docs/sessions.md` is still one line. It indexes a missing Sprint 17 file (fixed by B26). `docs/sessions.md` is one line: fill it or remove it.
 - [ ] **B40 Setup Guide.** Update it for the dev script (B33), SeaweedFS storage and the env vars added in Sprints 11–16.
 
