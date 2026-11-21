@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20/21: B1–B7, B9, B13, B14, B16, B17, B22, B26, B27, B30–B33, B35, B36, B38 and B40 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20/21: B1–B7, B9, B13, B14, B16, B17, B22, B26, B27, B30–B36, B38 and B40 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -46,7 +46,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ### P0 — code blockers before any environment goes live
 
-- [x] **B1 Consent gate (audit #2).** Done in `bd2cb83`: `PlayConsentGuard` on challenge create and accept, result and no-show submit, and DM and friend-request starts. The web client redirects `consent_required` to `/onboarding/consent?next=…`. Confirm, dispute and appeal stay ungated on purpose, so a re-accept prompt never costs a player the right to contest a result. Also fixed: the consent page hard-coded version 1.0, which would have locked everyone out at the first terms update. Unit test only; an HTTP-level integration test is still to add.
+- [x] **B1 Consent gate (audit #2).** Done in `bd2cb83`: `PlayConsentGuard` on challenge create and accept, result and no-show submit, and DM and friend-request starts. The web client redirects `consent_required` to `/onboarding/consent?next=…`. Confirm, dispute and appeal stay ungated on purpose, so a re-accept prompt never costs a player the right to contest a result. Also fixed: the consent page hard-coded version 1.0, which would have locked everyone out at the first terms update. Tests: unit, plus a database and route-wiring integration test (`a8c118b`).
 - [x] **B2 Real client IP behind a proxy.** Done in `bba5931`: `TRUST_PROXY` hop count for Fastify and the socket handshake (`shared/client-ip.ts`, unit-tested). Set it per environment (2 for Cloudflare plus a load balancer). Fastify runs without `trustProxy`, and every per-IP limit uses `req.ip`: OTP verify 30/IP, waitlist, invite codes and socket handshakes 60/min/IP. Behind Cloudflare or a host load balancer, **every user shares the proxy's IP**. The first busy minute would lock everyone out. Set `trustProxy` to the host's hop count and read `CF-Connecting-IP` when behind Cloudflare. Apply the same rule to the socket handshake.
 - [x] **B3 Fix the flaky integration suite.** Done. Three causes fixed: cleanup deadlocks with the outbox relay (`a273e10`), tests stopping at the first empty drain (`8a76ced`), and test processes without a socket server swallowing match-state broadcasts (`7d5b5dd`). Three consecutive green runs: 44763028655 (twice) and 44771129331.
 - [x] **B4 Production environment validation.** Done in `bba5931`: staging and production refuse to boot without a real SMS provider and key, Turnstile secret and R2 credentials; production also refuses localhost or plain-http `WEB_ORIGIN`/`APP_URL`. Email and VAPID stay optional until the F11.4 decision. `loadEnv` only refuses the mock OTP, the mock webhook secret and a missing MFA key. Outside dev and test it must also require `TURNSTILE_SECRET_KEY` (today Turnstile is **silently off** when the key is unset: `auth.controller.ts:44`), the R2 credentials (otherwise uploads are "unconfigured"), the SMS provider key, the JWT secrets, `APP_URL` and `WEB_ORIGIN`. Decide whether email (`RESEND_API_KEY`) and VAPID are required.
@@ -99,7 +99,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [ ] **B19 Lighthouse budgets.** Turn LCP, TBT and JS weight into `error` once the first staging numbers exist. Add a match-room URL (it needs a seeded match) and upload a bundle report.
 - [x] **B32 Board over the socket.** Done in `aa37b69`: `board:changed` from a broadcaster on challenge outbox events (direct challenges only to their two players); the Play page refreshes on it, debounced, and polls as a fallback (20 s offline, 60 s live).
 - [x] **B33 `pnpm dev` for the API.** Done: `scripts/dev.mjs` builds with tsc (decorator metadata) and restarts node on each rebuild; verified every Nest module initialises.
-- [ ] **B34 Automate the socket-down fallback test.** Socket-down → polling → reconnect is verified manually only (Sprint 7 notes).
+- [x] **B34 Automate the socket-down fallback test.** Done (`60282ac`): e2e connects Bob live, cuts his socket and refuses reconnects; the room shows "Live updates paused", receives chat by polling and still sends over HTTP. Green in run 44904751504.
 - [x] **B35 Remove tracked junk.** Done in `635d040` (`.commandcode/` left alone: it may be another tool's tracked config). `apps/api/bash.exe.stackdump` and `.commandcode/` are tracked. Root `api.log`, `web.log` and `temp.txt` are untracked; add them to `.gitignore`.
 - [x] **B36 Uncaught rejections.** Kept on purpose (a half-broken API is worse than a fast restart) and documented in `docs/runbooks/deploy.md`, with the restart policy, Redis-loss behaviour and shutdown grace the host must provide.
 
