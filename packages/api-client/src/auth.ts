@@ -58,6 +58,16 @@ export const authApi = {
 
   me: () => apiFetch<MeResponse>('/auth/me'),
 
+  /** Audit B28: everything held about the player (right of access). */
+  exportMe: () => apiFetch<Record<string, unknown>>('/auth/me/export'),
+
+  /** Audit B28: delete the account; the username must be typed to confirm. */
+  deleteMe: (confirmUsername: string) =>
+    apiFetch<{ deleted: true }>('/auth/me/delete', {
+      method: 'POST',
+      body: JSON.stringify({ confirmUsername }),
+    }),
+
   updateMe: (data: UpdateMeRequest) =>
     apiFetch<MeResponse>('/auth/me', {
       method: 'PATCH',

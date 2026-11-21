@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { authApi, type MeResponse } from '@raise/api-client';
+import { authApi, clearTokens, type MeResponse } from '@raise/api-client';
 import { Banner, Button, Sheet } from '@/components/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { signOut } from '@/lib/session';
+import { closeSocket } from '@/lib/realtime';
 
 /** +2348031234567 → +234 803 *** 4567: enough to recognise, never the whole number. */
 function maskPhone(phone: string): string {
@@ -23,6 +24,45 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const [busy, setBusy] = useState<'one' | 'all' | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  /** Audit B28: the export as a JSON file the player keeps. */
+  const downloadData = async () => {
+    setExporting(true);
+    try {
+      const data = await authApi.exportMe();
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+      );
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'raise-my-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not download your data.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await authApi.deleteMe(typed.trim());
+      clearTokens();
+      closeSocket();
+      window.location.assign('/');
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Could not delete the account.');
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     authApi
@@ -106,6 +146,23 @@ export default function SettingsPage() {
         </p>
       </section>
 
+      <section aria-labelledby="data-heading" className="flex flex-col gap-2">
+        <h2 id="data-heading" className="label-caps text-fg-muted">
+          Your data
+        </h2>
+        <p className="text-body-sm text-fg">
+          Download a copy of everything RAISE holds about you, or delete your account.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" loading={exporting} onClick={() => void downloadData()}>
+            Download my data
+          </Button>
+          <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+            Delete account
+          </Button>
+        </div>
+      </section>
+
       <Sheet
         open={confirmAll}
         onClose={() => setConfirmAll(false)}
@@ -132,6 +189,48 @@ export default function SettingsPage() {
           Every phone and browser signed in to your account will need to verify again with a code.
           Your matches and results are not affected.
         </p>
+      </Sheet>
+
+      <Sheet
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Delete your account?"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Keep my account
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleting}
+              disabled={!me?.displayName || typed.trim() !== me.displayName}
+              onClick={() => void deleteAccount()}
+            >
+              Delete account
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-3 text-body-sm text-fg">
+          <p>
+            Your phone number, username, email and game IDs are removed and you are signed out
+            everywhere. Your open challenges are cancelled. Past matches stay for your
+            opponents&apos; records, shown as a deleted player. This cannot be undone.
+          </p>
+          <p>You cannot delete the account while a match is in progress or disputed.</p>
+          <label className="flex flex-col gap-1">
+            <span>
+              Type your username <strong>{me?.displayName}</strong> to confirm
+            </span>
+            <input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoComplete="off"
+              className="h-11 rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+            />
+          </label>
+          {deleteError ? <Banner variant="system">{deleteError}</Banner> : null}
+        </div>
       </Sheet>
     </div>
   );
