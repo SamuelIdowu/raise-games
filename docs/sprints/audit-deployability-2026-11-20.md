@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20/21: B1–B4, B6, B7, B9, B13, B22, B26, B27, B30, B31, B33 and B35 are done; B5 is partly done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20/21: B1–B4, B6, B7, B9, B13, B22, B26, B27, B30–B33 and B35 are done; B5 is partly done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -97,7 +97,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [ ] **B17 Generated API client**, or a CI check that diffs `openapi.json` against `packages/api-client`. The TA specifies "OpenAPI and a generated typed client".
 - [ ] **B18 Branch protection.** Require 1 approval and add E2E, perf, load and gitleaks to the required checks.
 - [ ] **B19 Lighthouse budgets.** Turn LCP, TBT and JS weight into `error` once the first staging numbers exist. Add a match-room URL (it needs a seeded match) and upload a bundle report.
-- [ ] **B32 Board over the socket.** F5.4 planned to switch the board from 15–30 s polling to the Sprint 7 socket. It never switched (`play/page.tsx:103` `setInterval`).
+- [x] **B32 Board over the socket.** Done in `aa37b69`: `board:changed` from a broadcaster on challenge outbox events (direct challenges only to their two players); the Play page refreshes on it, debounced, and polls as a fallback (20 s offline, 60 s live).
 - [x] **B33 `pnpm dev` for the API.** Done: `scripts/dev.mjs` builds with tsc (decorator metadata) and restarts node on each rebuild; verified every Nest module initialises.
 - [ ] **B34 Automate the socket-down fallback test.** Socket-down → polling → reconnect is verified manually only (Sprint 7 notes).
 - [x] **B35 Remove tracked junk.** Done in `635d040` (`.commandcode/` left alone: it may be another tool's tracked config). `apps/api/bash.exe.stackdump` and `.commandcode/` are tracked. Root `api.log`, `web.log` and `temp.txt` are untracked; add them to `.gitignore`.
