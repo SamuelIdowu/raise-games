@@ -498,6 +498,11 @@ jobs:
     name: Docker API Build
     runs-on: ubuntu-latest
     needs: build
+    # Audit B12: on main, the API image (identical for every environment) is published to
+    # GitHub's container registry for the deploy step to pull.
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -529,10 +534,30 @@ jobs:
           echo "$out" | grep -q 'Invalid environment configuration'
           test "$(docker run --rm --entrypoint id "$IMAGE" -u)" != "0"
 
+      - name: Publish API image (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: raise/api:${{ github.sha }}
+        run: |
+          repo="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/api"
+          echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+          for tag in '${{ github.sha }}' main; do
+            docker tag "$IMAGE" "$repo:$tag"
+            docker push "$repo:$tag"
+          done
+
   docker-web:
     name: Docker Web Build
     runs-on: ubuntu-latest
     needs: build
+    # The web image compiles NEXT_PUBLIC_* in, so it is per environment. It is published on
+    # main only once the staging values exist as repository variables (audit B12).
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STAGING_NEXT_PUBLIC_API_URL != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -548,3 +573,22 @@ jobs:
           push: false
           tags: raise/web:${{ github.sha }}
           load: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.STAGING_NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
+            NEXT_PUBLIC_STORAGE_ORIGIN=${{ vars.STAGING_NEXT_PUBLIC_STORAGE_ORIGIN || 'http://localhost:9000' }}
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.STAGING_NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+            NEXT_PUBLIC_POSTHOG_KEY=${{ vars.STAGING_NEXT_PUBLIC_POSTHOG_KEY }}
+            NEXT_PUBLIC_RELEASE_SHA=${{ github.sha }}
+
+      - name: Publish staging web image (main, once staging variables are set)
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: raise/web:${{ github.sha }}
+        run: |
+          repo="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/web"
+          echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+          for tag in '${{ github.sha }}-staging' staging; do
+            docker tag "$IMAGE" "$repo:$tag"
+            docker push "$repo:$tag"
+          done
