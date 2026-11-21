@@ -16,6 +16,7 @@ import { AppModule } from './app.module';
 import { db, schema } from './db/client';
 import { NotificationsService } from './notifications/notifications.service';
 import { MockEmailChannel } from './notifications/channels';
+import { confirmEmail } from './notifications/email-verification';
 import { OutboxRelay } from './realtime/outbox-relay';
 import type { AuthedUser } from './auth/jwt-auth.guard';
 import { retryOnDeadlock } from './test-fixtures/retry';
@@ -43,6 +44,8 @@ describe('Sprint 11 - notifications', () => {
       id,
       phone: `+23492${(phone++).toString().padStart(8, '0')}`,
       displayName: `${name}_${id.slice(-4)}`,
+      // A seeded address stands for one the player already confirmed (audit #3).
+      ...(extra.email && !('emailVerifiedAt' in extra) ? { emailVerifiedAt: new Date() } : {}),
       ...extra,
     });
     userIds.push(id);
@@ -274,6 +277,45 @@ describe('Sprint 11 - notifications', () => {
       critical: true,
       email: true,
     });
+  });
+
+  it('email goes only to a confirmed address; the emailed link confirms it (audit #3)', async () => {
+    const a = await user('kemi');
+    const b = await user('lola');
+    const matchId = await match(a, b);
+
+    // Setting an address sends a confirmation link, not notifications.
+    MockEmailChannel.outbox = [];
+    const set = await svc.updateSettings(as(b), { email: 'Lola@Example.test' });
+    expect(set).toMatchObject({ email: 'lola@example.test', emailVerified: false });
+    const link = MockEmailChannel.outbox.at(-1)!;
+    expect(link.to).toBe('lola@example.test');
+    const token = new URL(link.message.url).searchParams.get('token')!;
+    expect(token.length).toBeGreaterThan(30);
+
+    await svc.fromEvent(await event('result.submitted', matchId, { matchId, submitterId: a }));
+    expect((await attempts(b)).find((t) => t.channel === 'email')).toMatchObject({
+      status: 'skipped',
+    });
+
+    // A link for an address the player has since changed is refused.
+    await svc.updateSettings(as(b), { email: 'other@example.test' });
+    await expect(confirmEmail(token)).rejects.toMatchObject({ status: 400 });
+
+    // The current link confirms; it cannot be used twice.
+    const fresh = new URL(MockEmailChannel.outbox.at(-1)!.message.url).searchParams.get('token')!;
+    await expect(confirmEmail(fresh)).resolves.toEqual({ ok: true });
+    await expect(confirmEmail(fresh)).rejects.toMatchObject({ status: 400 });
+    expect(await svc.getSettings(as(b))).toMatchObject({
+      email: 'other@example.test',
+      emailVerified: true,
+    });
+
+    // Saving the same address again keeps it confirmed and sends nothing.
+    const before = MockEmailChannel.outbox.length;
+    await svc.updateSettings(as(b), { email: 'other@example.test' });
+    expect(MockEmailChannel.outbox.length).toBe(before);
+    expect((await svc.getSettings(as(b))).emailVerified).toBe(true);
   });
 
   it('quiet hours defer non-critical push/email', async () => {

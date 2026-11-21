@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'node:path';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -54,6 +55,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Docker builds set NEXT_OUTPUT=standalone (audit B5): a minimal server with only the
+  // files it needs, traced from the monorepo root. Local runs and CI's `next start` are
+  // unchanged.
+  ...(process.env.NEXT_OUTPUT === 'standalone'
+    ? { output: 'standalone' as const, outputFileTracingRoot: path.join(__dirname, '../..') }
+    : {}),
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

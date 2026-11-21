@@ -62,7 +62,7 @@ export const UPLOAD_MESSAGES = {
 
 export interface UploadView {
   id: string;
-  status: 'pending' | 'ready' | 'rejected';
+  status: 'pending' | 'ready' | 'rejected' | 'purged';
   width: number | null;
   height: number | null;
   sizeBytes: number | null;

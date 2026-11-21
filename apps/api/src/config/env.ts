@@ -80,6 +80,12 @@ const envSchema = z.object({
    * outside development/test (dev/test derive one from JWT_ACCESS_SECRET).
    */
   MFA_ENCRYPTION_KEY: z.string().optional(),
+  /**
+   * Audit B28: retention periods (owner and legal decision). Unset = keep forever; the
+   * daily purge only runs for the ones that are set. See retention/retention.service.ts.
+   */
+  SCREENSHOT_RETENTION_DAYS: z.coerce.number().int().min(1).optional(),
+  CHAT_RETENTION_DAYS: z.coerce.number().int().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

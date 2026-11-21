@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AccountService } from './account.service';
 import type { FastifyRequest } from 'fastify';
 import { env } from '../config/env.instance';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
@@ -30,10 +31,16 @@ import {
 } from './auth.schemas';
 import { verifyTurnstileToken } from './turnstile';
 import { enforceRateLimit } from '../shared/rate-limit';
+import { z } from 'zod';
+
+const deleteAccountSchema = z.object({ confirmUsername: z.string().trim().min(1).max(64) });
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly account: AccountService,
+  ) {}
 
   @Post('otp/request')
   @HttpCode(200)
@@ -118,5 +125,26 @@ export class AuthController {
     @Body(new ZodValidationPipe(updateMeSchema)) body: UpdateMe,
   ) {
     return this.auth.updateMe(user.sub, body);
+  }
+
+  /** Audit B28: everything held about the player, as JSON (right of access). */
+  @Get('me/export')
+  @UseGuards(JwtAuthGuard)
+  async exportMe(@CurrentUser() user: AuthedUser) {
+    await enforceRateLimit(`rl:account:export:${user.sub}`, 5, 86_400_000);
+    return this.account.exportData(user.sub);
+  }
+
+  /** Audit B28: delete the account (right of erasure). The username must be typed to confirm. */
+  @Post('me/delete')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async deleteMe(
+    @CurrentUser() user: AuthedUser,
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(deleteAccountSchema)) body: z.infer<typeof deleteAccountSchema>,
+  ) {
+    await enforceRateLimit(`rl:account:delete:${user.sub}`, 5, 3_600_000);
+    return this.account.deleteAccount(user.sub, body.confirmUsername, req.ip);
   }
 }

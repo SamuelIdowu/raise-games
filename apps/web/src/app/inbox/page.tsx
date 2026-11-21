@@ -572,8 +572,14 @@ function Preferences() {
         },
         email: email.trim() || null,
       });
+      const sentLink =
+        Boolean(updated.email) && !updated.emailVerified && updated.email !== s.email;
       setS(updated);
-      toast({ title: 'Preferences saved', variant: 'status' });
+      toast({
+        title: 'Preferences saved',
+        description: sentLink ? `We sent a confirmation link to ${updated.email}.` : undefined,
+        variant: 'status',
+      });
     } catch (e) {
       toast({ title: 'Could not save', description: (e as Error).message, variant: 'error' });
     } finally {
@@ -643,6 +649,41 @@ function Preferences() {
         <p className="text-caption text-fg-muted">
           Only used for notifications. Never shown to other players.
         </p>
+        {s.email ? (
+          s.emailVerified ? (
+            <p className="flex items-center gap-1 text-caption text-fg-muted">
+              <Icon name="check-circle" size={16} aria-hidden /> Confirmed
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 text-caption text-fg">
+              <Icon name="alert-triangle" size={16} aria-hidden />
+              <span>
+                Not confirmed yet. Open the link we emailed to {s.email} to get email notifications.
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    const r = await notificationsApi.resendEmailConfirmation();
+                    toast({
+                      title: r.sent ? 'Confirmation link sent' : 'Nothing to confirm',
+                      variant: 'status',
+                    });
+                  } catch (e) {
+                    toast({
+                      title: 'Could not send',
+                      description: (e as Error).message,
+                      variant: 'error',
+                    });
+                  }
+                }}
+              >
+                Send the link again
+              </Button>
+            </div>
+          )
+        ) : null}
       </section>
 
       <section aria-labelledby={`${ids}-types`}>
