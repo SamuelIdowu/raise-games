@@ -105,19 +105,20 @@ describe('account deletion and export (audit B28)', () => {
   });
 
   afterAll(async () => {
+    // The challenge.cancelled events deletion emits are left in place on purpose. This file
+    // runs no relay, so they are still being processed by other suites' relays, which hold
+    // a key-share lock on each event inside a transaction that stays open while their
+    // handlers run. Deleting them here, in the same transaction as the domain rows, formed
+    // a cycle Postgres cannot see (one edge is in the application) and stalled other
+    // suites' cleanup until the 60 s hook timeout (CI runs 44906424603, 44906737932). Every
+    // consumer just marks them skipped; CI's database is thrown away.
     await retryOnDeadlock(async () => {
       await db.transaction(async (tx) => {
         await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
         if (matchIds.length) {
-          await tx
-            .delete(schema.outboxEvents)
-            .where(inArray(schema.outboxEvents.subjectId, matchIds));
           await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
         }
         if (challengeIds.length) {
-          await tx
-            .delete(schema.outboxEvents)
-            .where(inArray(schema.outboxEvents.subjectId, challengeIds));
           await tx.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
         }
         if (userIds.length) {
