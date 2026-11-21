@@ -449,8 +449,8 @@ jobs:
           retention-days: 7
 
   # Sprint 1 F1.7 / audit #4, B16: Storybook visual regression, a11y and behaviour specs on
-  # Linux. Baselines are per platform (*-linux.png); missing ones are written, not failed,
-  # and uploaded, so new stories get a baseline to review and commit.
+  # Linux against the committed *-linux.png baselines. A new story fails until it has one:
+  # run this job with `--update-snapshots=missing` once, review the uploaded PNGs, commit.
   visual:
     name: Visual / storybook
     runs-on: ubuntu-latest
@@ -481,7 +481,7 @@ jobs:
         run: pnpm --filter @raise/web exec playwright install --with-deps chromium
 
       - name: Visual, a11y and behaviour specs
-        run: pnpm --filter @raise/web test:visual --update-snapshots=missing
+        run: pnpm --filter @raise/web test:visual
 
       - name: Upload snapshots and report
         if: always()
