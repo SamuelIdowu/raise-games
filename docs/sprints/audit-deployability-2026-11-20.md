@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20/21: B1–B4, B6, B7, B13, B22, B26, B27, B30, B31 and B35 are done; B5 and B9 are partly done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20/21: B1–B4, B6, B7, B9, B13, B22, B26, B27, B30, B31, B33 and B35 are done; B5 is partly done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -69,7 +69,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ### P1 — before the closed beta (Sprint 16 go/no-go)
 
-- [~] **B9 Account settings page.** Sign out is in the menu (`8338b43`). Still open: sign out everywhere, notification email, theme on one settings page. Sign out, sign out everywhere, notification email, theme. Notification preferences can stay in Inbox.
+- [x] **B9 Account settings page.** Done: Sign out in the menu (`8338b43`) and `/settings` (`5f7aff6`) with account details, theme (previously only on the internal `/design` page), a link to notification preferences, and sign out of all devices. CI run 44898374769 green.
 - [x] **B13 Challenge idempotency scope (audit #6).** Done in `efae6ce` (migration 0017, integration test). Make the unique index `(poster_id, idempotency_key)` and scope the lookup to the poster.
 - [ ] **B14 Verify the notification email (audit #3).** Send a confirmation link and email only confirmed addresses. This depends on the email vendor decision (F11.4).
 - [ ] **B15 Minimum age.** The PRD and TA store an age-verification field, but signup asks nothing. Add an age confirmation to consent once the legal track sets the minimum age. `[legal]`
@@ -98,7 +98,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [ ] **B18 Branch protection.** Require 1 approval and add E2E, perf, load and gitleaks to the required checks.
 - [ ] **B19 Lighthouse budgets.** Turn LCP, TBT and JS weight into `error` once the first staging numbers exist. Add a match-room URL (it needs a seeded match) and upload a bundle report.
 - [ ] **B32 Board over the socket.** F5.4 planned to switch the board from 15–30 s polling to the Sprint 7 socket. It never switched (`play/page.tsx:103` `setInterval`).
-- [ ] **B33 `pnpm dev` for the API.** It is still `tsx watch`, which emits no decorator metadata, so Nest DI is undefined (Sprint 7 note). Switch to `nest start --watch` or SWC.
+- [x] **B33 `pnpm dev` for the API.** Done: `scripts/dev.mjs` builds with tsc (decorator metadata) and restarts node on each rebuild; verified every Nest module initialises.
 - [ ] **B34 Automate the socket-down fallback test.** Socket-down → polling → reconnect is verified manually only (Sprint 7 notes).
 - [x] **B35 Remove tracked junk.** Done in `635d040` (`.commandcode/` left alone: it may be another tool's tracked config). `apps/api/bash.exe.stackdump` and `.commandcode/` are tracked. Root `api.log`, `web.log` and `temp.txt` are untracked; add them to `.gitignore`.
 - [ ] **B36 Uncaught rejections.** `main.ts` rethrows every unhandled rejection, so one stray promise kills the instance. Decide this on purpose (fine with a restart policy and Sentry), and document it in the runbook.
