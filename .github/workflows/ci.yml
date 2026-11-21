@@ -448,6 +448,52 @@ jobs:
             apps/web/test-results
           retention-days: 7
 
+  # Sprint 1 F1.7 / audit #4, B16: Storybook visual regression, a11y and behaviour specs on
+  # Linux. Baselines are per platform (*-linux.png); missing ones are written, not failed,
+  # and uploaded, so new stories get a baseline to review and commit.
+  visual:
+    name: Visual / storybook
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm turbo run build --filter=./packages/*
+
+      - name: Build Storybook
+        run: pnpm --filter @raise/web storybook:build
+
+      - name: Install Playwright browser
+        run: pnpm --filter @raise/web exec playwright install --with-deps chromium
+
+      - name: Visual, a11y and behaviour specs
+        run: pnpm --filter @raise/web test:visual --update-snapshots=missing
+
+      - name: Upload snapshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-visual
+          path: |
+            apps/web/e2e/*-snapshots/
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+
   docker-api:
     name: Docker API Build
     runs-on: ubuntu-latest
