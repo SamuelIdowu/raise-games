@@ -108,7 +108,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [ ] **B37 Product Brief.** It still reads "planning complete, pre-build" (v1). The PRD v2 says it needs aligning.
 - [x] **B38 Stale root reports.** Done (`f0fff23`): moved to `docs/sprints/archive/` with a README pointing to the current audits.
 - [~] **B39 Sprint README.** The Sprint 17 file now exists. `docs/sessions.md` is still one line. It indexes a missing Sprint 17 file (fixed by B26). `docs/sessions.md` is one line: fill it or remove it.
-- [ ] **B40 Setup Guide.** Update it for the dev script (B33), SeaweedFS storage and the env vars added in Sprints 11–16.
+- [x] **B40 Setup Guide.** A dated "what changed" note at the top points to `.env.example`, the storage service, the new dev script, demo seed, the deploy runbook and the client contract test.
 
 ---
 

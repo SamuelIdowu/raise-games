@@ -4,6 +4,15 @@ Draft of November 9, 2026. Companion to the Delivery Plan. This guide takes a ma
 
 Everything here implements decisions already made in the Technical Architecture and Design System docs. Where those docs leave a choice open, this guide picks a concrete default and marks it `[confirm]`.
 
+> **What changed since this draft (2026-11-21, audit B40).** The sections below are the original M0 runbook. Where they differ from the repo, the repo wins:
+>
+> - **Environment variables:** `.env.example` is the source of truth (section 5 is a snapshot). Staging and production refuse to boot without real SMS, Turnstile and R2 settings, and `TRUST_PROXY` must match the proxies in front of the API. Every setting is listed in `docs/runbooks/deploy.md`.
+> - **Local services:** `docker compose` runs Postgres, Redis **and** an S3-compatible store (SeaweedFS on port 9000) for screenshot uploads; the API creates the bucket on boot when `STORAGE_AUTO_CREATE_BUCKET=true` (dev and test only).
+> - **API dev server:** `pnpm --filter @raise/api dev` compiles with `tsc` and restarts on change (`apps/api/scripts/dev.mjs`). `tsx watch` is not used: it drops the decorator metadata Nest needs.
+> - **Seed data:** `pnpm db:seed` loads games and formats; `pnpm --filter @raise/api db:seed:demo` adds demo ladders for local and staging use (never production).
+> - **Deploying:** images, the release-step migrator (`node dist/db/migrate.js`) and the release order are in `docs/runbooks/deploy.md`.
+> - **API client:** `packages/api-client` is hand-written; a contract test fails CI if it calls a route the API does not have.
+
 ---
 
 ## 0. Reference documents
