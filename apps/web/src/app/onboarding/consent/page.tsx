@@ -96,7 +96,15 @@ export default function ConsentPage() {
             <div className="text-left">
               <p className="font-display text-body-sm font-semibold text-fg">Terms of Service</p>
               <p className="text-caption text-fg-muted">
-                Version {versions?.terms ?? '…'} — [legal] Draft terms for Stage 1.
+                Version {versions?.terms ?? '…'} ·{' '}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener"
+                  className="text-accent hover:underline"
+                >
+                  Read the terms
+                </a>
               </p>
             </div>
           </label>
@@ -112,11 +120,32 @@ export default function ConsentPage() {
             <div className="text-left">
               <p className="font-display text-body-sm font-semibold text-fg">Privacy Policy</p>
               <p className="text-caption text-fg-muted">
-                Version {versions?.privacy ?? '…'} — [legal] Draft privacy for Stage 1.
+                Version {versions?.privacy ?? '…'} ·{' '}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener"
+                  className="text-accent hover:underline"
+                >
+                  Read the privacy policy
+                </a>
               </p>
             </div>
           </label>
         </div>
+
+        <p className="text-caption text-fg-muted">
+          The terms include the{' '}
+          <a
+            href="/community-rules"
+            target="_blank"
+            rel="noopener"
+            className="text-accent hover:underline"
+          >
+            community rules
+          </a>
+          : how results, disputes and sanctions work.
+        </p>
 
         {error && (
           <Banner variant="system" className="text-sm">
