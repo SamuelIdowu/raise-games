@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20/21: B1–B7, B9, B13, B16, B17, B22, B26, B27, B30–B33, B35, B36, B38 and B40 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20/21: B1–B7, B9, B13, B14, B16, B17, B22, B26, B27, B30–B33, B35, B36, B38 and B40 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -71,7 +71,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 - [x] **B9 Account settings page.** Done: Sign out in the menu (`8338b43`) and `/settings` (`5f7aff6`) with account details, theme (previously only on the internal `/design` page), a link to notification preferences, and sign out of all devices. CI run 44898374769 green.
 - [x] **B13 Challenge idempotency scope (audit #6).** Done in `efae6ce` (migration 0017, integration test). Make the unique index `(poster_id, idempotency_key)` and scope the lookup to the poster.
-- [ ] **B14 Verify the notification email (audit #3).** Send a confirmation link and email only confirmed addresses. This depends on the email vendor decision (F11.4).
+- [x] **B14 Verify the notification email (audit #3).** Done (`b45332c`): a new address is unconfirmed until its emailed link (hashed 256-bit token, 24 h, single use, void on change) is opened; email notifications skip unconfirmed addresses; 5 confirmation emails per hour per player. Works with the logging mock now; real sending starts when the email vendor is set.
 - [ ] **B15 Minimum age.** The PRD and TA store an age-verification field, but signup asks nothing. Add an age confirmation to consent once the legal track sets the minimum age. `[legal]`
 - [ ] **B21 New-account cooldown.** A PRD fairness control, recorded as an open finding in Sprint 16 (proposed S3). Decide it, then implement it or defer it in writing. `[owner decision]`
 - [x] **B22 Admin matches screen and void action.** Done in `47918ae`: `/admin/matches` with player, status and stuck filters and a detail sheet; void needs a fresh MFA code and a reason, applies only to live undecided matches (disputed and decided ones go through rulings, which also reverse ratings and payouts), refunds holds via `match.voided`, and is audited.
