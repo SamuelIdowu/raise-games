@@ -101,7 +101,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [x] **B33 `pnpm dev` for the API.** Done: `scripts/dev.mjs` builds with tsc (decorator metadata) and restarts node on each rebuild; verified every Nest module initialises.
 - [ ] **B34 Automate the socket-down fallback test.** Socket-down → polling → reconnect is verified manually only (Sprint 7 notes).
 - [x] **B35 Remove tracked junk.** Done in `635d040` (`.commandcode/` left alone: it may be another tool's tracked config). `apps/api/bash.exe.stackdump` and `.commandcode/` are tracked. Root `api.log`, `web.log` and `temp.txt` are untracked; add them to `.gitignore`.
-- [ ] **B36 Uncaught rejections.** `main.ts` rethrows every unhandled rejection, so one stray promise kills the instance. Decide this on purpose (fine with a restart policy and Sentry), and document it in the runbook.
+- [x] **B36 Uncaught rejections.** Kept on purpose (a half-broken API is worse than a fast restart) and documented in `docs/runbooks/deploy.md`, with the restart policy, Redis-loss behaviour and shutdown grace the host must provide.
 
 ### P2 — documentation alignment
 
