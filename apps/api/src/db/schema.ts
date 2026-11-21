@@ -970,7 +970,7 @@ export const uploads = pgTable(
     matchId: uuid('match_id').references(() => matches.id),
     /** result_proof | no_show_proof */
     purpose: text('purpose').notNull(),
-    /** pending | ready | rejected */
+    /** pending | ready | rejected | purged (file removed by retention; hashes kept) */
     status: text('status').notNull().default('pending'),
     declaredMime: text('declared_mime').notNull(),
     declaredSize: integer('declared_size').notNull(),
