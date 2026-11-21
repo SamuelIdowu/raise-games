@@ -40,8 +40,15 @@ export function Sidebar() {
             </a>
           ))}
           <a
-            href="/feedback"
+            href="/settings"
             className="mt-2 flex items-center gap-3 border-t border-line px-3 py-2 pt-3 text-fg-muted hover:bg-overlay hover:text-fg"
+          >
+            <Icon name="settings" size={24} aria-hidden />
+            <span className="font-display text-body-sm">Settings</span>
+          </a>
+          <a
+            href="/feedback"
+            className="flex items-center gap-3 px-3 py-2 text-fg-muted hover:bg-overlay hover:text-fg"
           >
             <Icon name="flag" size={24} aria-hidden />
             <span className="font-display text-body-sm">Send feedback</span>
@@ -100,6 +107,16 @@ export function Sidebar() {
             </a>
           ))}
         </nav>
+        <a
+          href="/settings"
+          aria-label={collapsed ? 'Settings' : undefined}
+          className={`mx-2 mt-2 flex items-center gap-3 rounded-card border-t border-line px-3 py-2 text-fg-muted hover:bg-overlay hover:text-fg ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Icon name="settings" size={20} aria-hidden />
+          {!collapsed && <span className="font-display text-body-sm">Settings</span>}
+        </a>
         {/* Sprint 16: beta feedback, one tap from anywhere. */}
         <a
           href="/feedback"

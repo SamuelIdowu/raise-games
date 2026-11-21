@@ -46,9 +46,11 @@ export default function InboxPage() {
 
 function Inbox() {
   const params = useSearchParams();
-  const [tab, setTab] = useState<Tab>(
-    params.get('tab') === 'messages' ? 'messages' : 'notifications',
-  );
+  const [tab, setTab] = useState<Tab>(() => {
+    const asked = params.get('tab');
+    // Settings links to ?tab=preferences (notification email, per-type choices, quiet hours).
+    return asked === 'messages' || asked === 'preferences' ? asked : 'notifications';
+  });
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: 'notifications', label: 'Notifications' },
     { key: 'messages', label: 'Messages' },
