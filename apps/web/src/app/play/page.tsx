@@ -15,12 +15,14 @@ import {
 } from '@/components/ui';
 import { ChallengeCard } from '@/components/challenge/challenge-card';
 import { useNow } from '@/lib/use-now';
+import { getSocket } from '@/lib/realtime';
 import { ChallengeDetailSheet } from '@/components/challenge/challenge-detail-sheet';
 import {
   CreateChallengeSheet,
   type DirectTarget,
 } from '@/components/challenge/create-challenge-sheet';
 import {
+  ServerEvents,
   challengesApi,
   gamesApi,
   playersApi,
@@ -31,7 +33,11 @@ import {
   type PlayerSearchQuery,
 } from '@raise/api-client';
 
+/** Polling is the fallback: often while the socket is down, rarely while it is live. */
 const POLL_INTERVAL_MS = 20_000;
+const POLL_INTERVAL_LIVE_MS = 60_000;
+/** Board changes arrive in bursts (expiry sweeps); refresh at most this often. */
+const LIVE_REFRESH_DEBOUNCE_MS = 1_500;
 const RANKS = [
   { value: '', label: 'All ranks' },
   { value: 'rookie', label: 'Rookie' },
@@ -64,6 +70,8 @@ export default function PlayPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const requestSeq = useRef(0);
+  /** When the board was last fetched (live mode polls only if nothing refreshed it). */
+  const lastLoad = useRef(0);
   const now = useNow();
 
   useEffect(() => {
@@ -76,6 +84,7 @@ export default function PlayPage() {
   /** First page of the board plus direct challenges for me. Polls; never auto-pages. */
   const loadFirstPage = useCallback(async () => {
     const seq = ++requestSeq.current;
+    lastLoad.current = Date.now();
     const q: BoardQuery = { limit: 20 };
     if (selectedGame !== 'all') q.game = selectedGame;
     try {
@@ -100,8 +109,28 @@ export default function PlayPage() {
     // loadFirstPage sets state only after its fetch resolves; the rule cannot see past the await.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadFirstPage();
-    const id = setInterval(() => void loadFirstPage(), POLL_INTERVAL_MS);
-    return () => clearInterval(id);
+    // Live board (F5.4, audit B32): refresh when a challenge appears or leaves; keep polling
+    // as the fallback, slower while the socket is connected.
+    const socket = getSocket();
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const onBoardChanged = () => {
+      if (debounce) return;
+      debounce = setTimeout(() => {
+        debounce = null;
+        void loadFirstPage();
+      }, LIVE_REFRESH_DEBOUNCE_MS);
+    };
+    socket?.on(ServerEvents.BoardChanged, onBoardChanged);
+    const id = setInterval(() => {
+      if (!socket?.connected || Date.now() - lastLoad.current >= POLL_INTERVAL_LIVE_MS) {
+        void loadFirstPage();
+      }
+    }, POLL_INTERVAL_MS);
+    return () => {
+      clearInterval(id);
+      if (debounce) clearTimeout(debounce);
+      socket?.off(ServerEvents.BoardChanged, onBoardChanged);
+    };
   }, [loadFirstPage]);
 
   const loadMore = async () => {

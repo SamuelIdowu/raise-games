@@ -24,7 +24,7 @@ import { ChatService } from '../chat/chat.service';
 import { sendMessageSchema } from '../chat/chat.schemas';
 import { MatchesService } from '../matches/matches.service';
 import { RealtimePublisher } from './realtime.publisher';
-import { ClientEvents, matchRoom, userRoom, type Ack } from './realtime.events';
+import { BOARD_ROOM, ClientEvents, matchRoom, userRoom, type Ack } from './realtime.events';
 
 interface SocketData {
   user: AuthedUser;
@@ -95,6 +95,7 @@ export class RealtimeGateway implements OnGatewayInit, OnModuleDestroy {
         .then((user) => {
           (socket as AppSocket).data.user = user;
           void socket.join(userRoom(user.sub));
+          void socket.join(BOARD_ROOM);
           next();
         })
         .catch((error: unknown) => {

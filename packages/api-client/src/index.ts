@@ -63,7 +63,13 @@ export type {
   FriendRequestItem,
   FriendState,
 } from './dm';
-export type { MatchStateEvent, ChatLockedEvent, NotificationEvent, Ack } from './realtime';
+export type {
+  MatchStateEvent,
+  BoardChangedEvent,
+  ChatLockedEvent,
+  NotificationEvent,
+  Ack,
+} from './realtime';
 export type { PresignedUpload, UploadInfo, UploadPurpose } from './uploads';
 export type {
   DisputeCategory,
