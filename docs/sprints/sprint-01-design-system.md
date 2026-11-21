@@ -122,8 +122,8 @@ This entire sprint IS the design doc. Fidelity requirement: a reviewer comparing
 - [x] F1.4 Button/Input/OTP/Chip/Banner/Toast/Sheet+Modal/Empty/Avatar/Badges/Table all built with doc variants+states
 - [x] F1.5 Icons: Lucide 16/20/24 square caps; status icon mapping implemented; publisher-logo + casino-imagery bans enforced
 - [x] F1.6 Motion tokens enforced; transform/opacity only; count-up stub with reduced-motion switch exists
-- [ ] F1.7 Storybook + a11y addon up; every component's stories cover states×themes×widths; visual regression in CI; token changelog process documented. **Audit 2026-11-20:** CI runs neither `test:visual` nor the Storybook a11y spec, and baselines are Windows-only (audit #4; A4, B16)
-- [~] Testing block all green; screenshots archived (visual and a11y suites pass locally only, not in CI; A4)
+- [x] F1.7 Storybook + a11y addon up; every component's stories cover states×themes×widths; visual regression in CI; token changelog process documented (**in CI since 2026-11-21**: Visual job with committed Linux baselines, strict, run 44901950310; was audit #4)
+- [x] Testing block all green; screenshots archived (visual, a11y and behaviour specs in CI since 2026-11-21; snapshots uploaded as a CI artifact)
 - [x] Audit block done: accessibility, design-review, animation reviews passed or findings filed and fixed
 - [x] `[owner decision]` items surfaced: tabular numerals outcome, chamfer treatment after first on-screen review (doc §14), violet-fallback confirm
 - [x] Sprint closed via `ship`: PR merged, CHANGELOG entry, checklist ticks committed (shipped to `main` in the bootstrap history before the PR workflow; CHANGELOG "Sprints 0–2")

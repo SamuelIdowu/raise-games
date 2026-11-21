@@ -7,7 +7,7 @@
 
 ## Progress
 
-2026-11-20/21: B1–B7, B9, B13, B22, B26, B27, B30–B33, B35 and B38 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
+2026-11-20/21: B1–B7, B9, B13, B16, B17, B22, B26, B27, B30–B33, B35, B36, B38 and B40 are done. The sprint files are corrected for A1–A11 (A1 and A2 are now fixed by B1).
 
 ## Where things stand
 
@@ -93,8 +93,8 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ### P2 — quality and hygiene
 
-- [ ] **B16 Visual regression in CI (audit #4).** Generate Linux baselines in the Playwright Docker image and add a CI job for `test:visual` and the Storybook a11y spec.
-- [ ] **B17 Generated API client**, or a CI check that diffs `openapi.json` against `packages/api-client`. The TA specifies "OpenAPI and a generated typed client".
+- [x] **B16 Visual regression in CI (audit #4).** Done (`d35ea31`, `20b89c6`): Visual job builds Storybook and runs visual, a11y and behaviour specs against 30 committed Linux baselines, strictly. Sprint 1 F1.7 re-ticked.
+- [x] **B17 Generated API client.** Contract test instead of generation (`f9b109e`): builds the OpenAPI document from AppModule and fails if any of the ~100 client paths is missing. Generating the client stays possible later.
 - [ ] **B18 Branch protection.** Require 1 approval and add E2E, perf, load and gitleaks to the required checks.
 - [ ] **B19 Lighthouse budgets.** Turn LCP, TBT and JS weight into `error` once the first staging numbers exist. Add a match-room URL (it needs a seeded match) and upload a bundle report.
 - [x] **B32 Board over the socket.** Done in `aa37b69`: `board:changed` from a broadcaster on challenge outbox events (direct challenges only to their two players); the Play page refreshes on it, debounced, and polls as a fallback (20 s offline, 60 s live).
