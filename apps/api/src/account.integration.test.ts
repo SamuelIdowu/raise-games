@@ -112,27 +112,37 @@ describe('account deletion and export (audit B28)', () => {
     // a cycle Postgres cannot see (one edge is in the application) and stalled other
     // suites' cleanup until the 60 s hook timeout (CI runs 44906424603, 44906737932). Every
     // consumer just marks them skipped; CI's database is thrown away.
-    await retryOnDeadlock(async () => {
-      await db.transaction(async (tx) => {
-        await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
-        if (matchIds.length) {
+    //
+    // Each delete is its own short statement (no long transaction), so this cleanup never
+    // holds rows a relay handler in another suite is waiting for while it waits itself.
+    const step = (run: () => Promise<unknown>) => retryOnDeadlock(run);
+    if (matchIds.length) {
+      await step(() =>
+        db.transaction(async (tx) => {
+          await tx.execute(sql`SET LOCAL raise.allow_purge = 'on'`);
           await tx.delete(schema.matches).where(inArray(schema.matches.id, matchIds));
-        }
-        if (challengeIds.length) {
-          await tx.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds));
-        }
-        if (userIds.length) {
-          await tx.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds));
-          await tx.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds));
-          await tx.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds));
-          await tx
-            .delete(schema.consentRecords)
-            .where(inArray(schema.consentRecords.userId, userIds));
-          await tx.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds));
-          await tx.delete(schema.users).where(inArray(schema.users.id, userIds));
-        }
-      });
-    });
+        }),
+      );
+    }
+    if (challengeIds.length) {
+      await step(() =>
+        db.delete(schema.challenges).where(inArray(schema.challenges.id, challengeIds)),
+      );
+    }
+    if (userIds.length) {
+      await step(() => db.delete(schema.auditLog).where(inArray(schema.auditLog.actorId, userIds)));
+      await step(() =>
+        db.delete(schema.sanctions).where(inArray(schema.sanctions.userId, userIds)),
+      );
+      await step(() => db.delete(schema.sessions).where(inArray(schema.sessions.userId, userIds)));
+      await step(() =>
+        db.delete(schema.consentRecords).where(inArray(schema.consentRecords.userId, userIds)),
+      );
+      await step(() =>
+        db.delete(schema.gameProfiles).where(inArray(schema.gameProfiles.userId, userIds)),
+      );
+      await step(() => db.delete(schema.users).where(inArray(schema.users.id, userIds)));
+    }
   });
 
   it('export returns the account, consents and game profiles', async () => {
@@ -161,6 +171,9 @@ describe('account deletion and export (audit B28)', () => {
       userId: c.id,
       type: 'suspension',
       reason: 'test suspension',
+      // Explicitly in the past: the column default is the database clock, which can run a
+      // few ms ahead of the API's clock that getStanding compares with (CI run 44910116382).
+      startsAt: new Date(Date.now() - 60_000),
       endsAt: new Date(Date.now() + 7 * 86_400_000),
     });
     await expect(account.deleteAccount(c.id, c.username)).rejects.toMatchObject({
