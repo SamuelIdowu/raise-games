@@ -47,9 +47,10 @@ test.describe('Sprint 7 — match room, gateway and chat (two browsers)', () => 
     await expect(messagesA.getByText('yes, room is up')).toBeVisible({ timeout: 2_000 });
   });
 
-  // Audit B34: the polling fallback was only ever checked by hand. Bob's WebSocket is
-  // refused before his page loads, so everything he sees must arrive over HTTP polling.
-  test('without a socket, the room falls back to polling and still gets chat', async ({
+  // Audit B34: the polling fallback was only ever checked by hand. Bob starts live through
+  // the real gateway; then his socket is cut and every reconnect is refused, the way a
+  // flaky mobile connection drops. Everything he sees after that must arrive by polling.
+  test('when the socket drops, the room falls back to polling and still gets chat', async ({
     browser,
   }) => {
     const a = await createPlayer('sade');
@@ -60,9 +61,19 @@ test.describe('Sprint 7 — match room, gateway and chat (two browsers)', () => 
     const contextB = await browser.newContext();
     await signIn(contextB, b);
     const pageB = await contextB.newPage();
-    await pageB.routeWebSocket(/socket\.io/, (ws) => ws.close());
+    let blocked = false;
+    const sockets: Array<{ close: () => Promise<void> }> = [];
+    await pageB.routeWebSocket(/socket\.io/, (ws) => {
+      if (blocked) return void ws.close();
+      ws.connectToServer(); // pass through to the real gateway
+      sockets.push(ws);
+    });
     await pageB.goto(`/matches/${matchId}`);
     await expect(pageB.getByRole('heading', { level: 1 })).toContainText('eFootball');
+    await expect(pageB.getByText('Live updates paused')).toHaveCount(0); // live first
+
+    blocked = true;
+    for (const ws of sockets) await ws.close();
     await expect(pageB.getByText('Live updates paused')).toBeVisible({ timeout: 10_000 });
 
     const text = `polling check ${Date.now()}`;
