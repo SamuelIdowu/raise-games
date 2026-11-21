@@ -48,6 +48,8 @@ export const users = pgTable(
     displayName: text('display_name'),
     /** Optional; notification email channel (Sprint 11). Never shown to other players. */
     email: text('email'),
+    /** Audit #3: email notifications go only to a confirmed address. Null = unconfirmed. */
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     jurisdictionState: text('jurisdiction_state'),
     identityTier: identityTierEnum('identity_tier').notNull().default('tier1_phone_verified'),
     kycStatus: kycStatusEnum('kyc_status').notNull().default('none'),
@@ -1112,6 +1114,20 @@ export const notificationPreferences = pgTable(
 );
 
 /** Quiet hours (minutes from local midnight) and timezone, per user. */
+/**
+ * Audit #3: one pending confirmation per player for the address being confirmed. Only the
+ * SHA-256 of the emailed token is stored; it is single use and expires after 24 hours.
+ */
+export const emailVerifications = pgTable('email_verifications', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const notificationSettings = pgTable('notification_settings', {
   userId: uuid('user_id')
     .primaryKey()

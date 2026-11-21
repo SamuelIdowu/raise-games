@@ -39,6 +39,8 @@ export interface NotificationSettings {
   }>;
   quietHours: { startMinute: number | null; endMinute: number | null; timeZone: string };
   email: string | null;
+  /** Audit #3: email notifications go only to a confirmed address. */
+  emailVerified: boolean;
   push: { available: boolean; publicKey: string | null };
 }
 
@@ -73,6 +75,13 @@ export const notificationsApi = {
     apiFetch<NotificationSettings>('/notifications/settings', {
       method: 'PUT',
       body: JSON.stringify(body),
+    }),
+  resendEmailConfirmation: () =>
+    apiFetch<{ sent: boolean }>('/notifications/email/resend', { method: 'POST' }),
+  confirmEmail: (token: string) =>
+    apiFetch<{ ok: true }>('/notifications/email/verify', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     }),
   subscribePush: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
     apiFetch<void>('/notifications/push-subscriptions', {

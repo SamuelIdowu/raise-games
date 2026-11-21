@@ -30,6 +30,7 @@ import {
   type NotificationType,
   type Params,
 } from './catalog';
+import { sendVerificationEmail, startVerification } from './email-verification';
 import {
   WebPushChannel,
   emailChannelFromEnv,
@@ -530,11 +531,16 @@ export class NotificationsService implements OnModuleInit {
       }
 
       const [u] = await db
-        .select({ email: schema.users.email })
+        .select({ email: schema.users.email, verifiedAt: schema.users.emailVerifiedAt })
         .from(schema.users)
         .where(eq(schema.users.id, n.userId));
       if (!u?.email) {
         await record('skipped', 'no email address');
+        return 'skipped';
+      }
+      // Audit #3: never email an address the player has not confirmed.
+      if (!u.verifiedAt) {
+        await record('skipped', 'email not confirmed');
         return 'skipped';
       }
       const result = await this.email.send(u.email, message);
@@ -658,7 +664,7 @@ export class NotificationsService implements OnModuleInit {
       .from(schema.notificationSettings)
       .where(eq(schema.notificationSettings.userId, viewer.sub));
     const [u] = await db
-      .select({ email: schema.users.email })
+      .select({ email: schema.users.email, verifiedAt: schema.users.emailVerifiedAt })
       .from(schema.users)
       .where(eq(schema.users.id, viewer.sub));
     const prefs = await this.preferencesFor(viewer.sub);
@@ -675,6 +681,7 @@ export class NotificationsService implements OnModuleInit {
         timeZone: settings?.timeZone ?? 'Africa/Lagos',
       },
       email: u?.email ?? null,
+      emailVerified: Boolean(u?.email && u.verifiedAt),
       push: { available: this.push.enabled, publicKey: this.push.publicKey },
     };
   }
@@ -687,6 +694,7 @@ export class NotificationsService implements OnModuleInit {
       email?: string | null;
     },
   ) {
+    let confirmTo: { email: string; token: string } | null = null;
     await db.transaction(async (tx) => {
       for (const t of input.types ?? []) {
         if (CATALOG[t.type].critical) continue; // critical types cannot be switched off
@@ -719,13 +727,42 @@ export class NotificationsService implements OnModuleInit {
           });
       }
       if (input.email !== undefined) {
-        await tx
-          .update(schema.users)
-          .set({ email: input.email, updatedAt: new Date() })
+        const email = input.email?.trim().toLowerCase() || null;
+        const [current] = await tx
+          .select({ email: schema.users.email })
+          .from(schema.users)
           .where(eq(schema.users.id, viewer.sub));
+        if (current?.email !== email) {
+          // Audit #3: a new address is unconfirmed until its emailed link is opened.
+          await tx
+            .update(schema.users)
+            .set({ email, emailVerifiedAt: null, updatedAt: new Date() })
+            .where(eq(schema.users.id, viewer.sub));
+          await tx
+            .delete(schema.emailVerifications)
+            .where(eq(schema.emailVerifications.userId, viewer.sub));
+          if (email) confirmTo = { email, token: await startVerification(tx, viewer.sub, email) };
+        }
       }
     });
+    if (confirmTo) {
+      const { email, token } = confirmTo;
+      await sendVerificationEmail(this.email, email, token);
+    }
     return this.getSettings(viewer);
+  }
+
+  /** Sends a fresh confirmation link for the current, unconfirmed address (audit #3). */
+  async resendEmailConfirmation(viewer: AuthedUser): Promise<{ sent: boolean }> {
+    const [u] = await db
+      .select({ email: schema.users.email, verifiedAt: schema.users.emailVerifiedAt })
+      .from(schema.users)
+      .where(eq(schema.users.id, viewer.sub));
+    if (!u?.email || u.verifiedAt) return { sent: false };
+    const email = u.email;
+    const token = await db.transaction((tx) => startVerification(tx, viewer.sub, email));
+    await sendVerificationEmail(this.email, email, token);
+    return { sent: true };
   }
 
   async subscribePush(

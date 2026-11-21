@@ -9,8 +9,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AuthModule } from '../auth/auth.module';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -22,6 +24,7 @@ import { enforceRateLimit } from '../shared/rate-limit';
 import { ZodValidationPipe } from '../shared/zod-validation.pipe';
 import { NOTIFICATION_TYPES } from './catalog';
 import { NotificationsService } from './notifications.service';
+import { confirmEmail } from './email-verification';
 import { NotificationsWorker } from './notifications.worker';
 
 const listQuery = z.object({
@@ -102,6 +105,13 @@ export class NotificationsController {
     return this.notifications.updateSettings(user, body);
   }
 
+  /** Audit #3: a fresh confirmation link for the current, unconfirmed address. */
+  @Post('notifications/email/resend')
+  @HttpCode(200)
+  resendEmail(@CurrentUser() user: AuthedUser) {
+    return this.notifications.resendEmailConfirmation(user);
+  }
+
   @Post('notifications/push-subscriptions')
   @HttpCode(204)
   async subscribe(
@@ -151,9 +161,28 @@ export class AdminNotificationsController {
   }
 }
 
+const verifyBody = z.object({ token: z.string().min(20).max(100) });
+
+/**
+ * Audit #3: confirm a notification email from the emailed link. Public on purpose: the
+ * 256-bit token is the proof, so the link works on any device without signing in.
+ */
+@Controller('notifications/email')
+export class EmailVerificationController {
+  @Post('verify')
+  @HttpCode(200)
+  async verify(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(verifyBody)) body: z.infer<typeof verifyBody>,
+  ) {
+    await enforceRateLimit(`rl:email:confirm:ip:${req.ip ?? 'unknown'}`, 30, 600_000);
+    return confirmEmail(body.token);
+  }
+}
+
 @Module({
   imports: [AuthModule, RealtimeCoreModule],
-  controllers: [NotificationsController, AdminNotificationsController],
+  controllers: [NotificationsController, AdminNotificationsController, EmailVerificationController],
   providers: [NotificationsService, NotificationsWorker],
   exports: [NotificationsService],
 })
