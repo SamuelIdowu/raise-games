@@ -99,7 +99,44 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ---
 
-## B. Unfinished work, in priority order
+## B. Unfinished work
+
+18 open items, grouped in the order of **Remaining work, sorted** at the top of this file. B11, B23 and B28 each span two steps (a decision first, then the work), so they sit with the decision that starts them; B8, B15 and B28 are built in Step 4 once the legal text exists.
+
+### Step 1: decisions and approvals
+
+- [ ] **B20 Merge the PR stack.** Merge #7 → #8 → #9 → #10 → #12 → #13 into `main` (rebase or merge in order). Close #11, which #12 supersedes. PR #13 is titled "Sprint 11" but carries Sprints 11–16: retitle it, or split it so review is possible. Then tick the `ship` boxes for Sprints 6–16, tag a release and move the CHANGELOG "Unreleased" section under the version.
+- [ ] **B10 Hosting decision.** Run the Lagos latency probe against 2–3 candidate regions, then write an ADR (`docs/decisions/0008-hosting.md`). `[owner decision]`
+- [ ] **B23 Close F11.4.** Choose the email vendor (Resend or SES), add VAPID keys per environment and prove push and email end to end on staging. `[owner decision]`
+- [ ] **B21 New-account cooldown.** A PRD fairness control, recorded as an open finding in Sprint 16 (proposed S3). Decide it, then implement it or defer it in writing. `[owner decision]`
+- [ ] **B18 Branch protection.** Require 1 approval and add E2E, perf, load and gitleaks to the required checks.
+- [ ] **B8 Legal pages.** No `/terms`, `/privacy` or `/community-rules` route exists. The consent page shows "[legal] Draft terms for Stage 1". The ToS amendment for staff reading match chat (`docs/legal/tos-amendment-match-chat.md`) needs legal review. The Delivery Plan requires ToS, privacy policy, community rules and an age policy **before beta**.
+- [ ] **B15 Minimum age.** The PRD and TA store an age-verification field, but signup asks nothing. Add an age confirmation to consent once the legal track sets the minimum age. `[legal]`
+- [ ] **B28 Data retention and deletion.** Retention periods for screenshots and chat are still an open owner decision (TA and Delivery Plan). Once set, add purge jobs. Add an account-deletion and data-request path for the Nigeria Data Protection Act, which a public launch with phone numbers will need. `[owner/legal]`
+- [ ] **B11 Provision staging, then production.** Managed Postgres with PITR, Redis, an R2 bucket (private), Cloudflare DNS, WAF and Turnstile keys, a secrets manager, the domain, Sentry, PostHog, an email domain with SPF and DKIM, the Termii DND sender ID (approval takes time, so start now), VAPID keys and `ALERT_WEBHOOK_URL`.
+
+### Step 2: infrastructure (after B10)
+
+- [ ] **B12 Continuous deployment.** Deploy `main` to staging automatically, promote to production by hand, roll back by redeploying the previous image. Today CI builds images and pushes them nowhere.
+- [ ] **B12a M0 exit proof.** A login walkthrough on staging behind Cloudflare. Then close F0.10, F0.11 and F0.12.
+- [ ] **B12b The `[staging]` runs held open in Sprint 15.** 500-VU k6 run, 3,000-socket run, real low-end Android 90 s signup median (10 runs), timed PITR restore, and a Redis-kill timer test in staging (TA "Risks to derisk early"). Archive the results.
+- [ ] **B19 Lighthouse budgets.** Turn LCP, TBT and JS weight into `error` once the first staging numbers exist. Add a match-room URL (it needs a seeded match) and upload a bundle report.
+
+### Step 3: on staging, with people
+
+- [ ] **B24 Close F2.11.** Run 8–10 real player sessions on staging covering the three target flows, and file the findings. This is the only way to claim M1.
+
+### Step 5: closed beta
+
+- [ ] **B25 Beta operations items** in Sprint 16: legal documents final and linked from onboarding, cohorts and codes issued, moderator rota staffed, then the beta opened. `[owner/legal]`
+- [ ] **B29 Beta exit.** Metrics on track and open S1 = 0, as in the Sprint 16 checklist.
+
+### Any time: documentation
+
+- [ ] **B37 Product Brief.** It still reads "planning complete, pre-build" (v1). The PRD v2 says it needs aligning.
+- [~] **B39 Sprint README.** The Sprint 17 file now exists (B26). Still open: `docs/sessions.md` holds one tool session id; the owner decides whether to keep, fill or remove it.
+
+## B (done). Finished work
 
 ### P0 — code blockers before any environment goes live
 
@@ -110,38 +147,18 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 - [x] **B5 Production-grade images.** Done: non-root, health checks, OTel preload (`c9e2c70`); lean images (`df1eac0`): API from `pnpm deploy --prod` with a files allowlist, web from Next standalone (~30 MB), every `NEXT_PUBLIC_*` a build arg. Also fixed: `.dockerignore` matched `.env` only at the root, so `apps/api/.env` could reach a locally built image.
 - [x] **B6 Migrations on deploy.** Done in `c9e2c70`: `node dist/db/migrate.js` (`db:migrate:deploy`), advisory-locked, reads only `DATABASE_URL`; CI migrates a clean database with it. Define a release step that runs migrations before new instances take traffic (expand-contract rule), plus the `db:seed` reference data for games and formats.
 - [x] **B7 Lock down `/docs`.** Done in `bba5931`: not served in production. Swagger UI and `openapi.json` are public in every environment. Disable them in production or put them behind staff auth.
-- [ ] **B8 Legal pages.** No `/terms`, `/privacy` or `/community-rules` route exists. The consent page shows "[legal] Draft terms for Stage 1". The ToS amendment for staff reading match chat (`docs/legal/tos-amendment-match-chat.md`) needs legal review. The Delivery Plan requires ToS, privacy policy, community rules and an age policy **before beta**.
-
-### P0 — infrastructure (Sprint 0 F0.10–F0.12, never done)
-
-- [ ] **B10 Hosting decision.** Run the Lagos latency probe against 2–3 candidate regions, then write an ADR (`docs/decisions/0008-hosting.md`). `[owner decision]`
-- [ ] **B11 Provision staging, then production.** Managed Postgres with PITR, Redis, an R2 bucket (private), Cloudflare DNS, WAF and Turnstile keys, a secrets manager, the domain, Sentry, PostHog, an email domain with SPF and DKIM, the Termii DND sender ID (approval takes time, so start now), VAPID keys and `ALERT_WEBHOOK_URL`.
-- [ ] **B12 Continuous deployment.** Deploy `main` to staging automatically, promote to production by hand, roll back by redeploying the previous image. Today CI builds images and pushes them nowhere.
-- [ ] **B12a M0 exit proof.** A login walkthrough on staging behind Cloudflare. Then close F0.10, F0.11 and F0.12.
-- [ ] **B12b The `[staging]` runs held open in Sprint 15.** 500-VU k6 run, 3,000-socket run, real low-end Android 90 s signup median (10 runs), timed PITR restore, and a Redis-kill timer test in staging (TA "Risks to derisk early"). Archive the results.
-
-### P0 — git and process
-
-- [ ] **B20 Merge the PR stack.** Merge #7 → #8 → #9 → #10 → #12 → #13 into `main` (rebase or merge in order). Close #11, which #12 supersedes. PR #13 is titled "Sprint 11" but carries Sprints 11–16: retitle it, or split it so review is possible. Then tick the `ship` boxes for Sprints 6–16, tag a release and move the CHANGELOG "Unreleased" section under the version.
 
 ### P1 — before the closed beta (Sprint 16 go/no-go)
 
 - [x] **B9 Account settings page.** Done: Sign out in the menu (`8338b43`) and `/settings` (`5f7aff6`) with account details, theme (previously only on the internal `/design` page), a link to notification preferences, and sign out of all devices. CI run 44898374769 green.
 - [x] **B13 Challenge idempotency scope (audit #6).** Done in `efae6ce` (migration 0017, integration test). Make the unique index `(poster_id, idempotency_key)` and scope the lookup to the poster.
 - [x] **B14 Verify the notification email (audit #3).** Done (`b45332c`): a new address is unconfirmed until its emailed link (hashed 256-bit token, 24 h, single use, void on change) is opened; email notifications skip unconfirmed addresses; 5 confirmation emails per hour per player. Works with the logging mock now; real sending starts when the email vendor is set.
-- [ ] **B15 Minimum age.** The PRD and TA store an age-verification field, but signup asks nothing. Add an age confirmation to consent once the legal track sets the minimum age. `[legal]`
-- [ ] **B21 New-account cooldown.** A PRD fairness control, recorded as an open finding in Sprint 16 (proposed S3). Decide it, then implement it or defer it in writing. `[owner decision]`
 - [x] **B22 Admin matches screen and void action.** Done in `47918ae`: `/admin/matches` with player, status and stuck filters and a detail sheet; void needs a fresh MFA code and a reason, applies only to live undecided matches (disputed and decided ones go through rulings, which also reverse ratings and payouts), refunds holds via `match.voided`, and is audited.
-- [ ] **B23 Close F11.4.** Choose the email vendor (Resend or SES), add VAPID keys per environment and prove push and email end to end on staging. `[owner decision]`
-- [ ] **B24 Close F2.11.** Run 8–10 real player sessions on staging covering the three target flows, and file the findings. This is the only way to claim M1.
-- [ ] **B25 Beta operations items** in Sprint 16: legal documents final and linked from onboarding, cohorts and codes issued, moderator rota staffed, then the beta opened. `[owner/legal]`
 
-### P1 — before the public launch (write the missing Sprint 17)
+### P1 — before the public launch
 
 - [x] **B26 Write `docs/sprints/sprint-17-launch.md`.** Done. Scope from the Delivery Plan M5: seeded local ladders, moderators staffed for the SLA, launch dashboards (stuck matches, dispute backlog, notification delivery), turning `beta.invite_only` off, the launch checklist and Stage 1 exit metrics.
 - [x] **B27 Demo and local-ladder seed script.** Done in `2751eed`: `db:seed:demo` (dev/staging only); ratings come from the real consumer and CI checks the replay. Launch ladders stay real players (Sprint 17 F17.2). The Delivery Plan lists it under "day-one code" and launch needs it. Today only `load-seed.ts` (load testing) and the reference-data `seed.ts` exist.
-- [ ] **B28 Data retention and deletion.** Retention periods for screenshots and chat are still an open owner decision (TA and Delivery Plan). Once set, add purge jobs. Add an account-deletion and data-request path for the Nigeria Data Protection Act, which a public launch with phone numbers will need. `[owner/legal]`
-- [ ] **B29 Beta exit.** Metrics on track and open S1 = 0, as in the Sprint 16 checklist.
 
 ### P1 — PRD and TA foundations not yet built
 
@@ -152,8 +169,6 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 - [x] **B16 Visual regression in CI (audit #4).** Done (`d35ea31`, `20b89c6`): Visual job builds Storybook and runs visual, a11y and behaviour specs against 30 committed Linux baselines, strictly. Sprint 1 F1.7 re-ticked.
 - [x] **B17 Generated API client.** Contract test instead of generation (`f9b109e`): builds the OpenAPI document from AppModule and fails if any of the ~100 client paths is missing. Generating the client stays possible later.
-- [ ] **B18 Branch protection.** Require 1 approval and add E2E, perf, load and gitleaks to the required checks.
-- [ ] **B19 Lighthouse budgets.** Turn LCP, TBT and JS weight into `error` once the first staging numbers exist. Add a match-room URL (it needs a seeded match) and upload a bundle report.
 - [x] **B32 Board over the socket.** Done in `aa37b69`: `board:changed` from a broadcaster on challenge outbox events (direct challenges only to their two players); the Play page refreshes on it, debounced, and polls as a fallback (20 s offline, 60 s live).
 - [x] **B33 `pnpm dev` for the API.** Done: `scripts/dev.mjs` builds with tsc (decorator metadata) and restarts node on each rebuild; verified every Nest module initialises.
 - [x] **B34 Automate the socket-down fallback test.** Done (`60282ac`): e2e connects Bob live, cuts his socket and refuses reconnects; the room shows "Live updates paused", receives chat by polling and still sends over HTTP. Green in run 44904751504.
@@ -162,9 +177,7 @@ Confirmed correct and **not** wrong: F15.4. Web errors go to `/telemetry/client-
 
 ### P2 — documentation alignment
 
-- [ ] **B37 Product Brief.** It still reads "planning complete, pre-build" (v1). The PRD v2 says it needs aligning.
 - [x] **B38 Stale root reports.** Done (`f0fff23`): moved to `docs/sprints/archive/` with a README pointing to the current audits.
-- [~] **B39 Sprint README.** The Sprint 17 file now exists (B26). Still open: `docs/sessions.md` holds one tool session id; the owner decides whether to keep, fill or remove it.
 - [x] **B40 Setup Guide.** A dated "what changed" note at the top points to `.env.example`, the storage service, the new dev script, demo seed, the deploy runbook and the client contract test.
 
 ---
