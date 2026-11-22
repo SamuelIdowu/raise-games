@@ -72,39 +72,46 @@ export class ChatService {
    * runs from the outbox relay on `match.created` (so the chat exists as soon as the
    * match does) and lazily on first read/send, so a missed event never breaks chat.
    */
+  /**
+   * The match's conversation and its participants, created together in one transaction so
+   * nobody can see a conversation without its players (which would refuse their first send
+   * or read). Idempotent: safe from the outbox consumer and lazily on first access.
+   */
   async ensureMatchConversation(matchId: string): Promise<string> {
-    const [existing] = await db
-      .select({ id: schema.conversations.id })
-      .from(schema.conversations)
-      .where(eq(schema.conversations.matchId, matchId))
-      .limit(1);
-    let conversationId = existing?.id;
-
-    if (!conversationId) {
-      await db
-        .insert(schema.conversations)
-        .values({ id: uuidv7(), scope: 'match', matchId })
-        .onConflictDoNothing({ target: schema.conversations.matchId });
-      const [row] = await db
+    return db.transaction(async (tx) => {
+      const [existing] = await tx
         .select({ id: schema.conversations.id })
         .from(schema.conversations)
         .where(eq(schema.conversations.matchId, matchId))
         .limit(1);
-      if (!row) throw new NotFoundException('Match not found');
-      conversationId = row.id;
-    }
+      let conversationId = existing?.id;
 
-    const sides = await db
-      .select({ userId: schema.matchSides.userId })
-      .from(schema.matchSides)
-      .where(eq(schema.matchSides.matchId, matchId));
-    if (sides.length > 0) {
-      await db
-        .insert(schema.conversationParticipants)
-        .values(sides.map((s) => ({ conversationId: conversationId!, userId: s.userId })))
-        .onConflictDoNothing();
-    }
-    return conversationId;
+      if (!conversationId) {
+        await tx
+          .insert(schema.conversations)
+          .values({ id: uuidv7(), scope: 'match', matchId })
+          .onConflictDoNothing({ target: schema.conversations.matchId });
+        const [row] = await tx
+          .select({ id: schema.conversations.id })
+          .from(schema.conversations)
+          .where(eq(schema.conversations.matchId, matchId))
+          .limit(1);
+        if (!row) throw new NotFoundException('Match not found');
+        conversationId = row.id;
+      }
+
+      const sides = await tx
+        .select({ userId: schema.matchSides.userId })
+        .from(schema.matchSides)
+        .where(eq(schema.matchSides.matchId, matchId));
+      if (sides.length > 0) {
+        await tx
+          .insert(schema.conversationParticipants)
+          .values(sides.map((s) => ({ conversationId: conversationId!, userId: s.userId })))
+          .onConflictDoNothing();
+      }
+      return conversationId;
+    });
   }
 
   async listMessages(
