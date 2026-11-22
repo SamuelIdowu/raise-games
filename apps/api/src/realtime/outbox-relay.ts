@@ -1,7 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { and, asc, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { db, schema } from '../db/client';
-import type { Tx } from '../db/tx';
+import { db, pool, schema } from '../db/client';
 
 export type OutboxEvent = typeof schema.outboxEvents.$inferSelect;
 
@@ -19,10 +18,9 @@ interface Handler {
  *
  * Each consumer has its own delivery state (`outbox_deliveries`), so one consumer
  * finishing an event never hides it from another, and a consumer added later still
- * sees events inside the lookback window. Per consumer, a transaction-scoped advisory
- * lock lets exactly one API instance drain it at a time; the delivery rows are written
- * in that same transaction, so delivery is at-least-once and handlers must be
- * idempotent.
+ * sees events inside the lookback window. Per consumer, a session advisory lock lets
+ * exactly one API instance drain it at a time; delivery rows are written per event, so
+ * delivery is at-least-once and handlers must be idempotent.
  *
  * A failing handler is retried with linear backoff and marked `dead` after
  * MAX_ATTEMPTS, rather than being treated as delivered.
@@ -59,7 +57,7 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
-    // Let an in-flight drain finish so its transaction commits or rolls back cleanly.
+    // Let an in-flight drain finish and release its consumer lock cleanly.
     for (let i = 0; this.running && i < 50; i++) await new Promise((r) => setTimeout(r, 20));
   }
 
@@ -102,18 +100,33 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
     }
   }
 
+  /**
+   * Drains one consumer. The per-consumer advisory lock is a session lock on one dedicated
+   * connection, and every read and delivery row is its own short statement: no transaction
+   * stays open while handlers run on other connections. A long relay transaction held
+   * key-share locks on outbox rows for the whole drain, so any transaction that both waited
+   * on those rows and held rows a handler needed formed a lock cycle Postgres cannot detect
+   * (one edge is in the application); the integration suites hit it whenever cleanup
+   * deleted outbox events while relays in other processes were mid-drain.
+   *
+   * Delivery stays at-least-once: a crash between a handler and its delivery row means the
+   * event is delivered again, exactly as a rolled-back transaction did before.
+   */
   private async drainConsumer(handler: Handler): Promise<number> {
-    return db.transaction(async (tx) => {
-      const [lock] = (
-        await tx.execute<{ ok: boolean }>(
-          sql`select pg_try_advisory_xact_lock(hashtextextended(${`outbox:${handler.name}`}, 0)) as ok`,
-        )
-      ).rows;
-      if (!lock?.ok) return 0; // another instance is draining this consumer
+    const key = `outbox:${handler.name}`;
+    const lockClient = await pool.connect();
+    let locked = false;
+    try {
+      const { rows: lock } = await lockClient.query<{ ok: boolean }>(
+        'select pg_try_advisory_lock(hashtextextended($1, 0)) as ok',
+        [key],
+      );
+      if (!lock[0]?.ok) return 0; // another instance is draining this consumer
+      locked = true;
 
       const d = schema.outboxDeliveries;
       const e = schema.outboxEvents;
-      const rows = await tx
+      const rows = await db
         .select({ event: e, attempts: d.attempts })
         .from(e)
         .leftJoin(d, and(eq(d.eventId, e.id), eq(d.consumer, handler.name)))
@@ -134,12 +147,12 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
 
       for (const { event, attempts } of rows) {
         if (!handler.matches(event.type)) {
-          await this.record(tx, handler.name, event.id, 'skipped', attempts ?? 0, null);
+          await this.record(handler.name, event.id, 'skipped', attempts ?? 0, null);
           continue;
         }
         try {
           await handler.handle(event);
-          await this.record(tx, handler.name, event.id, 'done', (attempts ?? 0) + 1, null);
+          await this.record(handler.name, event.id, 'done', (attempts ?? 0) + 1, null);
         } catch (error) {
           const tries = (attempts ?? 0) + 1;
           const status = tries >= OutboxRelay.MAX_ATTEMPTS ? 'dead' : 'retry';
@@ -147,15 +160,26 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
           this.logger.warn(
             `outbox consumer ${handler.name} failed on ${event.type} ${event.id} (attempt ${tries}, ${status}): ${message}`,
           );
-          await this.record(tx, handler.name, event.id, status, tries, message.slice(0, 500));
+          await this.record(handler.name, event.id, status, tries, message.slice(0, 500));
         }
       }
       return rows.length;
-    });
+    } finally {
+      if (locked) {
+        try {
+          await lockClient.query('select pg_advisory_unlock(hashtextextended($1, 0))', [key]);
+          lockClient.release();
+        } catch {
+          // Could not unlock: destroy the connection, which releases the session lock.
+          lockClient.release(true);
+        }
+      } else {
+        lockClient.release();
+      }
+    }
   }
 
   private async record(
-    tx: Tx,
     consumer: string,
     eventId: string,
     status: 'done' | 'skipped' | 'retry' | 'dead',
@@ -163,18 +187,15 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
     lastError: string | null,
   ) {
     try {
-      // Savepoint: if the event was purged mid-drain, only this row is lost, not the batch.
-      await tx.transaction(async (sp) => {
-        await sp
-          .insert(schema.outboxDeliveries)
-          .values({ consumer, eventId, status, attempts, lastError, updatedAt: new Date() })
-          .onConflictDoUpdate({
-            target: [schema.outboxDeliveries.consumer, schema.outboxDeliveries.eventId],
-            set: { status, attempts, lastError, updatedAt: new Date() },
-          });
-      });
+      await db
+        .insert(schema.outboxDeliveries)
+        .values({ consumer, eventId, status, attempts, lastError, updatedAt: new Date() })
+        .onConflictDoUpdate({
+          target: [schema.outboxDeliveries.consumer, schema.outboxDeliveries.eventId],
+          set: { status, attempts, lastError, updatedAt: new Date() },
+        });
     } catch (error) {
-      if (pgCode(error) !== '23503') throw error; // foreign key: the event no longer exists
+      if (pgCode(error) !== '23503') throw error; // foreign key: the event was purged mid-drain
     }
   }
 }
