@@ -406,7 +406,7 @@ function PlayersView({
   };
 
   const inputClass =
-    'h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none';
+    'h-11 w-full rounded-control border border-control bg-raised px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none';
 
   return (
     <div className="space-y-4">

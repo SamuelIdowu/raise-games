@@ -1,8 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Banner, Skeleton, StatusChip } from '@/components/ui';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { Banner, StatusChip } from '@/components/ui';
 
 interface HealthResponse {
   status: 'ok' | 'degraded';
@@ -24,7 +25,21 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function HomePage() {
+export default function LandingPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Client-side redirect for signed-in users
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isSignedIn = document.cookie.includes('raise_access=');
+      if (isSignedIn && pathname === '/') {
+        router.push('/home');
+        router.refresh();
+      }
+    }
+  }, [pathname, router]);
+
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,11 +76,11 @@ export default function HomePage() {
           <p className="mt-1 text-body-sm text-fg-muted">Checking connection…</p>
         </div>
         <div className="rounded-card border border-line bg-surface p-5">
-          <Skeleton className="mb-4 h-5 w-2/5" />
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+          <div className="animate-pulse space-y-3">
+            <div className="h-5 w-2/5 bg-overlay rounded-sm mx-auto" />
+            <div className="h-8 w-full bg-overlay rounded-sm" />
+            <div className="h-8 w-full bg-overlay rounded-sm" />
+            <div className="h-8 w-full bg-overlay rounded-sm" />
           </div>
         </div>
       </main>
@@ -80,8 +95,10 @@ export default function HomePage() {
         <h1 className="font-display text-display font-bold uppercase tracking-tight text-fg">
           Raise
         </h1>
-        <p className="mt-1 text-body-sm text-fg-muted">Competitive gaming challenges</p>
-        <p className="label-caps mt-2 text-fg-subtle">Stage 1 · Sprint 0 foundations</p>
+        <p className="mt-1 text-body-sm text-fg-muted">Free 1v1 gaming challenges</p>
+        <p className="label-caps mt-2 text-fg-subtle">
+          eFootball · Call of Duty: Mobile · PUBG Mobile
+        </p>
       </header>
 
       <section className="animate-in rounded-card border border-line bg-surface p-5">
@@ -98,7 +115,7 @@ export default function HomePage() {
           <Row
             label="API"
             value={
-              <span className={health?.checks.api ? 'text-win' : 'text-loss'}>
+              <span className={health?.checks.api ? 'text-success' : 'text-danger'}>
                 {health?.checks.api ? 'Online' : 'Offline'}
               </span>
             }
@@ -106,7 +123,7 @@ export default function HomePage() {
           <Row
             label="Database"
             value={
-              <span className={health?.checks.database ? 'text-win' : 'text-loss'}>
+              <span className={health?.checks.database ? 'text-success' : 'text-danger'}>
                 {health?.checks.database ? 'Connected' : 'Disconnected'}
               </span>
             }
@@ -114,7 +131,7 @@ export default function HomePage() {
           <Row
             label="Redis"
             value={
-              <span className={health?.checks.redis ? 'text-win' : 'text-fg-subtle'}>
+              <span className={health?.checks.redis ? 'text-success' : 'text-fg-subtle'}>
                 {health?.checks.redis ? 'Connected' : 'Unavailable'}
               </span>
             }

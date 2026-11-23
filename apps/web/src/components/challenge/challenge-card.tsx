@@ -42,16 +42,20 @@ export function ChallengeCard({
   const closed = status !== 'open';
   const left = formatDuration(new Date(expiresAt).getTime() - now);
 
+  const isDirect = isForMe && !isMine;
+
   return (
     <article
       aria-label={`${game.name} challenge from ${poster.username}`}
       className={cn(
-        'rounded-card border p-4 transition-colors',
+        'rounded-card border bg-surface p-4 transition-colors duration-[var(--motion-default)] ease-standard',
         expired || closed
-          ? 'border-line bg-surface opacity-60'
-          : isMine || isForMe
-            ? 'border-accent/60 bg-surface'
-            : 'border-line bg-surface hover:border-line-strong active:bg-overlay',
+          ? 'border-line opacity-60'
+          : isDirect
+            ? 'border-accent/60'
+            : isMine
+              ? 'border-accent/40'
+              : 'border-line hover:border-line-strong active:bg-overlay',
       )}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
