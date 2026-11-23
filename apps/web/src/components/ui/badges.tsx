@@ -42,7 +42,7 @@ export function RankTierBadge({
       aria-label={`Rank ${tierLabel}`}
       className={cn(
         'chamfer inline-flex items-center gap-1.5 border border-accent/50 bg-accent-subtle px-2.5 py-1 text-accent',
-        tier === 5 && 'shadow-[0_0_0_1px_var(--accent),0_0_12px_rgba(34,211,238,0.35)]',
+        tier === 5 && 'shadow-glow',
         className,
       )}
     >

@@ -1,30 +1,30 @@
 import type { Metadata, Viewport } from 'next';
-import { Chakra_Petch } from 'next/font/google';
+import { Space_Grotesk, Unbounded } from 'next/font/google';
 import { Shell } from '@/components/shell';
 import { ToastProvider } from '@/components/ui';
 import { ErrorReporting } from '@/components/error-reporting';
+import { theme } from '@/lib/tokens.generated';
 import { themeInitScript } from '@/lib/theme';
 import './globals.css';
 
-const chakraPetchDisplay = Chakra_Petch({
-  variable: '--font-chakra',
+const unbounded = Unbounded({
+  variable: '--font-unbounded',
   subsets: ['latin', 'latin-ext'],
-  weight: '700',
   display: 'swap',
   preload: true,
 });
 
-const chakraPetchBody = Chakra_Petch({
-  variable: '--font-chakra-body',
+const spaceGrotesk = Space_Grotesk({
+  variable: '--font-space-grotesk',
   subsets: ['latin', 'latin-ext'],
-  weight: ['500', '600'],
   display: 'swap',
-  preload: false,
+  preload: true,
 });
 
 export const metadata: Metadata = {
-  title: 'RAISE — Competitive Gaming Challenges',
-  description: 'Verified 1v1 challenges, real stakes, instant settlement. Built for Nigeria.',
+  title: 'RAISE — Free 1v1 Gaming Challenges',
+  description:
+    'Free 1v1 challenges for eFootball, Call of Duty: Mobile and PUBG Mobile. Create, play and settle results with verified proof.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -37,7 +37,10 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#0A0C10',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: theme.light.bg0 },
+    { media: '(prefers-color-scheme: dark)', color: theme.dark.bg0 },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       data-theme="dark"
       suppressHydrationWarning
-      className={`${chakraPetchDisplay.variable} ${chakraPetchBody.variable} h-full antialiased`}
+      className={`${unbounded.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />

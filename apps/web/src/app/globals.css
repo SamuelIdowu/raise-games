@@ -4,14 +4,17 @@
 @theme inline {
   /* Surfaces + text */
   --color-bg: var(--bg-0);
-  --color-surface: var(--bg-1);
-  --color-raised: var(--bg-2);
-  --color-overlay: var(--bg-3);
+  --color-bg-subtle: var(--bg-1);
+  --color-surface: var(--bg-2);
+  --color-raised: var(--bg-3);
+  --color-overlay: var(--overlay);
   --color-line: var(--border);
   --color-line-strong: var(--border-strong);
+  --color-control: var(--control-border);
   --color-fg: var(--text-1);
   --color-fg-muted: var(--text-2);
   --color-fg-subtle: var(--text-3);
+  --color-fg-disabled: var(--fg-disabled);
 
   /* Interactive */
   --color-accent: var(--accent);
@@ -19,64 +22,166 @@
   --color-accent-press: var(--accent-press);
   --color-accent-subtle: var(--accent-subtle);
   --color-on-accent: var(--on-accent);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-press: var(--brand-press);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-on-brand: var(--on-brand);
+  --color-cream: var(--cream);
+  --color-on-cream: var(--on-cream);
+  --color-on-orange: var(--on-orange);
+  --color-orange-300: var(--orange-300);
+  --color-orange-400: var(--orange-400);
+  --color-orange-500: var(--orange-500);
+  --color-orange-600: var(--orange-600);
+  --color-orange-700: var(--orange-700);
+  --color-purple-300: var(--purple-300);
+  --color-purple-400: var(--purple-400);
+  --color-purple-500: var(--purple-500);
+  --color-purple-600: var(--purple-600);
+  --color-purple-900: var(--purple-900);
 
   /* Status (semantic only) */
   --color-win: var(--win);
+  --color-success: var(--win);
   --color-loss: var(--loss);
+  --color-danger: var(--loss);
   --color-dispute: var(--dispute);
+  --color-warning: var(--dispute);
+  --color-info: var(--brand);
   --color-scrim: var(--scrim);
 
-  /* shadcn variable mapping (Design §12) */
+  /* shadcn variable mapping */
   --color-background: var(--bg-0);
   --color-foreground: var(--text-1);
-  --color-card: var(--bg-1);
-  --color-popover: var(--bg-2);
+  --color-card: var(--bg-2);
+  --color-popover: var(--bg-3);
   --color-primary: var(--accent);
   --color-primary-foreground: var(--on-accent);
-  --color-muted: var(--bg-2);
+  --color-secondary: var(--bg-3);
+  --color-secondary-foreground: var(--text-1);
+  --color-muted: var(--bg-3);
   --color-muted-foreground: var(--text-2);
+  --color-accent-foreground: var(--on-accent);
   --color-destructive: var(--loss);
+  --color-destructive-foreground: var(--on-accent);
   --color-ring: var(--accent);
-  --color-input: var(--border);
+  --color-input: var(--control-border);
 
   /* Type */
-  --font-display: var(--font-chakra), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-chakra-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  --font-display: var(--font-unbounded, "Unbounded"), var(--font-stack-display);
+  --font-body: var(--font-space-grotesk, "Space Grotesk"), var(--font-stack-body);
+  --font-mono: var(--font-stack-mono);
+  --font-sans: var(--font-body);
 
-  --text-display: 32px;
-  --text-display--line-height: 36px;
-  --text-h1: 24px;
-  --text-h1--line-height: 28px;
-  --text-h2: 20px;
-  --text-h2--line-height: 24px;
-  --text-h3: 16px;
-  --text-h3--line-height: 20px;
-  --text-body: 16px;
-  --text-body--line-height: 24px;
-  --text-body-sm: 14px;
-  --text-body-sm--line-height: 20px;
-  --text-caption: 12px;
-  --text-caption--line-height: 16px;
-  --text-label: 12px;
-  --text-label--line-height: 16px;
-  --text-stat-lg: 28px;
-  --text-stat-lg--line-height: 32px;
-  --text-stat-md: 18px;
-  --text-stat-md--line-height: 24px;
+  --text-display: var(--type-display-size);
+  --text-display--line-height: var(--type-display-line);
+  --text-display--font-weight: var(--type-display-weight);
+  --text-display--letter-spacing: var(--type-display-tracking);
+  --text-h1: var(--type-h1-size);
+  --text-h1--line-height: var(--type-h1-line);
+  --text-h1--font-weight: var(--type-h1-weight);
+  --text-h1--letter-spacing: var(--type-h1-tracking);
+  --text-h2: var(--type-h2-size);
+  --text-h2--line-height: var(--type-h2-line);
+  --text-h2--font-weight: var(--type-h2-weight);
+  --text-h3: var(--type-h3-size);
+  --text-h3--line-height: var(--type-h3-line);
+  --text-h3--font-weight: var(--type-h3-weight);
+  --text-body: var(--type-body-size);
+  --text-body--line-height: var(--type-body-line);
+  --text-body--font-weight: var(--type-body-weight);
+  --text-body-sm: var(--type-body-sm-size);
+  --text-body-sm--line-height: var(--type-body-sm-line);
+  --text-body-sm--font-weight: var(--type-body-sm-weight);
+  --text-caption: var(--type-caption-size);
+  --text-caption--line-height: var(--type-caption-line);
+  --text-caption--font-weight: var(--type-caption-weight);
+  --text-label: var(--type-label-size);
+  --text-label--line-height: var(--type-label-line);
+  --text-label--font-weight: var(--type-label-weight);
+  --text-label--letter-spacing: var(--type-label-tracking);
+  --text-stat-lg: var(--type-stat-lg-size);
+  --text-stat-lg--line-height: var(--type-stat-lg-line);
+  --text-stat-lg--font-weight: var(--type-stat-lg-weight);
+  --text-stat-lg--letter-spacing: var(--type-stat-lg-tracking);
+  --text-stat-md: var(--type-stat-md-size);
+  --text-stat-md--line-height: var(--type-stat-md-line);
+  --text-stat-md--font-weight: var(--type-stat-md-weight);
 
-  /* Radius scale 0/2/4/6 (Design §4) */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-control: 2px;
-  --radius-card: 4px;
-  --radius-modal: 6px;
+  /* Marketing type */
+  --text-mk-display-xl: var(--type-mk-display-xl-size);
+  --text-mk-display-xl--line-height: var(--type-mk-display-xl-line);
+  --text-mk-display-xl--font-weight: var(--type-mk-display-xl-weight);
+  --text-mk-display-xl--letter-spacing: var(--type-mk-display-xl-tracking);
+  --text-mk-display-lg: var(--type-mk-display-lg-size);
+  --text-mk-display-lg--line-height: var(--type-mk-display-lg-line);
+  --text-mk-display-lg--font-weight: var(--type-mk-display-lg-weight);
+  --text-mk-display-lg--letter-spacing: var(--type-mk-display-lg-tracking);
+  --text-mk-h1: var(--type-mk-h1-size);
+  --text-mk-h1--line-height: var(--type-mk-h1-line);
+  --text-mk-h1--font-weight: var(--type-mk-h1-weight);
+  --text-mk-h1--letter-spacing: var(--type-mk-h1-tracking);
+  --text-mk-h2: var(--type-mk-h2-size);
+  --text-mk-h2--line-height: var(--type-mk-h2-line);
+  --text-mk-h2--font-weight: var(--type-mk-h2-weight);
+  --text-mk-h2-mixed: var(--type-mk-h2-mixed-size);
+  --text-mk-h2-mixed--line-height: var(--type-mk-h2-mixed-line);
+  --text-mk-h2-mixed--font-weight: var(--type-mk-h2-mixed-weight);
+  --text-mk-h3: var(--type-mk-h3-size);
+  --text-mk-h3--line-height: var(--type-mk-h3-line);
+  --text-mk-h3--font-weight: var(--type-mk-h3-weight);
+  --text-mk-h3--letter-spacing: var(--type-mk-h3-tracking);
+  --text-mk-metric: var(--type-mk-metric-size);
+  --text-mk-metric--line-height: var(--type-mk-metric-line);
+  --text-mk-metric--font-weight: var(--type-mk-metric-weight);
+  --text-mk-body-lg: var(--type-mk-body-lg-size);
+  --text-mk-body-lg--line-height: var(--type-mk-body-lg-line);
+  --text-mk-body-lg--font-weight: var(--type-mk-body-lg-weight);
+  --text-mk-body: var(--type-mk-body-size);
+  --text-mk-body--line-height: var(--type-mk-body-line);
+  --text-mk-body--font-weight: var(--type-mk-body-weight);
+  --text-mk-caption: var(--type-mk-caption-size);
+  --text-mk-caption--line-height: var(--type-mk-caption-line);
+  --text-mk-caption--font-weight: var(--type-mk-caption-weight);
+  --text-mk-caption--letter-spacing: var(--type-mk-caption-tracking);
+  --text-mk-label: var(--type-mk-label-size);
+  --text-mk-label--line-height: var(--type-mk-label-line);
+  --text-mk-label--font-weight: var(--type-mk-label-weight);
+  --text-mk-label--letter-spacing: var(--type-mk-label-tracking);
+  --text-mk-button: var(--type-mk-button-size);
+  --text-mk-button--line-height: var(--type-mk-button-line);
+  --text-mk-button--font-weight: var(--type-mk-button-weight);
+  --text-mk-button--letter-spacing: var(--type-mk-button-tracking);
+  --text-mk-legal: var(--type-mk-legal-size);
+  --text-mk-legal--line-height: var(--type-mk-legal-line);
+  --text-mk-legal--font-weight: var(--type-mk-legal-weight);
+
+  /* Radius */
+  --radius-xs: var(--radius-token-xs);
+  --radius-sm: var(--radius-token-sm);
+  --radius-md: var(--radius-token-md);
+  --radius-lg: var(--radius-token-lg);
+  --radius-control: var(--radius-token-control);
+  --radius-card: var(--radius-token-card);
+  --radius-modal: var(--radius-token-modal);
+  --radius-pill: var(--radius-token-pill);
+
+  /* Elevation (hard shadows, no soft drop shadows) */
+  --shadow-card: var(--elevation-card);
+  --shadow-hard: var(--elevation-hard);
+  --shadow-toast: var(--elevation-toast);
+  --shadow-glow: var(--elevation-glow);
 
   /* Motion */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: var(--motion-ease-standard);
+  --ease-enter: var(--motion-ease-enter);
+  --ease-exit: var(--motion-ease-exit);
 
-  /* Breakpoints */
+  /* Layout */
+  --container-content: var(--layout-max-content);
+  --container-marketing: var(--layout-marketing);
+  --container-reading: var(--layout-reading);
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
@@ -88,7 +193,14 @@
     border-color: var(--border);
   }
 
+  :root {
+    /* Legacy aliases until the remaining Chakra-era screens are migrated. */
+    --font-chakra: var(--font-unbounded, "Unbounded");
+    --font-chakra-body: var(--font-space-grotesk, "Space Grotesk");
+  }
+
   html {
+    background-color: var(--bg-0);
     color-scheme: dark;
   }
 
@@ -102,11 +214,22 @@
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  ::placeholder {
+    color: var(--text-3);
+    opacity: 1;
   }
 
   :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: var(--border-focus-offset);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -132,32 +255,74 @@
 
   .label-caps {
     font-family: var(--font-display);
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 600;
+    font-size: var(--type-label-size);
+    line-height: var(--type-label-line);
+    font-weight: var(--type-label-weight);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--type-label-tracking);
   }
 
   .chamfer {
     clip-path: polygon(
-      6px 0,
+      var(--chamfer-md) 0,
       100% 0,
-      100% calc(100% - 6px),
-      calc(100% - 6px) 100%,
+      100% calc(100% - var(--chamfer-md)),
+      calc(100% - var(--chamfer-md)) 100%,
       0 100%,
-      0 6px
+      0 var(--chamfer-md)
     );
   }
 
+  .chamfer-sm {
+    clip-path: polygon(
+      var(--chamfer-sm) 0,
+      100% 0,
+      100% calc(100% - var(--chamfer-sm)),
+      calc(100% - var(--chamfer-sm)) 100%,
+      0 100%,
+      0 var(--chamfer-sm)
+    );
+  }
+
+  .chamfer-lg {
+    clip-path: polygon(
+      var(--chamfer-lg) 0,
+      100% 0,
+      100% calc(100% - var(--chamfer-lg)),
+      calc(100% - var(--chamfer-lg)) 100%,
+      0 100%,
+      0 var(--chamfer-lg)
+    );
+  }
+
+  .pixel-bite {
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--pixel-bite)) 0,
+      100% var(--pixel-bite),
+      100% 100%,
+      var(--pixel-bite) 100%,
+      0 calc(100% - var(--pixel-bite))
+    );
+  }
+
+  .checker-band {
+    background-image: repeating-conic-gradient(
+      from 0deg,
+      var(--accent) 0deg 90deg,
+      var(--bg-0) 90deg 180deg
+    );
+    background-size: 8px 8px;
+  }
+
   .animate-in {
-    animation: animate-in var(--motion-default) var(--ease-standard);
+    animation: animate-in var(--motion-default) var(--ease-enter);
   }
 
   @keyframes animate-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;

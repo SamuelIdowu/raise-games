@@ -39,9 +39,7 @@ export function ConfirmedSummary({ match, onDone }: { match: MatchDetail; onDone
       className={cn(
         'flex flex-col items-center gap-4 rounded-card border bg-surface p-6 text-center',
         // Glow is reserved for the rank badge and the win-confirmed state (Design §4).
-        won
-          ? 'border-win/50 shadow-[0_0_0_1px_var(--accent),0_0_12px_rgba(34,211,238,0.35)]'
-          : 'border-line',
+        won ? 'border-win/50 shadow-glow' : 'border-line',
       )}
     >
       <Icon name="check-circle" size={32} className={won ? 'text-win' : 'text-fg-muted'} />

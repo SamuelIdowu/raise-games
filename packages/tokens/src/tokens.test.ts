@@ -1,54 +1,97 @@
 /**
- * Drift guard (Sprint 1 F1.1): tokens.json must match the canonical tables in
- * docs/Design System RAISE (Stage 1).md §2–§5. If the doc changes, update the
- * expected values here in the same PR (token changelog process, doc §13).
+ * Drift guard: tokens.json must match the canonical tables in
+ * docs/Blocks.fun Design System.md. If the design reference changes, update the
+ * expected values here in the same PR. The legacy RAISE Stage 1 cyan system is
+ * intentionally absent.
  */
 import { describe, it, expect } from 'vitest';
 import tokens from '../tokens.json';
 
 const DOC = {
   dark: {
-    bg0: '#0A0C10',
-    bg1: '#11151B',
-    bg2: '#181D25',
-    bg3: '#202733',
-    border: '#2A3340',
-    borderStrong: '#3B4758',
-    text1: '#E8EDF4',
-    text2: '#A3AFBF',
-    text3: '#6B7788',
-    accent: '#22D3EE',
-    accentHover: '#67E8F9',
-    accentPress: '#06B6D4',
-    accentSubtle: 'rgba(34,211,238,0.12)',
-    onAccent: '#031316',
-    scrim: 'rgba(0,0,0,0.6)',
+    bg0: '#0A0C0D',
+    bg1: '#111314',
+    bg2: '#17191A',
+    bg3: '#202223',
+    overlay: '#26292B',
+    border: '#232628',
+    borderStrong: '#34383B',
+    controlBorder: '#5E6469',
+    text1: '#FFFFFF',
+    text2: '#B8BCC0',
+    text3: '#7C8186',
+    fgDisabled: '#4F5459',
+    accent: '#FF4F00',
+    accentHover: '#FF7433',
+    accentPress: '#E04400',
+    accentSubtle: 'rgba(255,79,0,0.12)',
+    onAccent: '#0A0C0D',
+    brand: '#8A2BFF',
+    brandHover: '#A25CFF',
+    brandPress: '#7016E0',
+    brandSubtle: 'rgba(138,43,255,0.16)',
+    onBrand: '#FFFFFF',
+    orange300: '#FF9A66',
+    orange400: '#FF7433',
+    orange500: '#FF4F00',
+    orange600: '#E04400',
+    orange700: '#A83300',
+    purple300: '#C08BFF',
+    purple400: '#A25CFF',
+    purple500: '#8A2BFF',
+    purple600: '#7016E0',
+    purple900: '#2A0F55',
+    cream: '#F1EEE8',
+    onCream: '#0A0C0D',
+    onOrange: '#0A0C0D',
+    scrim: 'rgba(0,0,0,0.64)',
   },
   light: {
-    bg0: '#F6F8FA',
-    bg1: '#FFFFFF',
-    bg2: '#EEF2F6',
-    bg3: '#E3E9F0',
-    border: '#D3DAE3',
-    borderStrong: '#A9B4C2',
-    text1: '#0E141B',
-    text2: '#4A5666',
-    text3: '#7A8798',
-    accent: '#0E7490',
-    accentHover: '#155E75',
-    accentPress: '#164E63',
-    accentSubtle: 'rgba(14,116,144,0.10)',
+    bg0: '#F5F1E8',
+    bg1: '#EDE8DD',
+    bg2: '#FFFFFF',
+    bg3: '#F8F5EF',
+    overlay: '#E7E1D5',
+    border: '#D6CFC2',
+    borderStrong: '#B4AB9B',
+    controlBorder: '#8F8575',
+    text1: '#0A0C0D',
+    text2: '#3A3F43',
+    text3: '#62686D',
+    fgDisabled: '#8E9499',
+    accent: '#A83300',
+    accentHover: '#8F2A00',
+    accentPress: '#752200',
+    accentSubtle: 'rgba(168,51,0,0.10)',
     onAccent: '#FFFFFF',
-    scrim: 'rgba(14,20,27,0.45)',
+    brand: '#7016E0',
+    brandHover: '#5C10BC',
+    brandPress: '#480B96',
+    brandSubtle: 'rgba(112,22,224,0.10)',
+    onBrand: '#FFFFFF',
+    orange300: '#FF9A66',
+    orange400: '#FF7433',
+    orange500: '#FF4F00',
+    orange600: '#E04400',
+    orange700: '#A83300',
+    purple300: '#C08BFF',
+    purple400: '#A25CFF',
+    purple500: '#8A2BFF',
+    purple600: '#7016E0',
+    purple900: '#2A0F55',
+    cream: '#F1EEE8',
+    onCream: '#0A0C0D',
+    onOrange: '#0A0C0D',
+    scrim: 'rgba(10,12,13,0.48)',
   },
   status: {
-    win: { dark: '#34D399', light: '#047857' },
-    loss: { dark: '#F87171', light: '#B91C1C' },
-    dispute: { dark: '#FBBF24', light: '#B45309' },
+    win: { dark: '#A3E635', light: '#4D7C0F' },
+    loss: { dark: '#FF3B3B', light: '#B91C1C' },
+    dispute: { dark: '#FFC93C', light: '#92400E' },
   },
 };
 
-describe('tokens.json color tables match the design doc (§2)', () => {
+describe('tokens.json color tables match the Blocks design reference', () => {
   it('dark theme', () => {
     expect(tokens.color.dark).toEqual(DOC.dark);
   });
@@ -58,51 +101,135 @@ describe('tokens.json color tables match the design doc (§2)', () => {
   it('status colors', () => {
     expect(tokens.color.status).toEqual(DOC.status);
   });
+  it('does not contain the legacy cyan accent', () => {
+    expect(JSON.stringify(tokens)).not.toMatch(/#22D3EE|#67E8F9|#06B6D4/i);
+  });
+  it('uses accessible light-theme accent and control borders', () => {
+    expect(tokens.color.light.accent).toBe('#A83300');
+    expect(tokens.color.light.onAccent).toBe('#FFFFFF');
+    expect(tokens.color.dark.controlBorder).toBe('#5E6469');
+    expect(tokens.color.light.controlBorder).toBe('#8F8575');
+  });
 });
 
-describe('tokens.json typography matches the design doc (§3)', () => {
-  it('type scale', () => {
+describe('tokens.json typography matches the Blocks type system', () => {
+  it('font families', () => {
+    expect(tokens.typography.fontDisplay).toContain('Unbounded');
+    expect(tokens.typography.fontBody).toContain('Space Grotesk');
+    expect(tokens.typography.fontMono).toContain('ui-monospace');
+  });
+  it('app type scale stays readable', () => {
     expect(tokens.typography.scale).toEqual({
-      display: { size: 32, line: 36, weight: 700, face: 'display' },
-      h1: { size: 24, line: 28, weight: 600, face: 'display' },
-      h2: { size: 20, line: 24, weight: 600, face: 'display' },
-      h3: { size: 16, line: 20, weight: 600, face: 'display' },
-      body: { size: 16, line: 24, weight: 400, face: 'body' },
-      bodySm: { size: 14, line: 20, weight: 400, face: 'body' },
-      caption: { size: 12, line: 16, weight: 500, face: 'body' },
+      display: {
+        size: 40,
+        line: 40,
+        weight: 900,
+        face: 'display',
+        tracking: '-0.02em',
+      },
+      h1: { size: 32, line: 35, weight: 800, face: 'display', tracking: '-0.01em' },
+      h2: { size: 24, line: 29, weight: 800, face: 'display' },
+      h3: { size: 18, line: 23, weight: 700, face: 'display' },
+      body: { size: 14, line: 21, weight: 500, face: 'body' },
+      bodySm: { size: 13, line: 19, weight: 500, face: 'body' },
+      caption: { size: 12, line: 17, weight: 500, face: 'body' },
       label: {
-        size: 12,
-        line: 16,
+        size: 11,
+        line: 11,
         weight: 600,
         face: 'display',
         transform: 'uppercase',
-        tracking: '0.06em',
+        tracking: '0.1em',
       },
-      statLg: { size: 28, line: 32, weight: 600, face: 'display', tabular: true },
-      statMd: { size: 18, line: 24, weight: 600, face: 'display', tabular: true },
+      statLg: {
+        size: 40,
+        line: 40,
+        weight: 900,
+        face: 'display',
+        tabular: true,
+        tracking: '-0.02em',
+      },
+      statMd: { size: 24, line: 26, weight: 800, face: 'display', tabular: true },
     });
+  });
+  it('marketing display scale', () => {
+    expect(tokens.typography.marketingScale.displayXl).toEqual({
+      size: 'clamp(2.75rem, 6vw, 5rem)',
+      line: 0.9,
+      weight: 900,
+      face: 'display',
+      transform: 'uppercase',
+      tracking: '-0.02em',
+    });
+    expect(tokens.typography.marketingScale.h2).toMatchObject({
+      size: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+      weight: 900,
+      transform: 'uppercase',
+    });
+    expect(tokens.typography.marketingScale.legal.size).toBe(10);
   });
 });
 
-describe('tokens.json spacing/layout/shape/motion match the design doc (§4–§5)', () => {
+describe('tokens.json spacing/layout/shape/motion match the Blocks system', () => {
   it('spacing scale', () => {
-    expect(tokens.spacing.scale).toEqual([4, 8, 12, 16, 20, 24, 32, 40, 48, 64]);
-    expect(tokens.spacing.sectionGap).toBe(24);
-    expect(tokens.spacing.pageMargin).toEqual({ mobile: 16, tablet: 24, desktop: 32 });
+    expect(tokens.spacing.scale).toEqual([4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 96, 128]);
+    expect(tokens.spacing.sectionGap).toBe(64);
+    expect(tokens.spacing.section).toEqual({ sm: 64, md: 96, lg: 128 });
+    expect(tokens.spacing.pageMargin).toEqual({ mobile: 16, tablet: 24, desktop: 48 });
   });
   it('layout', () => {
-    expect(tokens.layout.breakpoints).toEqual({ base: 360, sm: 640, md: 768, lg: 1024, xl: 1280 });
+    expect(tokens.layout.breakpoints).toEqual({
+      base: 320,
+      sm: 640,
+      md: 768,
+      lg: 1024,
+      xl: 1280,
+    });
     expect(tokens.layout.maxContentWidth).toBe(1200);
+    expect(tokens.layout.marketingWidth).toBe(880);
+    expect(tokens.layout.headerHeight).toEqual({ mobile: 56, desktop: 72 });
     expect(tokens.layout.sidebarWidth).toBe(240);
     expect(tokens.layout.sidebarIcon).toBe(72);
     expect(tokens.layout.bottomNavHeight).toBe(56);
     expect(tokens.layout.touchTargetMin).toBe(44);
   });
-  it('radius scale is 0/2/4/6', () => {
-    expect(tokens.radius).toEqual({ table: 0, control: 2, card: 4, modal: 6 });
+  it('radius, border and shape', () => {
+    expect(tokens.radius).toEqual({
+      table: 0,
+      xs: 4,
+      sm: 6,
+      md: 12,
+      lg: 16,
+      control: 6,
+      card: 12,
+      modal: 16,
+      pill: 999,
+    });
+    expect(tokens.border).toEqual({
+      hairline: 1,
+      selected: 2,
+      focus: 2,
+      focusOffset: 2,
+      control: 1,
+    });
+    expect(tokens.shape).toEqual({
+      chamfer: { sm: 10, md: 16, lg: 28 },
+      pixelBite: 8,
+    });
   });
-  it('motion durations and easing', () => {
-    expect(tokens.motion.durationMs).toMatchObject({ micro: 100, default: 160, sheet: 240 });
-    expect(tokens.motion.easing).toBe('cubic-bezier(0.2, 0, 0, 1)');
+  it('elevation and motion', () => {
+    expect(tokens.elevation.card.dark).toContain('inset');
+    expect(tokens.elevation.hard.light).toContain('4px 4px 0');
+    expect(tokens.elevation.glow).toContain('#FF4F00');
+    expect(tokens.motion.durationMs).toEqual({
+      micro: 120,
+      default: 200,
+      slow: 400,
+      sheet: 240,
+      ambient: 7000,
+      countUp: [600, 900],
+    });
+    expect(tokens.motion.easing).toBe('cubic-bezier(0.22, 1, 0.36, 1)');
+    expect(tokens.zIndex).toEqual({ base: 0, sticky: 30, nav: 40, sheet: 50, toast: 60 });
   });
 });
