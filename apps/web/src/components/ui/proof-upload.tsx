@@ -113,8 +113,8 @@ export function ProofUpload({
       {state.status === 'idle' ? (
         <div
           className={cn(
-            'flex flex-col gap-2 rounded-card border border-dashed bg-raised p-3',
-            error ? 'border-loss' : 'border-line-strong',
+            'flex flex-col gap-2 rounded-card border-2 border-dashed bg-raised p-3',
+            error ? 'border-loss' : 'border-accent',
           )}
         >
           <div className="flex flex-wrap gap-2">
@@ -190,7 +190,7 @@ export function ProofUpload({
 
             {state.status === 'uploading' ? (
               <div
-                className="h-1 w-full overflow-hidden rounded-[2px] bg-overlay"
+                className="h-1 w-full overflow-hidden rounded-sm bg-overlay"
                 role="progressbar"
                 aria-label={copy.uploading(state.progress)}
                 aria-valuemin={0}

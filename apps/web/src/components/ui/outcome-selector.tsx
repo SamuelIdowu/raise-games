@@ -59,7 +59,7 @@ export function OutcomeSelector<T extends string>({
             <span
               aria-hidden
               className={cn(
-                'flex size-5 shrink-0 items-center justify-center rounded-[2px] border',
+                'flex size-5 shrink-0 items-center justify-center rounded-sm border',
                 selected ? 'border-accent bg-accent text-on-accent' : 'border-line-strong',
               )}
             >

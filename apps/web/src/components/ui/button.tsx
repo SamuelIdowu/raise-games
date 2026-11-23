@@ -6,10 +6,13 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-control border font-display font-semibold leading-none transition-colors duration-[var(--motion-micro)] ease-standard disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  'inline-flex items-center justify-center gap-2 rounded-control border font-display font-semibold leading-none ' +
+  'transition-colors duration-[var(--motion-micro)] ease-standard ' +
+  'disabled:cursor-not-allowed disabled:opacity-40 ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px]',
+  sm: 'h-11 px-3 text-caption', // 44px min touch target
   md: 'h-11 px-4 text-h3',
   lg: 'h-12 px-5 text-h3',
 };
@@ -17,7 +20,7 @@ const sizes: Record<ButtonSize, string> = {
 const variants: Record<ButtonVariant, string> = {
   primary:
     'border-transparent bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-press',
-  secondary: 'border-line-strong bg-transparent text-fg hover:bg-overlay active:bg-overlay',
+  secondary: 'border-control bg-transparent text-fg hover:bg-overlay active:bg-overlay',
   ghost:
     'border-transparent bg-transparent text-accent hover:bg-accent-subtle active:bg-accent-subtle',
   danger: 'border-loss bg-transparent text-loss hover:bg-loss/10 active:bg-loss/20',

@@ -86,8 +86,10 @@ export function OtpInput({
             aria-label={`Digit ${index + 1} of ${length}`}
             aria-invalid={error ? true : undefined}
             className={cn(
-              'h-[52px] w-11 rounded-control border bg-raised text-center font-display text-[20px] text-fg tabular focus:border-accent focus:outline-none disabled:opacity-40',
-              error ? 'border-loss' : 'border-line',
+              'h-11 w-11 rounded-control border bg-raised text-center font-display text-h3 font-semibold text-fg tabular ' +
+                'focus:border-accent focus:outline-none disabled:opacity-40 ' +
+                'transition-colors duration-[var(--motion-micro)] ease-standard',
+              error ? 'border-loss' : 'border-control',
             )}
           />
         ))}

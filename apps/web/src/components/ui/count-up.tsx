@@ -5,13 +5,13 @@ import { cn } from '@/lib/cn';
 
 export interface CountUpProps {
   value: number;
-  /** Clamped to the doc's 240–400ms signature window. */
+  /** Clamped to the doc's 600–900ms signature window. */
   duration?: number;
   className?: string;
 }
 
 /** Signature moment stub: rating count-up on result-confirmed (Design §5). */
-export function CountUp({ value, duration = 300, className }: CountUpProps) {
+export function CountUp({ value, duration = 750, className }: CountUpProps) {
   const [display, setDisplay] = useState(value);
   const previous = useRef(value);
 
@@ -25,7 +25,7 @@ export function CountUp({ value, duration = 300, className }: CountUpProps) {
       return;
     }
 
-    const ms = Math.min(Math.max(duration, 240), 400);
+    const ms = Math.min(Math.max(duration, 600), 900);
     const start = performance.now();
     let frame = 0;
 

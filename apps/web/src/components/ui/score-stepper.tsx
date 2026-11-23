@@ -17,9 +17,10 @@ export interface ScoreStepperProps {
 }
 
 const stepButton =
-  'inline-flex size-11 shrink-0 items-center justify-center rounded-control border border-line-strong text-fg ' +
+  'inline-flex size-11 shrink-0 items-center justify-center rounded-control border border-control text-fg ' +
   'transition-colors duration-[var(--motion-micro)] ease-standard hover:bg-overlay active:bg-overlay ' +
-  'disabled:cursor-not-allowed disabled:opacity-40';
+  'disabled:cursor-not-allowed disabled:opacity-40 ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 /**
  * Score stepper driven by the game config (Design §8 result sheet): 44px targets,
