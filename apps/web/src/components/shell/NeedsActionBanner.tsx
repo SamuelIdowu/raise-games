@@ -31,7 +31,7 @@ export function NeedsActionBanner() {
           <button
             type="button"
             onClick={() => setDismissed((prev) => new Set(prev).add(first.matchId))}
-            className="min-h-11 px-2 text-caption text-accent hover:underline"
+            className="min-h-11 px-3 text-caption text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Dismiss
           </button>

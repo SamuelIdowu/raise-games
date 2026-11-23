@@ -1,33 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import { useGame } from './GameProvider';
 import { Button, Icon, Sheet, type SheetProps } from '@/components/ui';
 
-const GAMES = [
-  { id: 'fifa25', label: 'FIFA 25', icon: 'gamepad-2' },
-  { id: 'cod', label: 'Call of Duty', icon: 'gamepad-2' },
-  { id: 'tekken8', label: 'Tekken 8', icon: 'gamepad-2' },
-  { id: 'streetfighter6', label: 'Street Fighter 6', icon: 'gamepad-2' },
-] as const;
-
 interface GameSwitcherProps extends Pick<SheetProps, 'size'> {
-  currentGame: string;
-  onChange: (gameId: string) => void;
+  // Props kept for backward compatibility; values come from GameProvider
+  currentGame?: never;
+  onChange?: never;
 }
 
-export function GameSwitcher({ currentGame, onChange, size = 'sm' }: GameSwitcherProps) {
+export function GameSwitcher({ size = 'sm' }: GameSwitcherProps) {
+  const { currentGame, setCurrentGame, games } = useGame();
   const [open, setOpen] = useState(false);
 
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title="Switch game" size={size}>
       <ul className="flex flex-col gap-1" role="listbox" aria-label="Select game">
-        {GAMES.map((game) => (
+        {games.map((game) => (
           <li key={game.id}>
             <button
               role="option"
               aria-selected={game.id === currentGame}
               onClick={() => {
-                onChange(game.id);
+                setCurrentGame(game.id);
                 setOpen(false);
               }}
               className={`flex w-full items-center gap-3 px-3 py-2 rounded-card text-fg hover:bg-overlay ${
@@ -47,8 +43,9 @@ export function GameSwitcher({ currentGame, onChange, size = 'sm' }: GameSwitche
   );
 }
 
-export function GameSwitcherTrigger({ currentGame }: { currentGame: string }) {
-  const current = GAMES.find((g) => g.id === currentGame) ?? GAMES[0];
+export function GameSwitcherTrigger() {
+  const { currentGame, games } = useGame();
+  const current = games.find((g) => g.id === currentGame) ?? games[0];
   return (
     <Button variant="ghost" size="sm" aria-haspopup="listbox" aria-expanded="false">
       <Icon name="gamepad-2" size={20} />

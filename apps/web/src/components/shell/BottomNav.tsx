@@ -13,7 +13,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: '/', label: 'Home', icon: 'home' },
+  { href: '/home', label: 'Home', icon: 'home' },
   { href: '/play', label: 'Play', icon: 'gamepad-2' },
   { href: '/matches', label: 'Matches', icon: 'trophy' },
   { href: '/inbox', label: 'Inbox', icon: 'mail' },
@@ -21,7 +21,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
 ] as const;
 
 export function isActive(pathname: string, href: string): boolean {
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === '/home') return pathname === '/home' || pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 /** Badge count per nav item (Design §8: Matches counts items needing action). */
