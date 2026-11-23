@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="64" fill="#0a0a0b"/>
-  <text x="256" y="340" font-family="system-ui, sans-serif" font-size="220" font-weight="700" fill="#00d4aa" text-anchor="middle" dominant-baseline="central">R</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="512" height="512" role="img" aria-label="RAISE">
+  <rect width="192" height="192" rx="28" fill="#0A0C0D"/>
+  <path d="M52 128 L96 62 L140 128" fill="none" stroke="#FF4F00" stroke-width="20" stroke-linejoin="miter" stroke-linecap="butt"/>
+  <path d="M74 108 L96 75 L118 108" fill="none" stroke="#F1EEE8" stroke-width="14" stroke-linejoin="miter" stroke-linecap="butt"/>
+  <rect x="60" y="140" width="72" height="10" fill="#F1EEE8"/>
 </svg>

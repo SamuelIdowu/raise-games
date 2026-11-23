@@ -107,6 +107,16 @@ export default function DesignPage() {
         </div>
       </Section>
 
+      <Section title="Marketing typography scale (Unbounded only)">
+        <div className="flex flex-col gap-3">
+          <p className="font-display text-mk-display font-bold text-fg">Marketing display 40/48</p>
+          <p className="font-display text-mk-h1 font-bold text-fg">Marketing H1 32/40</p>
+          <p className="font-display text-mk-h2 font-bold text-fg">Marketing H2 24/32</p>
+          <p className="font-display text-mk-h3 font-semibold text-fg">Marketing H3 20/28</p>
+          <p className="text-mk-body text-fg">Marketing body 16/24 — for landing pages.</p>
+        </div>
+      </Section>
+
       <Section title="Color tokens">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {swatches.map((swatch) => (
@@ -255,8 +265,8 @@ export default function DesignPage() {
           ))}
         </div>
         <p className="text-caption text-fg-muted">
-          Tabular figures at 12px stay column-aligned. Chakra Petch keeps them at 12–14px
-          (provisional, device test outstanding).
+          Tabular figures at 12px stay column-aligned. Unbounded keeps them at 12–14px (provisional,
+          device test outstanding).
         </p>
       </Section>
 

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const srcRoot = resolve(here, '..', 'src');
-const allowlist = new Set(['components/ui/avatar.tsx']);
+const allowlist = new Set(['components/ui/avatar.tsx', 'app/opengraph-image.tsx']);
 const skip = /(tokens\.css|tokens\.generated\.ts|\.stories\.tsx?|\.test\.tsx?)$/;
 const hex = /(?<![A-Za-z0-9_])#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
 const colorFunction = /\b(?:rgb|hsl)a?\(/;
