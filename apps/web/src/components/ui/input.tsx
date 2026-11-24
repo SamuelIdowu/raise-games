@@ -25,7 +25,7 @@ export function Input({
   return (
     <div className={cn('flex flex-col gap-1', containerClassName)}>
       {label ? (
-        <label htmlFor={inputId} className="text-body-sm text-fg-muted">
+        <label htmlFor={inputId} className="label-caps text-fg-muted">
           {label}
         </label>
       ) : null}
@@ -34,9 +34,9 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         className={cn(
-          'h-11 w-full rounded-control border bg-raised px-3 text-body text-fg placeholder:text-fg-subtle ' +
+          'h-11 w-full rounded-control border bg-surface px-3 text-body text-fg placeholder:text-fg-subtle ' +
             'focus:border-accent focus:outline-none transition-colors duration-[var(--motion-micro)] ease-standard',
-          error ? 'border-loss' : 'border-control',
+          error ? 'border-loss' : 'border-line-strong hover:border-control',
           className,
         )}
         {...props}

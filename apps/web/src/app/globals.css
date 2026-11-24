@@ -197,6 +197,17 @@
     /* Legacy aliases until the remaining Chakra-era screens are migrated. */
     --font-chakra: var(--font-unbounded, "Unbounded");
     --font-chakra-body: var(--font-space-grotesk, "Space Grotesk");
+
+    /* Blocks.fun §7.3 secondary: cream on dark, ink on light. */
+    --btn-secondary-bg: var(--cream);
+    --btn-secondary-fg: var(--on-cream);
+    --btn-secondary-hover: var(--text-1);
+  }
+
+  [data-theme="light"] {
+    --btn-secondary-bg: var(--text-1);
+    --btn-secondary-fg: var(--bg-2);
+    --btn-secondary-hover: var(--text-2);
   }
 
   html {
@@ -254,7 +265,7 @@
   }
 
   .label-caps {
-    font-family: var(--font-display);
+    font-family: var(--font-body);
     font-size: var(--type-label-size);
     line-height: var(--type-label-line);
     font-weight: var(--type-label-weight);
@@ -293,6 +304,73 @@
       0 100%,
       0 var(--chamfer-lg)
     );
+  }
+
+  /* Blocks.fun §5.2: single top-right notch (stat cards, banners). */
+  .chamfer-tr {
+    clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%);
+  }
+
+  .chamfer-tr-sm {
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  }
+
+  /* Blocks.fun §5.3: gradient card surface, hairline border, inset top highlight. */
+  .surface-card {
+    background: linear-gradient(180deg, var(--bg-3) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border);
+    box-shadow: var(--elevation-card);
+  }
+
+  [data-theme='light'] .surface-card {
+    background: var(--bg-2);
+  }
+
+  /* Blocks.fun §7.4: 6x6 orange pixel marker before an eyebrow label. */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-body);
+    font-size: var(--type-mk-label-size);
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: var(--type-mk-label-tracking);
+    text-transform: uppercase;
+    color: var(--text-1);
+  }
+
+  .eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    background: var(--orange-500);
+  }
+
+  /* Blocks.fun §2.2: purple spotlight for hero / create cards. */
+  .spotlight-purple {
+    background: radial-gradient(60% 55% at 50% 0%, var(--purple-600) 0%, var(--purple-900) 45%, var(--bg-2) 100%);
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--bg-3) 0%,
+      var(--overlay) 50%,
+      var(--bg-3) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
   }
 
   .pixel-bite {

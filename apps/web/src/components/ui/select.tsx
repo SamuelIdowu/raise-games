@@ -50,7 +50,7 @@ export function Select({
   return (
     <div className={cn('flex flex-col gap-1', containerClassName)}>
       {label ? (
-        <label htmlFor={selectId} className="text-body-sm text-fg-muted">
+        <label htmlFor={selectId} className="label-caps text-fg-muted">
           {label}
         </label>
       ) : null}
@@ -61,12 +61,12 @@ export function Select({
         value={value ?? ''}
         onChange={handleChange}
         className={cn(
-          'h-11 w-full rounded-control border bg-raised px-3 pr-10 py-2 text-body text-fg ' +
+          'h-11 w-full rounded-control border bg-surface px-3 pr-10 py-2 text-body text-fg ' +
             'focus:border-accent focus:outline-none appearance-none ' +
             'bg-[url(\'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2362686D" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M6 9l6 6 6-6"/></svg>\')] ' +
             'bg-no-repeat bg-right-3 bg-center ' +
             'transition-colors duration-[var(--motion-micro)] ease-standard',
-          error ? 'border-loss' : 'border-control',
+          error ? 'border-loss' : 'border-line-strong hover:border-control',
           className,
         )}
         {...props}

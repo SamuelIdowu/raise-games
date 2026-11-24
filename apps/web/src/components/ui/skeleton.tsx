@@ -4,7 +4,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={cn('animate-pulse rounded-sm bg-overlay motion-reduce:animate-none', className)}
+      className={cn('animate-shimmer rounded-xs motion-reduce:animate-none', className)}
     />
   );
 }
@@ -21,7 +21,7 @@ export function SkeletonText({ lines = 1, className }: { lines?: number; classNa
 
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <div className={cn('rounded-card border border-line bg-surface p-4', className)}>
+    <div className={cn('surface-card rounded-card p-4', className)}>
       <Skeleton className="mb-3 h-4 w-1/3" />
       <SkeletonText lines={2} />
     </div>
