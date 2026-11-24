@@ -64,7 +64,6 @@ const SHADCN = [
   ['--accent-foreground', 'var(--on-accent)'],
   ['--destructive', 'var(--loss)'],
   ['--destructive-foreground', 'var(--on-accent)'],
-  ['--border', 'var(--border)'],
   ['--input', 'var(--control-border)'],
   ['--ring', 'var(--accent)'],
 ];
@@ -113,7 +112,7 @@ const radiusLines = Object.entries(tokens.radius)
   .join('\n');
 
 const borderLines = Object.entries(tokens.border)
-  .map(([key, value]) => `  --border-${key}: ${px(value)};`)
+  .map(([key, value]) => `  --border-${typeName(key)}: ${px(value)};`)
   .join('\n');
 
 const shapeLines = [
