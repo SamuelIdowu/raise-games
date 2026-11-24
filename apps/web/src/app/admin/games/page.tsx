@@ -43,7 +43,7 @@ export default function GamesPage() {
       <LoadState error={error} loading={!data && !error} onRetry={reload} />
       {data?.map((g) => (
         <section key={g.id} className="flex flex-col gap-2">
-          <h2 className="font-display text-h2 font-semibold text-fg">{g.name}</h2>
+          <h2 className="font-display text-h2 font-black uppercase text-fg">{g.name}</h2>
           <Table aria-label={`${g.name} formats`}>
             <TableHead>
               <TableHeaderCell>Format</TableHeaderCell>

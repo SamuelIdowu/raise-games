@@ -43,7 +43,7 @@ export function OpponentCard({
   };
 
   return (
-    <section aria-label={heading} className="rounded-card border border-line bg-surface p-4">
+    <section aria-label={heading} className="surface-card rounded-card p-4">
       <h2 className="label-caps mb-3 text-fg-muted">{heading}</h2>
       <div className="flex items-start gap-3">
         <Avatar username={player.username} size={32} />

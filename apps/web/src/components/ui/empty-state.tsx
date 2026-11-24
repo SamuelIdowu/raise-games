@@ -20,12 +20,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center gap-3 rounded-card border border-line bg-surface p-6 text-center',
+        'flex flex-col items-center gap-3 surface-card rounded-card p-6 text-center',
         className,
       )}
     >
       <Icon name={icon} size={32} className="text-fg-subtle" />
-      <h3 className="font-display text-h3 font-semibold text-fg">{title}</h3>
+      <h3 className="font-display text-h3 font-black uppercase text-fg">{title}</h3>
       <p className="max-w-[40ch] text-body-sm text-fg-muted">{description}</p>
       {action ? <div className="mt-1">{action}</div> : null}
     </div>

@@ -258,7 +258,7 @@ export function CreateChallengeSheet({
           <div className="rounded-card border border-line bg-raised p-3">
             <div className="flex items-center justify-between">
               <span className="text-body-sm text-fg">Stake</span>
-              <span className="font-display text-h3 font-semibold text-accent">Free</span>
+              <span className="font-display text-h3 font-black uppercase text-accent">Free</span>
             </div>
             <p className="mt-1 text-caption text-fg-muted">
               All matches are free during the founding season. Ratings and reputation still count.

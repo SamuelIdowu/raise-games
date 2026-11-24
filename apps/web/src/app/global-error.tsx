@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
-import { Button, Banner } from '@/components/ui';
+import { Button, ButtonLink, Banner } from '@/components/ui';
 
 export default function GlobalError({
   error,
@@ -26,7 +25,7 @@ export default function GlobalError({
         <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center gap-6 px-4">
           <div className="text-center">
             <span className="font-display text-[72px] font-bold text-danger">!</span>
-            <h1 className="mt-4 font-display text-h1 font-semibold text-fg">
+            <h1 className="mt-4 font-display text-mk-h1 uppercase text-fg text-balance">
               A critical error occurred
             </h1>
             <p className="mt-2 text-body-sm text-fg-muted">
@@ -42,11 +41,9 @@ export default function GlobalError({
             <Button onClick={reset} fullWidth>
               Refresh page
             </Button>
-            <Link href="/">
-              <Button variant="secondary" fullWidth>
-                Go home
-              </Button>
-            </Link>
+            <ButtonLink href="/" variant="secondary" fullWidth>
+              Go home
+            </ButtonLink>
           </div>
         </main>
       </body>

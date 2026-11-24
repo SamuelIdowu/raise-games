@@ -81,7 +81,9 @@ export default function OtpPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="font-display text-h1 font-semibold text-fg">Verify your phone</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
+          Verify your phone
+        </h1>
         <p className="mt-2 text-body-sm text-fg-muted">
           We sent a 6-digit code to <strong className="text-fg">{phone}</strong>
         </p>

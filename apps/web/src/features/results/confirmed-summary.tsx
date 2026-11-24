@@ -44,7 +44,7 @@ export function ConfirmedSummary({ match, onDone }: { match: MatchDetail; onDone
     >
       <Icon name="check-circle" size={32} className={won ? 'text-win' : 'text-fg-muted'} />
       <div className="flex flex-col items-center gap-2">
-        <h2 id="summary-title" className="font-display text-h1 font-semibold text-fg">
+        <h2 id="summary-title" className="font-display text-mk-h1 uppercase text-fg text-balance">
           {title}
         </h2>
         {tag ? <StatusChip label={tag.label} variant={tag.variant} icon={tag.icon} /> : null}

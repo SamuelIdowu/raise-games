@@ -62,7 +62,7 @@ export default function FeedbackPage() {
   if (sent) {
     return (
       <div className="mx-auto flex max-w-[560px] flex-col gap-4">
-        <h1 className="font-display text-h1 font-semibold text-fg">Thanks</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Thanks</h1>
         <p className="text-body text-fg">
           We read every report during the beta. If it’s about a match result, open a dispute from
           the match too, so a moderator can fix the result itself.
@@ -90,7 +90,7 @@ export default function FeedbackPage() {
 
   return (
     <form onSubmit={submit} className="mx-auto flex max-w-[560px] flex-col gap-4">
-      <h1 className="font-display text-h1 font-semibold text-fg">Send feedback</h1>
+      <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Send feedback</h1>
       <p className="text-body-sm text-fg-muted">
         You’re part of the RAISE beta. Tell us what broke, what confused you, or what you’d change.
       </p>

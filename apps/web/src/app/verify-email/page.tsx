@@ -31,7 +31,7 @@ function VerifyEmail() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-10">
-      <h1 className="font-display text-h1 font-semibold text-fg">Confirm your email</h1>
+      <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Confirm your email</h1>
       {state === 'working' ? <p className="text-body-sm text-fg-muted">Confirming…</p> : null}
       {state === 'done' ? (
         <p className="flex items-center gap-2 text-body text-fg">

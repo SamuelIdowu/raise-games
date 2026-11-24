@@ -26,7 +26,7 @@ function Stat({
       </span>
     </>
   );
-  const cls = 'flex flex-col gap-1 rounded-card border border-line bg-surface p-4';
+  const cls = 'flex flex-col gap-1 surface-card rounded-card p-4';
   return href ? (
     <Link href={href} className={`${cls} hover:border-line-strong`}>
       {body}
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
             />
           </section>
           <section className="flex flex-col gap-2">
-            <h2 className="font-display text-h2 font-semibold text-fg">
+            <h2 className="font-display text-h2 font-black uppercase text-fg">
               Stuck matches <span className="text-fg-muted tabular">({data.stuckMatches})</span>
             </h2>
             {data.stuck.length === 0 ? (

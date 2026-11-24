@@ -7,12 +7,15 @@ import {
   Avatar,
   Banner,
   Button,
-  CountUp,
+  ButtonLink,
+  Card,
   EmptyState,
   Icon,
   RatingBadge,
   RankTierBadge,
+  StatCard,
   StatusChip,
+  PageHeader,
 } from '@/components/ui';
 import {
   challengesApi,
@@ -26,33 +29,6 @@ import { matchChip, outcomeTag } from '@/lib/match-status';
 import { useGame } from '@/components/shell/GameProvider';
 
 const POLL_MS = 20_000;
-
-function StatCard({
-  label,
-  value,
-  change,
-  trend,
-}: {
-  label: string;
-  value: string;
-  change?: string;
-  trend?: 'up' | 'down';
-}) {
-  return (
-    <div className="rounded-card border border-line bg-surface p-4">
-      <p className="label-caps text-fg-muted">{label}</p>
-      <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">{value}</p>
-      {change && (
-        <p
-          className={`mt-1 text-caption font-semibold ${trend === 'up' ? 'text-success' : 'text-danger'}`}
-        >
-          {trend === 'up' ? '+' : ''}
-          {change} vs last week
-        </p>
-      )}
-    </div>
-  );
-}
 
 export default function HomePage() {
   const router = useRouter();
@@ -97,12 +73,12 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-48 bg-overlay rounded-sm" />
+      <div className="space-y-6" aria-busy="true">
+        <div className="animate-shimmer h-8 w-48 rounded-xs" />
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="h-24 bg-overlay rounded-card" />
-          <div className="h-24 bg-overlay rounded-card" />
-          <div className="h-24 bg-overlay rounded-card" />
+          <div className="animate-shimmer chamfer-tr h-28" />
+          <div className="animate-shimmer chamfer-tr h-28" />
+          <div className="animate-shimmer chamfer-tr h-28" />
         </div>
       </div>
     );
@@ -141,67 +117,50 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-h1 font-semibold text-fg">
-            Welcome back, {user?.username ?? 'Player'}
-          </h1>
-          <p className="text-body-sm text-fg-muted">{currentGame} dashboard</p>
-        </div>
-        <Link href="/play">
-          <Button>Find a challenge</Button>
-        </Link>
-      </header>
+      <PageHeader
+        eyebrow={`${currentGame} dashboard`}
+        title={`Welcome back, ${user?.username ?? 'Player'}`}
+        action={
+          <ButtonLink href="/play" arrow>
+            Find a challenge
+          </ButtonLink>
+        }
+      />
 
       {user && (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 rounded-card border border-line bg-surface">
+          <Card className="flex flex-col items-start gap-4 md:flex-row md:items-center">
             <Avatar username={user.username} size={64} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-display text-h1 font-semibold text-fg">{user.username}</h2>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="truncate font-display text-h2 font-black uppercase text-fg">
+                  {user.username}
+                </h2>
                 <StatusChip label="Active" variant="win" />
               </div>
-              <div className="flex items-center gap-4 mt-2 flex-wrap text-body-sm text-fg-muted">
-                <span className="flex items-center gap-1">
-                  <Icon name="trophy" size={16} /> {rating?.tierLabel ?? 'Rookie'}
+              <div className="label-caps flex flex-wrap items-center gap-4 text-fg-subtle">
+                <span className="flex items-center gap-1.5">
+                  <Icon name="trophy" size={14} /> {rating?.tierLabel ?? 'Rookie'}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Icon name="star" size={16} /> {rating?.value ?? 0}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Icon name="shield" size={16} /> {user.reputationLabel ?? 'New'}
+                <span className="flex items-center gap-1.5">
+                  <Icon name="shield" size={14} /> {user.reputationLabel ?? 'New'}
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CountUp
-                value={rating?.value ?? 0}
-                className="font-display text-stat-lg font-semibold text-fg tabular"
-              />
-              <RankTierBadge tier={(parseInt(rating?.tier as string) ?? 1) as 1 | 2 | 3 | 4 | 5} />
-            </div>
-          </div>
+            <RankTierBadge
+              tier={(parseInt(rating?.tier as string) || 1) as 1 | 2 | 3 | 4 | 5}
+              label={rating?.tierLabel}
+            />
+          </Card>
 
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
-            <StatCard label="Rating" value={rating?.value?.toLocaleString('en-NG') ?? '0'} />
-            <StatCard label="Record" value={`${rating?.wins ?? 0}–${rating?.losses ?? 0}`} />
-            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} />
-          </div>
-
-          <div className="flex gap-2 border-b border-line">
-            {(['matches', 'challenges'] as const).map((tab) => (
-              <button
-                key={tab}
-                className={`flex-1 py-2 px-4 font-display text-body-sm font-semibold rounded-t-card transition-colors ${
-                  tab === 'matches'
-                    ? 'text-accent border-b-2 border-accent'
-                    : 'text-fg-muted hover:text-fg'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Rating" value={rating?.value ?? 0} icon="star" />
+            <StatCard
+              label="Record"
+              value={`${rating?.wins ?? 0}-${rating?.losses ?? 0}-${rating?.draws ?? 0}`}
+              icon="trophy"
+            />
+            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="trend-up" />
           </div>
 
           {matches.length > 0 ? (
@@ -213,10 +172,10 @@ export default function HomePage() {
                 <Link
                   key={match.id}
                   href={`/matches/${match.id}`}
-                  className="flex flex-col gap-2 rounded-card border bg-surface p-3 transition-colors hover:border-line-strong"
+                  className="surface-card flex flex-col gap-2 rounded-card p-4 transition-[transform,border-color] hover:-translate-y-0.5 hover:border-line-strong"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-display text-h3 font-semibold text-fg">
+                    <span className="font-display text-h3 font-black uppercase text-fg">
                       {match.game.name} <span className="text-fg-muted">· {match.format.name}</span>
                     </span>
                     <div className="flex items-center gap-2">
@@ -270,9 +229,9 @@ export default function HomePage() {
               title="No matches yet"
               description="Accept a challenge or post your own to start playing."
               action={
-                <Link href="/play">
-                  <Button>Find a challenge</Button>
-                </Link>
+                <ButtonLink href="/play" arrow>
+                  Find a challenge
+                </ButtonLink>
               }
             />
           )}
@@ -285,7 +244,7 @@ export default function HomePage() {
               {challenges.map((c) => (
                 <article
                   key={c.id}
-                  className="flex items-center gap-3 rounded-card border border-line bg-surface p-3"
+                  className="flex items-center gap-3 surface-card rounded-card p-3"
                 >
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="font-display text-body font-semibold text-fg">
@@ -293,7 +252,7 @@ export default function HomePage() {
                     </span>
                     <StatusChip label={c.format.name} variant="neutral" />
                   </div>
-                  <p className="shrink-0 font-display text-h3 font-semibold text-accent tabular">
+                  <p className="shrink-0 font-display text-h3 font-black uppercase text-accent tabular">
                     {c.stake.display}
                   </p>
                 </article>

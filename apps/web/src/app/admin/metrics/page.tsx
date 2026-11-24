@@ -91,7 +91,7 @@ export default function MetricsPage() {
           aria-label="Cohort"
           value={cohort}
           onChange={(e) => setCohort(e.target.value)}
-          className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg"
+          className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="">All players</option>
           {data?.cohorts.map((c) => (
@@ -124,7 +124,7 @@ export default function MetricsPage() {
                 <Link
                   key={k}
                   href={`/admin/feedback${k === 'untriaged' ? '' : `?severity=${k}`}`}
-                  className="flex flex-col gap-1 rounded-card border border-line bg-surface p-4 hover:border-line-strong"
+                  className="flex flex-col gap-1 surface-card rounded-card p-4 hover:border-line-strong"
                 >
                   <span className="label-caps text-fg-muted">
                     {k === 'untriaged' ? 'Untriaged' : k}
@@ -183,7 +183,7 @@ export default function MetricsPage() {
                   ['Finished a match', data.funnel.firstCompletedMatch],
                 ] as const
               ).map(([label, n], i) => (
-                <li key={label} className="rounded-card border border-line bg-surface p-4">
+                <li key={label} className="surface-card rounded-card p-4">
                   <span className="label-caps text-fg-muted">
                     {i + 1}. {label}
                   </span>

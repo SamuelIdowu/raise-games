@@ -79,7 +79,9 @@ function MatchRoom({ id }: { id: string }) {
           >
             <Icon name="chevron-left" size={14} aria-hidden /> Matches
           </Link>
-          <h1 className="font-display text-h1 font-semibold text-fg">{view.game.name}</h1>
+          <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
+            {view.game.name}
+          </h1>
           <p className="text-body-sm text-fg-muted">
             {view.format.name} · <span className="tabular">#{view.id.slice(-6).toUpperCase()}</span>
           </p>
@@ -114,7 +116,7 @@ function MatchRoom({ id }: { id: string }) {
           <RoomCodePanel view={view} onSaved={() => void refreshView()} />
 
           {view.rules ? (
-            <section aria-label="Rules" className="rounded-card border border-line bg-surface p-4">
+            <section aria-label="Rules" className="surface-card rounded-card p-4">
               <h2 className="label-caps mb-2 text-fg-muted">Rules</h2>
               <p className="whitespace-pre-wrap text-body-sm text-fg">{view.rules}</p>
             </section>

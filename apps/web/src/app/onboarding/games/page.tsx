@@ -57,7 +57,9 @@ export default function GamesPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="font-display text-h1 font-semibold text-fg">What do you play?</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
+          What do you play?
+        </h1>
         <p className="mt-2 text-body-sm text-fg-muted">Select at least one game to find matches</p>
       </div>
 

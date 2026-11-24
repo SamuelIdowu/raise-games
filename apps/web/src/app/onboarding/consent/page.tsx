@@ -73,7 +73,7 @@ export default function ConsentPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="font-display text-h1 font-semibold text-fg">Terms & Privacy</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Terms & Privacy</h1>
         <p className="mt-2 text-body-sm text-fg-muted">Please review and accept to continue</p>
       </div>
 

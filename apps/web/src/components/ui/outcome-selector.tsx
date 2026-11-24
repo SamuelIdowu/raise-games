@@ -66,7 +66,9 @@ export function OutcomeSelector<T extends string>({
               {selected ? <Icon name="check" size={14} /> : null}
             </span>
             <span className="flex flex-col">
-              <span className="font-display text-h3 font-semibold text-fg">{option.label}</span>
+              <span className="font-display text-h3 font-black uppercase text-fg">
+                {option.label}
+              </span>
               {option.description ? (
                 <span className="text-caption text-fg-muted">{option.description}</span>
               ) : null}

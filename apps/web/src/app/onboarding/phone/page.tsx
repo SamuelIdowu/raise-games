@@ -142,7 +142,7 @@ export default function PhoneEntryPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="font-display text-h1 font-semibold text-fg">Welcome to Raise</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Welcome to Raise</h1>
         <p className="mt-2 text-body-sm text-fg-muted">Enter your phone to get started</p>
       </div>
 
@@ -183,9 +183,9 @@ export default function PhoneEntryPage() {
         {waitlist === 'open' ? (
           <section
             aria-labelledby="waitlist-heading"
-            className="space-y-3 rounded-card border border-line bg-surface p-4"
+            className="space-y-3 surface-card rounded-card p-4"
           >
-            <h2 id="waitlist-heading" className="font-display text-h3 font-semibold text-fg">
+            <h2 id="waitlist-heading" className="font-display text-h3 font-black uppercase text-fg">
               Join the waitlist
             </h2>
             <p className="text-body-sm text-fg-muted">

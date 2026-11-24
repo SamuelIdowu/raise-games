@@ -62,10 +62,7 @@ export function MatchTimeline({ view, now }: { view: TimelineView; now?: number 
   const display = statusDisplay(view);
 
   return (
-    <section
-      aria-labelledby="timeline-heading"
-      className="rounded-card border border-line bg-surface p-4"
-    >
+    <section aria-labelledby="timeline-heading" className="surface-card rounded-card p-4">
       <h2 id="timeline-heading" className="label-caps mb-3 text-fg-muted">
         Match progress
       </h2>

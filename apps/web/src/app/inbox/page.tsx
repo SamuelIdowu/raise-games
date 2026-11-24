@@ -18,7 +18,10 @@ import {
   Button,
   EmptyState,
   Icon,
+  PageHeader,
   SkeletonCard,
+  Tabs,
+  tabPanelProps,
   useToast,
   type IconName,
 } from '@/components/ui';
@@ -57,29 +60,10 @@ function Inbox() {
     { key: 'preferences', label: 'Preferences' },
   ];
   return (
-    <div className="mx-auto max-w-[640px] space-y-4">
-      <h1 className="font-display text-h1 font-semibold text-fg">Inbox</h1>
-      <div role="tablist" aria-label="Inbox" className="flex border-b border-line">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            id={`tab-${t.key}`}
-            aria-selected={tab === t.key}
-            aria-controls={`panel-${t.key}`}
-            onClick={() => setTab(t.key)}
-            className={cn(
-              'min-h-11 flex-1 px-3 font-display text-body-sm font-semibold',
-              tab === t.key
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-fg-muted hover:text-fg',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+    <div className="mx-auto max-w-[720px] space-y-6">
+      <PageHeader eyebrow="Stay in the loop" title="Inbox" />
+      <Tabs idPrefix="inbox" aria-label="Inbox" items={tabs} value={tab} onChange={setTab} />
+      <div {...tabPanelProps('inbox', tab)}>
         {tab === 'notifications' ? (
           <Notifications />
         ) : tab === 'messages' ? (
@@ -206,8 +190,8 @@ function Notifications() {
       ) : null}
       {groups.map((g) => (
         <section key={g.label} aria-label={g.label}>
-          <h2 className="label-caps mb-2 text-fg-muted">{g.label}</h2>
-          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+          <h2 className="eyebrow mb-3">{g.label}</h2>
+          <ul className="divide-y divide-line surface-card rounded-card">
             {g.items.map((n) => (
               <li key={n.id}>
                 <button
@@ -329,7 +313,7 @@ function DirectMessages() {
           <h2 id="requests-heading" className="label-caps text-fg-muted">
             Friend requests
           </h2>
-          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+          <ul className="divide-y divide-line surface-card rounded-card">
             {requests.incoming.map((r) => (
               <li
                 key={r.requestId}
@@ -398,12 +382,12 @@ function DirectMessages() {
         {!dms ? (
           <SkeletonCard />
         ) : dms.length === 0 ? (
-          <p className="rounded-card border border-line bg-surface px-4 py-3 text-body-sm text-fg-muted">
+          <p className="surface-card rounded-card px-4 py-3 text-body-sm text-fg-muted">
             You can message players you have finished a match with or added as friends. Open their
             profile to start.
           </p>
         ) : (
-          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+          <ul className="divide-y divide-line surface-card rounded-card">
             {dms.map((c) => (
               <li key={c.conversationId}>
                 <Link
@@ -465,7 +449,7 @@ function MatchChats() {
     );
   }
   return (
-    <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+    <ul className="divide-y divide-line surface-card rounded-card">
       {items.map((c) => (
         <li key={c.conversationId}>
           <Link

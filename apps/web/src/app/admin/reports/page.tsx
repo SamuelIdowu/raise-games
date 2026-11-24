@@ -80,7 +80,7 @@ export default function ReportsPage() {
             setStatus(e.target.value as typeof status);
             setPicked(new Set());
           }}
-          className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg"
+          className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="open">Open</option>
           <option value="actioned">Actioned</option>
@@ -102,7 +102,7 @@ export default function ReportsPage() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Note (required)"
-            className="h-8 min-w-[12rem] flex-1 rounded-card border border-line bg-surface px-2 text-body-sm text-fg"
+            className="h-8 min-w-[12rem] flex-1 surface-card rounded-card px-2 text-body-sm text-fg"
           />
           <label
             className={cn(

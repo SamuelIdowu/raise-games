@@ -150,7 +150,7 @@ export function ProofUpload({
             state.status === 'failed' ? 'border-loss' : 'border-line',
           )}
         >
-          <div className="relative size-24 shrink-0 overflow-hidden rounded-card border border-line bg-surface">
+          <div className="relative size-24 shrink-0 overflow-hidden surface-card rounded-card">
             {preview ? (
               // Local object URL of the user's own file; never a remote screenshot.
               // eslint-disable-next-line @next/next/no-img-element

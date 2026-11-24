@@ -22,7 +22,7 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="font-display text-h2 font-semibold text-fg">
+      <h2 className="font-display text-h2 font-black uppercase text-fg">
         {title} <span className="tabular text-fg-muted">({count})</span>
       </h2>
       {count === 0 ? <p className="text-body-sm text-fg-muted">{empty}</p> : children}

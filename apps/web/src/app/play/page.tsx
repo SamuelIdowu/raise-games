@@ -12,6 +12,7 @@ import {
   Select,
   SkeletonCard,
   useToast,
+  PageHeader,
 } from '@/components/ui';
 import { ChallengeCard } from '@/components/challenge/challenge-card';
 import { useNow } from '@/lib/use-now';
@@ -204,12 +205,20 @@ export default function PlayPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-h1 font-semibold text-fg">Play</h1>
-        <Button onClick={() => setCreateOpen({})} disabled={games.length === 0}>
-          Create challenge
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="Open challenges"
+        title="Play"
+        action={
+          <Button
+            variant="brand"
+            arrow
+            onClick={() => setCreateOpen({})}
+            disabled={games.length === 0}
+          >
+            Create challenge
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1 sm:flex-none">
@@ -462,7 +471,7 @@ function PlayersView({
           {players.map((p) => (
             <article
               key={`${p.userId}-${p.game.key}`}
-              className="flex items-center gap-3 rounded-card border border-line bg-surface p-4"
+              className="flex items-center gap-3 surface-card rounded-card p-4"
             >
               <Avatar username={p.username} size={32} />
               <div className="min-w-0 flex-1">

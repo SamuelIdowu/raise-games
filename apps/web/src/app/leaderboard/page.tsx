@@ -13,10 +13,12 @@ import {
   Avatar,
   Banner,
   Button,
+  ButtonLink,
   EmptyState,
   Icon,
   RatingBadge,
   SkeletonCard,
+  PageHeader,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -118,7 +120,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-4 pb-24">
-      <h1 className="font-display text-h1 font-semibold text-fg">Leaderboard</h1>
+      <PageHeader eyebrow="Top players" title="Leaderboard" />
 
       <div className="sticky top-14 z-20 -mx-4 flex flex-wrap gap-2 border-b border-line bg-bg px-4 py-2">
         <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
@@ -126,7 +128,7 @@ export default function LeaderboardPage() {
           <select
             value={gameKey}
             onChange={(e) => setGameKey(e.target.value)}
-            className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+            className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
           >
             {games.map((g) => (
               <option key={g.key} value={g.key}>
@@ -140,7 +142,7 @@ export default function LeaderboardPage() {
           <select
             value={scope}
             onChange={(e) => setScope(e.target.value as typeof scope)}
-            className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+            className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
           >
             <option value="all">Everywhere</option>
             <option value="campus">Campus</option>
@@ -154,7 +156,7 @@ export default function LeaderboardPage() {
               value={place}
               onChange={(e) => setPlace(e.target.value)}
               placeholder={scope === 'campus' ? 'e.g. UNILAG' : 'e.g. Lagos'}
-              className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
+              className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
             />
           </label>
         ) : null}
@@ -165,7 +167,7 @@ export default function LeaderboardPage() {
             value="all_time"
             disabled
             aria-describedby="period-note"
-            className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg-muted"
+            className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg-muted"
           >
             <option value="all_time">All-time</option>
           </select>
@@ -201,9 +203,9 @@ export default function LeaderboardPage() {
           title={`No ranked players${gameName ? ` in ${gameName}` : ''} yet`}
           description="Players appear here after their first confirmed match."
           action={
-            <Link href="/play">
-              <Button>Find a challenge</Button>
-            </Link>
+            <ButtonLink href="/play" arrow>
+              Find a challenge
+            </ButtonLink>
           }
         />
       ) : null}

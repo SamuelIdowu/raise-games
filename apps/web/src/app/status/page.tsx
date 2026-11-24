@@ -59,7 +59,7 @@ export default function StatusPage() {
           </span>
           <p className="mt-1 text-body-sm text-fg-muted">Checking connection…</p>
         </div>
-        <div className="rounded-card border border-line bg-surface p-5">
+        <div className="surface-card rounded-card p-5">
           <div className="animate-pulse space-y-3">
             <div className="h-5 w-2/5 bg-overlay rounded-sm mx-auto" />
             <div className="h-8 w-full bg-overlay rounded-sm" />
@@ -85,9 +85,9 @@ export default function StatusPage() {
         </p>
       </header>
 
-      <section className="animate-in rounded-card border border-line bg-surface p-5">
+      <section className="animate-in surface-card rounded-card p-5">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-display text-h2 font-semibold text-fg">API health</h2>
+          <h2 className="font-display text-h2 font-black uppercase text-fg">API health</h2>
           <StatusChip
             label={healthy ? 'Healthy' : 'Degraded'}
             variant={healthy ? 'win' : 'dispute'}

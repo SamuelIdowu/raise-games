@@ -37,7 +37,9 @@ export default function UsernamePage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="font-display text-h1 font-semibold text-fg">Choose your username</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
+          Choose your username
+        </h1>
         <p className="mt-2 text-body-sm text-fg-muted">This is how other players will see you</p>
       </div>
 

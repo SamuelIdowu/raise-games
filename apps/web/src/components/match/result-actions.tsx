@@ -87,8 +87,8 @@ export function ResultActions({ match, onChanged }: { match: MatchDetail; onChan
       break;
     case 'waiting_for_opponent':
       body = (
-        <section className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
-          <h2 className="flex items-center gap-2 font-display text-h2 font-semibold text-fg">
+        <section className="flex flex-col gap-2 surface-card rounded-card p-4">
+          <h2 className="flex items-center gap-2 font-display text-h2 font-black uppercase text-fg">
             <Icon name="clock" size={20} className="text-fg-muted" aria-hidden />
             {resultCopy.waiting.title}
           </h2>

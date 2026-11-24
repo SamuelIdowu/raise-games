@@ -60,12 +60,12 @@ export function ChallengeCard({
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="font-display text-h3 font-semibold text-fg">{game.name}</span>
+          <span className="font-display text-h3 font-black uppercase text-fg">{game.name}</span>
           <StatusChip label={format.name} variant="neutral" />
           {isMine ? <StatusChip label="Your challenge" variant="accent" icon="user" /> : null}
           {isForMe ? <StatusChip label="Challenged you" variant="accent" icon="flag" /> : null}
         </div>
-        <p className="shrink-0 font-display text-h3 font-semibold text-accent tabular">
+        <p className="shrink-0 font-display text-h3 font-black uppercase text-accent tabular">
           {stake.display}
         </p>
       </div>

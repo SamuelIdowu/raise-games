@@ -244,7 +244,7 @@ export function ResultSheet({
               onChange={(e) => setNote(e.target.value)}
               placeholder={resultCopy.notePlaceholder}
               aria-describedby="result-note-count"
-              className="min-h-24 w-full resize-none rounded-card border border-line bg-raised px-3 py-2 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
+              className="min-h-24 w-full resize-none rounded-control border border-line-strong bg-surface px-3 py-2 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
             />
             <p id="result-note-count" className="self-end text-caption text-fg-muted tabular">
               {note.length}/{RESULT_RULES.noteMaxLength}

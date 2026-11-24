@@ -133,8 +133,8 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
   if (!status.enabled) {
     return (
-      <section className="mx-auto flex max-w-[480px] flex-col gap-4 rounded-card border border-line bg-surface p-6">
-        <h1 className="font-display text-h2 font-semibold text-fg">
+      <section className="mx-auto flex max-w-[480px] flex-col gap-4 surface-card rounded-card p-6">
+        <h1 className="font-display text-h2 font-black uppercase text-fg">
           Set up two-factor authentication
         </h1>
         <p className="text-body-sm text-fg-muted">
@@ -170,8 +170,8 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
   if (!status.sessionValid) {
     return (
-      <section className="mx-auto flex max-w-[480px] flex-col gap-4 rounded-card border border-line bg-surface p-6">
-        <h1 className="font-display text-h2 font-semibold text-fg">Confirm it’s you</h1>
+      <section className="mx-auto flex max-w-[480px] flex-col gap-4 surface-card rounded-card p-6">
+        <h1 className="font-display text-h2 font-black uppercase text-fg">Confirm it’s you</h1>
         <CodeField value={code} onChange={setCode} error={codeError} />
         <Button
           loading={busy}
@@ -224,7 +224,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
 export function AdminHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <h1 className="font-display text-h1 font-semibold text-fg">{title}</h1>
+      <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">{title}</h1>
       {children ? <div className="flex flex-wrap gap-2">{children}</div> : null}
     </header>
   );

@@ -5,12 +5,15 @@ import { useParams } from 'next/navigation';
 import {
   Avatar,
   Button,
+  Card,
   CountUp,
   Icon,
   RankTierBadge,
   RatingBadge,
   ReputationBadge,
   StatusChip,
+  Tabs,
+  tabPanelProps,
   useToast,
   type ReputationLevel,
   type TierLevel,
@@ -100,39 +103,19 @@ export function ProfileClient() {
 
   const p = profiles[Math.min(selected, Math.max(profiles.length - 1, 0))];
 
-  // Per-game tabs (Design §8 player profile header): WAI-ARIA tabs with arrow-key roving focus.
-  const onTabKey = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const last = profiles.length - 1;
-    const next =
-      event.key === 'ArrowRight'
-        ? index === last
-          ? 0
-          : index + 1
-        : event.key === 'ArrowLeft'
-          ? index === 0
-            ? last
-            : index - 1
-          : event.key === 'Home'
-            ? 0
-            : event.key === 'End'
-              ? last
-              : null;
-    if (next === null) return;
-    event.preventDefault();
-    setSelected(next);
-    document.getElementById(`${tabsId}-tab-${next}`)?.focus();
-  };
-
   return (
-    <div className="mx-auto max-w-2xl p-6 space-y-6">
-      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-card border border-line bg-surface">
+    <div className="mx-auto max-w-[960px] space-y-6">
+      <Card
+        as="header"
+        className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center"
+      >
         <div className="flex items-center gap-3">
           <Avatar username={p?.displayName ?? p?.gameName ?? 'Player'} size={64} />
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-h1 font-semibold text-fg">
+            <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
               {p?.displayName ?? p?.gameName ?? 'Player'}
             </h1>
-            <p className="text-body-sm text-fg-muted">{p?.city ?? 'Unknown city'}</p>
+            <p className="label-caps mt-2 text-fg-subtle">{p?.city ?? 'Unknown city'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -140,57 +123,37 @@ export function ProfileClient() {
             value={p?.rating ?? 1000}
             className="font-display text-stat-lg font-semibold text-fg tabular"
           />
-          <Button>Challenge</Button>
+          <Button arrow>Challenge</Button>
         </div>
-      </header>
+      </Card>
 
       {/* Sprint 14: friend / message / block. Nothing renders while DMs are off. */}
       <DmActions userId={userId} name={p?.displayName ?? 'this player'} />
 
       {profiles.length > 1 ? (
-        <div role="tablist" aria-label="Games" className="flex gap-2 border-b border-line">
-          {profiles.map((profile, index) => {
-            const active = index === selected;
-            return (
-              <button
-                key={profile.gameKey}
-                id={`${tabsId}-tab-${index}`}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-controls={`${tabsId}-panel`}
-                tabIndex={active ? 0 : -1}
-                onClick={() => setSelected(index)}
-                onKeyDown={(event) => onTabKey(event, index)}
-                className={`min-h-11 flex-1 border-b-2 px-4 py-2 font-display text-body-sm font-semibold transition-colors ${
-                  active
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-fg-muted hover:text-fg'
-                }`}
-              >
-                {profile.gameName}
-              </button>
-            );
-          })}
-        </div>
+        <Tabs
+          idPrefix={tabsId}
+          aria-label="Games"
+          items={profiles.map((profile) => ({ key: profile.gameKey, label: profile.gameName }))}
+          value={p?.gameKey ?? ''}
+          onChange={(key) => setSelected(profiles.findIndex((profile) => profile.gameKey === key))}
+        />
       ) : null}
 
       <div
-        id={`${tabsId}-panel`}
-        role={profiles.length > 1 ? 'tabpanel' : undefined}
-        aria-labelledby={profiles.length > 1 ? `${tabsId}-tab-${selected}` : undefined}
+        {...(profiles.length > 1 ? tabPanelProps(tabsId, p?.gameKey ?? '') : {})}
         className="grid grid-cols-2 gap-4 md:grid-cols-3"
       >
         {/* Stat grid (Design §8 player profile header): rank, rating, record, streak, reputation. */}
         <dl className="contents">
-          <div className="rounded-card border border-line bg-surface p-4">
-            <dt className="label-caps text-fg-muted">Rank</dt>
+          <div className="surface-card rounded-card p-4">
+            <dt className="label-caps text-fg-subtle">Rank</dt>
             <dd className="mt-2">
               <RankTierBadge tier={TIER[p?.rankTier ?? 'challenger'] ?? 2} label={p?.rankLabel} />
             </dd>
           </div>
-          <div className="rounded-card border border-line bg-surface p-4">
-            <dt className="label-caps text-fg-muted">Rating</dt>
+          <div className="surface-card rounded-card p-4">
+            <dt className="label-caps text-fg-subtle">Rating</dt>
             <dd className="mt-1">
               <RatingBadge value={p?.rating ?? 1000} provisional={p?.provisional ?? true} />
               {p?.provisional ? (
@@ -200,8 +163,8 @@ export function ProfileClient() {
               ) : null}
             </dd>
           </div>
-          <div className="rounded-card border border-line bg-surface p-4">
-            <dt className="label-caps text-fg-muted">Record</dt>
+          <div className="surface-card rounded-card p-4">
+            <dt className="label-caps text-fg-subtle">Record</dt>
             <dd
               className="mt-1 font-display text-stat-md font-semibold text-fg tabular"
               aria-label={`${p?.wins ?? 0} wins, ${p?.losses ?? 0} losses, ${p?.draws ?? 0} draws`}
@@ -209,15 +172,15 @@ export function ProfileClient() {
               {p?.wins ?? 0}–{p?.losses ?? 0}–{p?.draws ?? 0}
             </dd>
           </div>
-          <div className="rounded-card border border-line bg-surface p-4">
-            <dt className="label-caps text-fg-muted">Streak</dt>
+          <div className="surface-card rounded-card p-4">
+            <dt className="label-caps text-fg-subtle">Streak</dt>
             <dd className="mt-1 font-display text-stat-md font-semibold text-fg tabular">
               <span aria-hidden>{streakLabel(p?.streak ?? 0).text}</span>
               <span className="sr-only">{streakLabel(p?.streak ?? 0).sr}</span>
             </dd>
           </div>
-          <div className="rounded-card border border-line bg-surface p-4">
-            <dt className="label-caps text-fg-muted">Reputation</dt>
+          <div className="surface-card rounded-card p-4">
+            <dt className="label-caps text-fg-subtle">Reputation</dt>
             <dd className="mt-2">
               <ReputationBadge level={p?.reputation ?? 'new'} />
             </dd>
@@ -227,7 +190,7 @@ export function ProfileClient() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-display text-h3 font-semibold text-fg">Game IDs</h3>
+          <h3 className="eyebrow">Game IDs</h3>
           <Button variant="ghost" size="sm">
             Add game ID
           </Button>
@@ -236,7 +199,7 @@ export function ProfileClient() {
           {profiles.map((profile) => (
             <div
               key={profile.gameId}
-              className="flex items-center justify-between p-3 rounded-card bg-surface border border-line"
+              className="surface-card flex items-center justify-between rounded-card px-4 py-2"
             >
               <div className="flex items-center gap-3">
                 <span className="font-display text-body-sm font-semibold text-fg">
@@ -265,11 +228,11 @@ export function ProfileClient() {
         </div>
       </div>
 
-      <div className="rounded-card border border-line bg-surface p-4">
-        <h3 className="font-display text-h3 font-semibold text-fg">Recent matches</h3>
-        <div className="flex flex-col items-center gap-3 rounded-card border border-line bg-surface p-6 text-center">
+      <div className="surface-card rounded-card p-4">
+        <h3 className="eyebrow">Recent matches</h3>
+        <div className="mt-4 flex flex-col items-center gap-3 rounded-card border border-dashed border-line p-6 text-center">
           <Icon name="trophy" size={32} className="text-fg-subtle" />
-          <h3 className="font-display text-h3 font-semibold text-fg">No matches yet</h3>
+          <h3 className="font-display text-h3 font-black uppercase text-fg">No matches yet</h3>
           <p className="text-body-sm text-fg-muted">Play your first match to see results here.</p>
           <Button>Find a challenge</Button>
         </div>

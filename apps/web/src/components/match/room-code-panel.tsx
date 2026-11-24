@@ -58,7 +58,7 @@ export function RoomCodePanel({
   const showForm = view.canSetRoomCode && (editing || !view.roomCode);
 
   return (
-    <section aria-label="Room code" className="rounded-card border border-line bg-surface p-4">
+    <section aria-label="Room code" className="surface-card rounded-card p-4">
       <h2 className="label-caps mb-2 text-fg-muted">Room code</h2>
       {showForm ? (
         <form

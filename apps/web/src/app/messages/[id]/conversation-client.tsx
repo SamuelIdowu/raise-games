@@ -66,7 +66,7 @@ export function ConversationClient() {
         >
           <Icon name="chevron-left" size={20} aria-hidden />
         </Link>
-        <h1 className="min-w-0 flex-1 truncate font-display text-h2 font-semibold text-fg">
+        <h1 className="min-w-0 flex-1 truncate font-display text-h2 font-black uppercase text-fg">
           <Link href={`/profile/${c.other.userId}`} className="hover:underline">
             {c.other.name}
           </Link>

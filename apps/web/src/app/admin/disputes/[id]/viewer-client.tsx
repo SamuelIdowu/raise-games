@@ -180,9 +180,9 @@ export function DisputeViewerClient() {
               return (
                 <article
                   key={p.userId}
-                  className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4"
+                  className="flex flex-col gap-2 surface-card rounded-card p-4"
                 >
-                  <h3 className="font-display text-h3 font-semibold text-fg">
+                  <h3 className="font-display text-h3 font-black uppercase text-fg">
                     {p.username}’s submission
                   </h3>
                   {sub ? (
@@ -215,7 +215,7 @@ export function DisputeViewerClient() {
           </div>
 
           <div className={cn('flex flex-col gap-2', tab !== 'proof' && 'max-lg:hidden')}>
-            <h3 className="font-display text-h3 font-semibold text-fg max-lg:sr-only">
+            <h3 className="font-display text-h3 font-black uppercase text-fg max-lg:sr-only">
               Screenshots
             </h3>
             {v.proof.length === 0 ? (
@@ -269,10 +269,10 @@ export function DisputeViewerClient() {
           </div>
 
           <div className={cn('flex flex-col gap-2', tab !== 'chat' && 'max-lg:hidden')}>
-            <h3 className="font-display text-h3 font-semibold text-fg max-lg:sr-only">
+            <h3 className="font-display text-h3 font-black uppercase text-fg max-lg:sr-only">
               Chat transcript
             </h3>
-            <ol className="flex max-h-96 flex-col gap-1 overflow-y-auto rounded-card border border-line bg-surface p-3 text-body-sm">
+            <ol className="flex max-h-96 flex-col gap-1 overflow-y-auto surface-card rounded-card p-3 text-body-sm">
               {v.chat.messages.length === 0 ? (
                 <li className="text-fg-muted">No messages.</li>
               ) : null}
@@ -305,10 +305,10 @@ export function DisputeViewerClient() {
           </div>
 
           <section aria-label="Internal notes" className="flex flex-col gap-2">
-            <h3 className="font-display text-h3 font-semibold text-fg">Internal notes</h3>
+            <h3 className="font-display text-h3 font-black uppercase text-fg">Internal notes</h3>
             <ul className="flex flex-col gap-1 text-body-sm">
               {v.notes.map((n) => (
-                <li key={n.id} className="rounded-card border border-line bg-surface p-2">
+                <li key={n.id} className="surface-card rounded-card p-2">
                   <span className="text-caption text-fg-muted">
                     {n.authorName} · {fmt(n.createdAt)}
                   </span>
@@ -325,7 +325,7 @@ export function DisputeViewerClient() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Only moderators see notes"
-                className="h-11 flex-1 rounded-card border border-line bg-raised px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
+                className="h-11 flex-1 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
               />
               <Button variant="secondary" onClick={() => void addNote()} disabled={!note.trim()}>
                 Add note
@@ -337,9 +337,9 @@ export function DisputeViewerClient() {
         {/* Decision panel (Design §8): outcome, reason template, sanction toggle w/ ladder step. */}
         <aside
           aria-label="Decision"
-          className="flex flex-col gap-4 self-start rounded-card border border-line bg-surface p-4 lg:sticky lg:top-20"
+          className="flex flex-col gap-4 self-start surface-card rounded-card p-4 lg:sticky lg:top-20"
         >
-          <h2 className="font-display text-h2 font-semibold text-fg">Decision</h2>
+          <h2 className="font-display text-h2 font-black uppercase text-fg">Decision</h2>
           {closed ? (
             <p className="text-body-sm text-fg-muted">
               This dispute has a ruling. An appeal reopens it in the queue.
@@ -366,7 +366,7 @@ export function DisputeViewerClient() {
                     }
                   }}
                   defaultValue=""
-                  className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+                  className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
                 >
                   <option value="" disabled>
                     Choose a template
@@ -385,7 +385,7 @@ export function DisputeViewerClient() {
                   onChange={(e) => setJustification(e.target.value)}
                   rows={4}
                   maxLength={2000}
-                  className="rounded-card border border-line bg-raised p-3 text-body text-fg focus:border-accent focus:outline-none"
+                  className="rounded-control border border-line-strong bg-surface p-3 text-body text-fg focus:border-accent focus:outline-none"
                 />
               </label>
 
@@ -406,7 +406,7 @@ export function DisputeViewerClient() {
                       aria-label="Player to sanction"
                       value={sanctionUser}
                       onChange={(e) => setSanctionUser(e.target.value)}
-                      className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg"
+                      className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
                     >
                       <option value="" disabled>
                         Choose a player
@@ -422,7 +422,7 @@ export function DisputeViewerClient() {
                       value={sanctionReason}
                       onChange={(e) => setSanctionReason(e.target.value)}
                       placeholder="Reason (kept on their record)"
-                      className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg placeholder:text-fg-subtle"
+                      className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle"
                     />
                   </>
                 ) : null}
@@ -508,8 +508,8 @@ export function DisputeViewerClient() {
 
 function PlayerCard({ p }: { p: ViewerPlayer }) {
   return (
-    <article className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4 text-body-sm">
-      <h3 className="font-display text-h3 font-semibold text-fg">{p.username}</h3>
+    <article className="flex flex-col gap-2 surface-card rounded-card p-4 text-body-sm">
+      <h3 className="font-display text-h3 font-black uppercase text-fg">{p.username}</h3>
       <div className="flex flex-wrap items-center gap-2">
         <RatingBadge value={p.rating} provisional={p.provisional} />
         <span className="text-fg-muted">{p.rankLabel}</span>

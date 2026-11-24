@@ -64,7 +64,7 @@ const tableRows = [
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-card border border-line bg-surface p-5">
+    <section className="surface-card rounded-card p-5">
       <h2 className="label-caps mb-4 text-fg-muted">{title}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
@@ -95,9 +95,9 @@ export default function FontProofPage() {
       <Section title="App typography scale (Unbounded display / Space Grotesk body)">
         <div className="flex flex-col gap-3">
           <p className="font-display text-display font-bold text-fg">Display 40/48</p>
-          <p className="font-display text-h1 font-semibold text-fg">Heading 1 32/40</p>
-          <p className="font-display text-h2 font-semibold text-fg">Heading 2 24/32</p>
-          <p className="font-display text-h3 font-semibold text-fg">Heading 3 18/24</p>
+          <p className="font-display text-mk-h1 uppercase text-fg text-balance">Heading 1 32/40</p>
+          <p className="font-display text-h2 font-black uppercase text-fg">Heading 2 24/32</p>
+          <p className="font-display text-h3 font-black uppercase text-fg">Heading 3 18/24</p>
           <p className="text-body text-fg">
             Body 14/20 — verified 1v1 challenges with real stakes and instant settlement.
           </p>
@@ -136,7 +136,7 @@ export default function FontProofPage() {
             <p className="mt-1 text-caption text-fg-subtle">U+1E63</p>
           </div>
         </div>
-        <p className="mt-4 font-display text-h3 font-semibold text-fg">
+        <p className="mt-4 font-display text-h3 font-black uppercase text-fg">
           Lagos ẹbá ṣíṣẹ́ — Unbounded 500/600/700
         </p>
       </Section>
@@ -306,7 +306,7 @@ export default function FontProofPage() {
       </Section>
 
       <Section title="Type proof (F1.2)">
-        <p className="font-display text-h2 font-semibold text-fg">Yorùbá: ẹ ọ ṣ Ẹ Ọ Ṣ</p>
+        <p className="font-display text-h2 font-black uppercase text-fg">Yorùbá: ẹ ọ ṣ Ẹ Ọ Ṣ</p>
         <p className="font-display text-caption text-fg-muted">12px: ẹ ọ ṣ Ẹ Ọ Ṣ — Ẹ̀kọ́ àti Ọ̀rẹ̀</p>
         <div className="grid grid-cols-10 gap-1 font-display text-caption text-fg tabular">
           {'0123456789'.split('').map((digit) => (
@@ -377,7 +377,7 @@ export default function FontProofPage() {
       <nav className="flex justify-center">
         <Link
           href="/design"
-          className="inline-flex h-11 items-center justify-center rounded-control border border-transparent bg-accent px-4 font-display text-h3 font-semibold text-on-accent transition-colors duration-[var(--motion-micro)] hover:bg-accent-hover"
+          className="inline-flex h-11 items-center justify-center rounded-control border border-transparent bg-accent px-4 font-display text-h3 font-black uppercase text-on-accent transition-colors duration-[var(--motion-micro)] hover:bg-accent-hover"
         >
           Back to design system
         </Link>

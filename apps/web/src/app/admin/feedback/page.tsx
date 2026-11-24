@@ -81,7 +81,7 @@ function Row({ item, onDone }: { item: FeedbackItem; onDone: () => void }) {
           value={severity}
           onChange={(e) => setSeverity(e.target.value as Severity | '')}
           title={severity ? SEVERITY_HELP[severity] : undefined}
-          className="h-9 rounded-card border border-line bg-raised px-2 text-body-sm text-fg"
+          className="h-9 rounded-control border border-line-strong bg-surface px-2 text-body-sm text-fg"
         >
           <option value="">Not set</option>
           {(Object.keys(SEVERITY_HELP) as Severity[]).map((s) => (
@@ -96,7 +96,7 @@ function Row({ item, onDone }: { item: FeedbackItem; onDone: () => void }) {
           aria-label="Status"
           value={status}
           onChange={(e) => setStatus(e.target.value as FeedbackStatus)}
-          className="h-9 rounded-card border border-line bg-raised px-2 text-body-sm text-fg"
+          className="h-9 rounded-control border border-line-strong bg-surface px-2 text-body-sm text-fg"
         >
           {(Object.keys(STATUS_LABEL) as FeedbackStatus[]).map((s) => (
             <option key={s} value={s}>
@@ -110,7 +110,7 @@ function Row({ item, onDone }: { item: FeedbackItem; onDone: () => void }) {
           aria-label="Note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          className="h-9 w-full min-w-[10rem] rounded-card border border-line bg-surface px-2 text-body-sm text-fg"
+          className="h-9 w-full min-w-[10rem] surface-card rounded-card px-2 text-body-sm text-fg"
         />
       </TableCell>
       <TableCell>
@@ -137,7 +137,7 @@ function FeedbackQueue() {
           aria-label="Status filter"
           value={status}
           onChange={(e) => setStatus(e.target.value as FeedbackStatus | 'open')}
-          className="h-11 rounded-card border border-line bg-raised px-3 text-body text-fg"
+          className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="open">Open (new and triaged)</option>
           {(Object.keys(STATUS_LABEL) as FeedbackStatus[]).map((s) => (

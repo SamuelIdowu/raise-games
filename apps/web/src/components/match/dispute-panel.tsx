@@ -62,7 +62,7 @@ export function DisputePanel({
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2
           id="dispute-heading"
-          className="flex items-center gap-2 font-display text-h3 font-semibold text-fg"
+          className="flex items-center gap-2 font-display text-h3 font-black uppercase text-fg"
         >
           <Icon name="alert-triangle" size={18} className="text-dispute" aria-hidden />
           {disputeCopy.panel.title}

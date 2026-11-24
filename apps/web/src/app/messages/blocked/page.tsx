@@ -46,7 +46,7 @@ export default function BlockedPage() {
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-4">
-      <h1 className="font-display text-h1 font-semibold text-fg">Blocked players</h1>
+      <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Blocked players</h1>
       <p className="text-body-sm text-fg-muted">
         Blocked players cannot message you or send you friend requests, and are not told. Blocked
         someone by mistake? Unblock them here. Unblocking does not bring back a friendship: send a
@@ -62,7 +62,7 @@ export default function BlockedPage() {
         />
       ) : null}
       {rows && rows.length > 0 ? (
-        <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+        <ul className="divide-y divide-line surface-card rounded-card">
           {rows.map((r) => (
             <li key={r.userId} className="flex min-h-11 items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1">

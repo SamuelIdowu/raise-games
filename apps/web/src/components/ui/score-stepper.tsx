@@ -72,7 +72,7 @@ export function ScoreStepper({
             onChange(clamp(digits === '' ? min : Number(digits)));
           }}
           onFocus={(e) => e.target.select()}
-          className="h-11 w-16 rounded-card border border-line bg-raised text-center font-display text-stat-md font-semibold text-fg tabular focus:border-accent focus:outline-none disabled:opacity-40"
+          className="h-11 w-16 rounded-control border border-line-strong bg-surface text-center font-display text-stat-md font-semibold text-fg tabular focus:border-accent focus:outline-none disabled:opacity-40"
         />
         <button
           type="button"

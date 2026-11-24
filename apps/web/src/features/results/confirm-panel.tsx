@@ -60,7 +60,7 @@ export function ConfirmPanel({
       aria-labelledby="confirm-title"
       className="flex flex-col gap-4 rounded-card border border-accent/40 bg-surface p-4"
     >
-      <h2 id="confirm-title" className="font-display text-h2 font-semibold text-fg">
+      <h2 id="confirm-title" className="font-display text-h2 font-black uppercase text-fg">
         {resultCopy.confirm.title}
       </h2>
 

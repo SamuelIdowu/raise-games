@@ -119,7 +119,7 @@ export default function UsersPage() {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason (required)"
-            className="h-8 min-w-[12rem] flex-1 rounded-card border border-line bg-surface px-2 text-body-sm text-fg"
+            className="h-8 min-w-[12rem] flex-1 surface-card rounded-card px-2 text-body-sm text-fg"
           />
           <Button
             size="sm"

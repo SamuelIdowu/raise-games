@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import {
   Avatar,
   Button,
-  CountUp,
+  Card,
   EmptyState,
   Icon,
+  PageHeader,
   RankTierBadge,
+  StatCard,
   StatusChip,
   Table,
   TableBody,
@@ -16,6 +18,8 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
+  Tabs,
+  tabPanelProps,
   useToast,
 } from '@/components/ui';
 import { profilesApi, matchesApi, type GameProfile, type MatchView } from '@raise/api-client';
@@ -23,46 +27,41 @@ import { formatRelative } from '@/lib/datetime';
 import { outcomeTag } from '@/lib/match-status';
 import { isParticipantView } from '@raise/api-client';
 
-const tabClass = (active: boolean) =>
-  'flex-1 py-2 px-4 font-display text-body-sm font-semibold rounded-t-card transition-colors ' +
-  (active ? 'text-accent border-b-2 border-accent' : 'text-fg-muted hover:text-fg');
-
 const ratingClass = (rating: number) =>
   'font-display font-semibold tabular ' +
   (rating > 0 ? 'text-success' : rating < 0 ? 'text-danger' : 'text-fg');
 
-const statTrendClass = (trend?: 'up' | 'down') =>
-  'mt-1 text-caption font-semibold ' + (trend === 'up' ? 'text-success' : 'text-danger');
+type ProfileTab = 'overview' | 'matches' | 'game-ids';
 
-function StatCard({
-  label,
-  value,
-  change,
-  trend,
-}: {
-  label: string;
-  value: string;
-  change?: string;
-  trend?: 'up' | 'down';
-}) {
+const PROFILE_TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'matches', label: 'Matches' },
+  { key: 'game-ids', label: 'Game IDs' },
+] as const;
+
+function GameIdRow({ label, value, onCopy }: { label: string; value: string; onCopy: () => void }) {
   return (
-    <div className="rounded-card border border-line bg-surface p-4">
-      <p className="label-caps text-fg-muted">{label}</p>
-      <p className="mt-1 font-display text-stat-lg font-semibold text-fg tabular">{value}</p>
-      {change && (
-        <p className={statTrendClass(trend)}>
-          {trend === 'up' ? '+' : ''}
-          {change} vs last week
-        </p>
-      )}
-    </div>
+    <Card padding="sm" className="flex flex-wrap items-center justify-between gap-3 px-4">
+      <div className="flex items-center gap-3">
+        <span className="font-body text-body-sm font-bold uppercase tracking-[0.04em] text-fg">
+          {label}
+        </span>
+        <StatusChip label="Verified" variant="win" />
+      </div>
+      <div className="flex items-center gap-1">
+        <code className="rounded-xs bg-bg px-2 py-1 font-mono text-body-sm text-fg">{value}</code>
+        <Button variant="ghost" size="sm" onClick={onCopy} aria-label={`Copy ${label} ID ${value}`}>
+          <Icon name="copy" size={14} /> Copy
+        </Button>
+      </div>
+    </Card>
   );
 }
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'game-ids'>('overview');
+  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
 
   const [profiles, setProfiles] = useState<GameProfile[]>([]);
   const [matches, setMatches] = useState<MatchView[]>([]);
@@ -108,18 +107,18 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="mx-auto max-w-[960px] space-y-6" aria-busy="true">
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 bg-overlay rounded-sm" />
+          <div className="animate-shimmer h-16 w-16 rounded-xs" />
           <div className="space-y-2">
-            <div className="h-6 w-48 bg-overlay rounded-sm" />
-            <div className="h-4 w-64 bg-overlay rounded-sm" />
+            <div className="animate-shimmer h-6 w-48 rounded-xs" />
+            <div className="animate-shimmer h-4 w-64 rounded-xs" />
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="h-24 bg-overlay rounded-card" />
-          <div className="h-24 bg-overlay rounded-card" />
-          <div className="h-24 bg-overlay rounded-card" />
+          <div className="animate-shimmer chamfer-tr h-28" />
+          <div className="animate-shimmer chamfer-tr h-28" />
+          <div className="animate-shimmer chamfer-tr h-28" />
         </div>
       </div>
     );
@@ -158,232 +157,163 @@ export default function ProfilePage() {
         createdAt: mainProfile.createdAt,
       }
     : null;
-  const ids = gameIds;
+
+  const copy = (label: string, value: string) => {
+    void navigator.clipboard.writeText(value);
+    toast({ title: 'Copied', description: `${label} ID copied to clipboard` });
+  };
+
+  const joined = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : '2026';
+
+  const gameIdList =
+    gameIds.length > 0 ? (
+      <div className="space-y-2">
+        {gameIds.map((g) => (
+          <GameIdRow
+            key={g.gameKey}
+            label={g.label}
+            value={g.value}
+            onCopy={() => copy(g.label, g.value)}
+          />
+        ))}
+      </div>
+    ) : (
+      <EmptyState
+        icon="gamepad-2"
+        title="No game IDs added"
+        description="Add your game IDs so opponents can find you."
+        action={<Button onClick={() => router.push('/settings?tab=game-ids')}>Add game ID</Button>}
+      />
+    );
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-h1 font-semibold text-fg">Profile</h1>
-          <p className="text-body-sm text-fg-muted">
-            {user?.username} · Joined{' '}
-            {user?.createdAt
-              ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  year: 'numeric',
-                })
-              : '2026'}
-          </p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={() => router.push('/settings')}>
-          Edit profile
-        </Button>
-      </header>
+    <div className="mx-auto max-w-[960px] space-y-8">
+      <PageHeader
+        eyebrow={`Joined ${joined}`}
+        title="Profile"
+        action={
+          <Button variant="secondary" size="sm" onClick={() => router.push('/settings')}>
+            Edit profile
+          </Button>
+        }
+      />
 
       {user && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 rounded-card border border-line bg-surface">
+        <div className="flex flex-col gap-6">
+          <Card className="flex flex-col items-start gap-4 md:flex-row md:items-center">
             <Avatar username={user.username} size={64} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-display text-h1 font-semibold text-fg">{user.username}</h2>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="truncate font-display text-h2 font-black uppercase text-fg">
+                  {user.username}
+                </h2>
                 <StatusChip label="Active" variant="win" />
               </div>
-              <div className="flex items-center gap-4 mt-2 flex-wrap text-body-sm text-fg-muted">
-                <span className="flex items-center gap-1">
-                  <Icon name="trophy" size={16} /> {rating?.tierLabel ?? 'Rookie'}
+              <div className="label-caps flex flex-wrap items-center gap-4 text-fg-subtle">
+                <span className="flex items-center gap-1.5">
+                  <Icon name="trophy" size={14} /> {rating?.tierLabel ?? 'Rookie'}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Icon name="star" size={16} /> {rating?.value?.toLocaleString('en-NG') ?? '0'}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Icon name="shield" size={16} /> {user.reputationLabel ?? 'New'}
+                <span className="flex items-center gap-1.5">
+                  <Icon name="shield" size={14} /> {user.reputationLabel ?? 'New'}
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CountUp
-                value={rating?.value ?? 0}
-                className="font-display text-stat-lg font-semibold text-fg tabular"
-              />
-              <RankTierBadge
-                tier={(parseInt(String(rating?.tier ?? '1')) ?? 1) as 1 | 2 | 3 | 4 | 5}
-              />
-            </div>
+            <RankTierBadge
+              tier={(rating?.tier ?? 1) as 1 | 2 | 3 | 4 | 5}
+              label={rating?.tierLabel}
+            />
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Rating" value={rating?.value ?? 0} icon="star" />
+            <StatCard
+              label="Record"
+              value={`${rating?.wins ?? 0}-${rating?.losses ?? 0}-${rating?.draws ?? 0}`}
+              icon="trophy"
+            />
+            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="trend-up" />
           </div>
 
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
-            <StatCard label="Rating" value={rating?.value?.toLocaleString('en-NG') ?? '0'} />
-            <StatCard label="Record" value={`${rating?.wins ?? 0}–${rating?.losses ?? 0}`} />
-            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} />
-          </div>
+          <Tabs
+            idPrefix="profile"
+            aria-label="Profile sections"
+            items={PROFILE_TABS}
+            value={activeTab}
+            onChange={setActiveTab}
+          />
 
-          <div className="flex gap-2 border-b border-line">
-            {(['overview', 'matches', 'game-ids'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={tabClass(activeTab === tab)}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          {activeTab === 'overview' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-h3 font-semibold text-fg">Game IDs</h3>
-                <Button variant="ghost" size="sm" onClick={() => setActiveTab('game-ids')}>
-                  Edit
-                </Button>
-              </div>
-              {ids.length > 0 ? (
-                <div className="space-y-2">
-                  {ids.map((g) => (
-                    <div
-                      key={g.gameKey}
-                      className="flex items-center justify-between p-3 rounded-card bg-surface border border-line"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-display text-body-sm font-semibold text-fg">
-                          {g.label}
-                        </span>
-                        <StatusChip label="Verified" variant="win" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="font-mono text-body-sm text-fg bg-raised px-2 py-1 rounded-sm">
-                          {g.value}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(g.value);
-                            toast({
-                              title: 'Copied',
-                              description: `${g.label} ID copied to clipboard`,
-                            });
-                          }}
-                          className="text-caption text-accent hover:underline flex items-center gap-1"
-                        >
-                          <Icon name="copy" size={14} /> Copy
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+          <div {...tabPanelProps('profile', activeTab)}>
+            {activeTab === 'overview' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="eyebrow">Game IDs</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setActiveTab('game-ids')}>
+                    Edit
+                  </Button>
                 </div>
-              ) : (
-                <EmptyState
-                  icon="gamepad-2"
-                  title="No game IDs added"
-                  description="Add your game IDs so opponents can find you."
-                  action={<Button onClick={() => setActiveTab('game-ids')}>Add game ID</Button>}
-                />
-              )}
-            </div>
-          )}
-
-          {activeTab === 'matches' && (
-            <Table>
-              <TableHead>
-                <TableHeaderCell>Match</TableHeaderCell>
-                <TableHeaderCell>Game</TableHeaderCell>
-                <TableHeaderCell>Opponent</TableHeaderCell>
-                <TableHeaderCell numeric>Result</TableHeaderCell>
-                <TableHeaderCell numeric>Rating</TableHeaderCell>
-                <TableHeaderCell>Date</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-              </TableHead>
-              <TableBody>
-                {matches.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="font-display text-accent">{m.id}</TableCell>
-                    <TableCell>{m.game.name}</TableCell>
-                    <TableCell>{m.opponent?.username ?? '—'}</TableCell>
-                    <TableCell numeric>
-                      <StatusChip
-                        label={outcomeTag(m)?.label ?? '—'}
-                        variant={outcomeTag(m)?.variant ?? 'neutral'}
-                      />
-                    </TableCell>
-                    <TableCell numeric>
-                      <span className={ratingClass(m.ratingDelta ?? 0)}>
-                        {m.ratingDelta && m.ratingDelta > 0 ? '+' : ''}
-                        {m.ratingDelta ?? 0}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {formatRelative(m.confirmedAt ?? new Date().toISOString())}
-                    </TableCell>
-                    <TableCell>
-                      <StatusChip label="Confirmed" variant="win" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {activeTab === 'game-ids' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-h3 font-semibold text-fg">Game IDs</h3>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => router.push('/settings?tab=game-ids')}
-                >
-                  Add game ID
-                </Button>
+                {gameIdList}
               </div>
-              {ids.length > 0 ? (
-                <div className="space-y-2">
-                  {ids.map((g) => (
-                    <div
-                      key={g.gameKey}
-                      className="flex items-center justify-between p-3 rounded-card bg-surface border border-line"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="font-display text-body-sm font-semibold text-fg">
-                          {g.label}
+            )}
+
+            {activeTab === 'matches' && (
+              <Table>
+                <TableHead>
+                  <TableHeaderCell>Match</TableHeaderCell>
+                  <TableHeaderCell>Game</TableHeaderCell>
+                  <TableHeaderCell>Opponent</TableHeaderCell>
+                  <TableHeaderCell numeric>Result</TableHeaderCell>
+                  <TableHeaderCell numeric>Rating</TableHeaderCell>
+                  <TableHeaderCell>Date</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                </TableHead>
+                <TableBody>
+                  {matches.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-mono text-accent">{m.id}</TableCell>
+                      <TableCell>{m.game.name}</TableCell>
+                      <TableCell>{m.opponent?.username ?? '—'}</TableCell>
+                      <TableCell numeric>
+                        <StatusChip
+                          label={outcomeTag(m)?.label ?? '—'}
+                          variant={outcomeTag(m)?.variant ?? 'neutral'}
+                        />
+                      </TableCell>
+                      <TableCell numeric>
+                        <span className={ratingClass(m.ratingDelta ?? 0)}>
+                          {m.ratingDelta && m.ratingDelta > 0 ? '+' : ''}
+                          {m.ratingDelta ?? 0}
                         </span>
-                        <StatusChip label="Verified" variant="win" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="font-mono text-body-sm text-fg bg-raised px-2 py-1 rounded-sm">
-                          {g.value}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(g.value);
-                            toast({
-                              title: 'Copied',
-                              description: `${g.label} ID copied to clipboard`,
-                            });
-                          }}
-                          className="text-caption text-accent hover:underline flex items-center gap-1"
-                        >
-                          <Icon name="copy" size={14} /> Copy
-                        </button>
-                      </div>
-                    </div>
+                      </TableCell>
+                      <TableCell>
+                        {formatRelative(m.confirmedAt ?? new Date().toISOString())}
+                      </TableCell>
+                      <TableCell>
+                        <StatusChip label="Confirmed" variant="win" />
+                      </TableCell>
+                    </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            )}
+
+            {activeTab === 'game-ids' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="eyebrow">Game IDs</h3>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => router.push('/settings?tab=game-ids')}
+                  >
+                    Add game ID
+                  </Button>
                 </div>
-              ) : (
-                <EmptyState
-                  icon="gamepad-2"
-                  title="No game IDs added"
-                  description="Add your game IDs so opponents can find you."
-                  action={
-                    <Button onClick={() => router.push('/settings?tab=game-ids')}>
-                      Add game ID
-                    </Button>
-                  }
-                />
-              )}
-            </div>
-          )}
+                {gameIdList}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -82,11 +82,11 @@ export function UserDetailClient() {
       </AdminHeader>
 
       <dl className="grid grid-cols-2 gap-3 text-body-sm md:grid-cols-4">
-        <div className="rounded-card border border-line bg-surface p-3">
+        <div className="surface-card rounded-card p-3">
           <dt className="label-caps text-fg-muted">Phone</dt>
           <dd className="font-mono text-fg">{phone ?? u.phoneMasked}</dd>
         </div>
-        <div className="rounded-card border border-line bg-surface p-3">
+        <div className="surface-card rounded-card p-3">
           <dt className="label-caps text-fg-muted">Role</dt>
           <dd className="text-fg">
             {u.role}
@@ -95,13 +95,13 @@ export function UserDetailClient() {
             ) : null}
           </dd>
         </div>
-        <div className="rounded-card border border-line bg-surface p-3">
+        <div className="surface-card rounded-card p-3">
           <dt className="label-caps text-fg-muted">Reputation</dt>
           <dd className="mt-1">
             <ReputationBadge level={u.reputation} />
           </dd>
         </div>
-        <div className="rounded-card border border-line bg-surface p-3">
+        <div className="surface-card rounded-card p-3">
           <dt className="label-caps text-fg-muted">Joined</dt>
           <dd className="text-fg">{fmt(u.createdAt)}</dd>
         </div>
@@ -138,7 +138,7 @@ export function UserDetailClient() {
       ) : null}
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-display text-h2 font-semibold text-fg">Sanction history</h2>
+        <h2 className="font-display text-h2 font-black uppercase text-fg">Sanction history</h2>
         {u.sanctions.length === 0 ? (
           <p className="text-body-sm text-fg-muted">Clean record.</p>
         ) : (
@@ -196,7 +196,7 @@ export function UserDetailClient() {
 
       <section className="grid gap-6 md:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <h2 className="font-display text-h2 font-semibold text-fg">Games</h2>
+          <h2 className="font-display text-h2 font-black uppercase text-fg">Games</h2>
           {u.profiles.map((p) => (
             <p key={p.gameName} className="text-body-sm text-fg">
               {p.gameName}: <span className="tabular">{p.rating}</span> ·{' '}
@@ -208,7 +208,7 @@ export function UserDetailClient() {
           ))}
         </div>
         <div className="flex flex-col gap-2">
-          <h2 className="font-display text-h2 font-semibold text-fg">Signals</h2>
+          <h2 className="font-display text-h2 font-black uppercase text-fg">Signals</h2>
           {u.sharedDevices.length === 0 ? (
             <p className="text-body-sm text-fg-muted">No shared devices.</p>
           ) : (
@@ -264,7 +264,7 @@ export function UserDetailClient() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={3}
-            className="rounded-card border border-line bg-raised p-3 text-body text-fg"
+            className="rounded-control border border-line-strong bg-surface p-3 text-body text-fg"
           />
         </label>
       </Sheet>
@@ -297,7 +297,7 @@ export function UserDetailClient() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
-          className="w-full rounded-card border border-line bg-raised p-3 text-body text-fg"
+          className="w-full rounded-control border border-line-strong bg-surface p-3 text-body text-fg"
         />
       </Sheet>
 
@@ -319,7 +319,7 @@ export function UserDetailClient() {
           aria-label="Role"
           value={role}
           onChange={(e) => setRole(e.target.value as typeof role)}
-          className="h-11 w-full rounded-card border border-line bg-raised px-3 text-body text-fg"
+          className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="player">Player</option>
           <option value="moderator">Moderator</option>

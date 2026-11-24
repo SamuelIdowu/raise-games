@@ -159,7 +159,9 @@ export default function GameIdsPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="font-display text-h1 font-semibold text-fg">Add your game IDs</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
+          Add your game IDs
+        </h1>
         <p className="mt-2 text-body-sm text-fg-muted">
           So opponents can find you in-game (optional)
         </p>

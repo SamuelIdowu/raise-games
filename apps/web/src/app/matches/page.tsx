@@ -6,11 +6,12 @@ import { matchesApi, type MatchDetail, isParticipantView } from '@raise/api-clie
 import {
   Avatar,
   Banner,
-  Button,
+  ButtonLink,
   EmptyState,
   RatingBadge,
   SkeletonCard,
   StatusChip,
+  PageHeader,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { formatRelative } from '@/lib/datetime';
@@ -53,7 +54,7 @@ export default function MatchesPage() {
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-6">
-      <h1 className="font-display text-h1 font-semibold text-fg">Matches</h1>
+      <PageHeader eyebrow="Your games" title="Matches" />
 
       {needsAction.length > 0 ? (
         <Banner variant="needs-action">
@@ -78,9 +79,9 @@ export default function MatchesPage() {
           title="No matches yet"
           description="Accept a challenge or post your own to start playing."
           action={
-            <Link href="/play">
-              <Button>Find a challenge</Button>
-            </Link>
+            <ButtonLink href="/play" arrow>
+              Find a challenge
+            </ButtonLink>
           }
         />
       ) : null}
@@ -118,7 +119,7 @@ function MatchRow({ match }: { match: MatchDetail }) {
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-display text-h3 font-semibold text-fg">
+        <span className="font-display text-h3 font-black uppercase text-fg">
           {match.game.name} <span className="text-fg-muted">· {match.format.name}</span>
         </span>
         <div className="flex items-center gap-2">

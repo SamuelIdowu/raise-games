@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { authApi, clearTokens, type MeResponse } from '@raise/api-client';
-import { Banner, Button, Sheet } from '@/components/ui';
+import { Banner, Button, ButtonLink, Card, PageHeader, Sheet } from '@/components/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { signOut } from '@/lib/session';
 import { closeSocket } from '@/lib/realtime';
@@ -74,36 +73,36 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-6">
-      <h1 className="font-display text-h1 font-semibold text-fg">Settings</h1>
+    <div className="mx-auto flex max-w-[720px] flex-col gap-4">
+      <PageHeader eyebrow="Your account" title="Settings" />
       {error ? <Banner variant="system">{error}</Banner> : null}
 
-      <section aria-labelledby="account-heading" className="flex flex-col gap-2">
-        <h2 id="account-heading" className="label-caps text-fg-muted">
+      <Card as="section" aria-labelledby="account-heading" className="flex flex-col gap-3">
+        <h2 id="account-heading" className="eyebrow">
           Account
         </h2>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body-sm">
-          <dt className="text-fg-muted">Username</dt>
+        <dl className="grid grid-cols-[120px_1fr] items-center gap-x-4 gap-y-3 text-body-sm">
+          <dt className="label-caps text-fg-subtle">Username</dt>
           <dd className="text-fg">{me?.displayName ?? '—'}</dd>
-          <dt className="text-fg-muted">Phone</dt>
+          <dt className="label-caps text-fg-subtle">Phone</dt>
           <dd className="tabular text-fg">{me ? maskPhone(me.phone) : '—'}</dd>
-          <dt className="text-fg-muted">State</dt>
+          <dt className="label-caps text-fg-subtle">State</dt>
           <dd className="text-fg">{me?.jurisdictionState ?? 'Not set'}</dd>
         </dl>
-      </section>
+      </Card>
 
-      <section aria-labelledby="appearance-heading" className="flex flex-col gap-2">
-        <h2 id="appearance-heading" className="label-caps text-fg-muted">
+      <Card as="section" aria-labelledby="appearance-heading" className="flex flex-col gap-3">
+        <h2 id="appearance-heading" className="eyebrow">
           Appearance
         </h2>
         <div className="flex items-center justify-between gap-4">
           <p className="text-body-sm text-fg">Theme: dark, light, or follow your phone</p>
           <ThemeToggle />
         </div>
-      </section>
+      </Card>
 
-      <section aria-labelledby="notifications-heading" className="flex flex-col gap-2">
-        <h2 id="notifications-heading" className="label-caps text-fg-muted">
+      <Card as="section" aria-labelledby="notifications-heading" className="flex flex-col gap-3">
+        <h2 id="notifications-heading" className="eyebrow">
           Notifications
         </h2>
         <p className="text-body-sm text-fg">
@@ -111,18 +110,14 @@ export default function SettingsPage() {
           quiet hours.
         </p>
         <div>
-          {/* A link styled as a secondary button (never a button inside a link). */}
-          <Link
-            href="/inbox?tab=preferences"
-            className="inline-flex h-11 items-center rounded-control border border-line-strong px-4 font-display text-body-sm font-semibold text-fg hover:bg-overlay focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
+          <ButtonLink href="/inbox?tab=preferences" variant="secondary" arrow>
             Notification preferences
-          </Link>
+          </ButtonLink>
         </div>
-      </section>
+      </Card>
 
-      <section aria-labelledby="sessions-heading" className="flex flex-col gap-2">
-        <h2 id="sessions-heading" className="label-caps text-fg-muted">
+      <Card as="section" aria-labelledby="sessions-heading" className="flex flex-col gap-3">
+        <h2 id="sessions-heading" className="eyebrow">
           Sign out
         </h2>
         <div className="flex flex-wrap gap-2">
@@ -144,10 +139,10 @@ export default function SettingsPage() {
           Lost a phone or used a shared one? Signing out of all devices ends every session,
           including this one.
         </p>
-      </section>
+      </Card>
 
-      <section aria-labelledby="data-heading" className="flex flex-col gap-2">
-        <h2 id="data-heading" className="label-caps text-fg-muted">
+      <Card as="section" aria-labelledby="data-heading" className="flex flex-col gap-3">
+        <h2 id="data-heading" className="eyebrow">
           Your data
         </h2>
         <p className="text-body-sm text-fg">
@@ -161,7 +156,7 @@ export default function SettingsPage() {
             Delete account
           </Button>
         </div>
-      </section>
+      </Card>
 
       <Sheet
         open={confirmAll}

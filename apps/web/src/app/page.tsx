@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Banner, Button, StatusChip } from '@/components/ui';
+import { Banner, ButtonLink, StatusChip } from '@/components/ui';
 
 const GAMES = ['eFootball', 'Call of Duty: Mobile', 'PUBG Mobile'];
 
@@ -72,16 +72,24 @@ export default function LandingPage() {
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href="/onboarding/phone">
-            <Button size="lg" fullWidth className="sm:w-auto min-w-[200px]">
-              Start playing free
-            </Button>
-          </Link>
-          <Link href="/play">
-            <Button variant="secondary" size="lg" fullWidth className="sm:w-auto min-w-[200px]">
-              Browse open challenges
-            </Button>
-          </Link>
+          <ButtonLink
+            href="/onboarding/phone"
+            size="lg"
+            fullWidth
+            className="sm:w-auto min-w-[200px]"
+            arrow
+          >
+            Start playing free
+          </ButtonLink>
+          <ButtonLink
+            href="/play"
+            variant="secondary"
+            size="lg"
+            fullWidth
+            className="sm:w-auto min-w-[200px]"
+          >
+            Browse open challenges
+          </ButtonLink>
         </div>
 
         <p className="mt-4 text-caption text-fg-subtle">
@@ -102,7 +110,7 @@ export default function LandingPage() {
           {GAMES.flatMap((game, i) => [
             <span
               key={`${game}-${i}`}
-              className="font-display text-h3 font-semibold text-accent shrink-0"
+              className="font-display text-h3 font-black uppercase text-accent shrink-0"
             >
               {game}
             </span>,
@@ -115,7 +123,7 @@ export default function LandingPage() {
           {GAMES.flatMap((game, i) => [
             <span
               key={`${game}-repeat-${i}`}
-              className="font-display text-h3 font-semibold text-accent shrink-0"
+              className="font-display text-h3 font-black uppercase text-accent shrink-0"
             >
               {game}
             </span>,
@@ -134,7 +142,7 @@ export default function LandingPage() {
           How it works
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-card border border-line bg-surface p-5 text-center">
+          <article className="surface-card rounded-card p-5 text-center">
             <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-accent-subtle text-accent">
               <svg
                 className="size-7"
@@ -150,13 +158,15 @@ export default function LandingPage() {
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </div>
-            <h3 className="mt-4 font-display text-h2 font-semibold text-fg">Post a challenge</h3>
+            <h3 className="mt-4 font-display text-h2 font-black uppercase text-fg">
+              Post a challenge
+            </h3>
             <p className="mt-2 text-body-sm text-fg-muted">
               Pick your game, set the stake (NGN) and format. Your challenge appears in the lobby
               instantly.
             </p>
           </article>
-          <article className="rounded-card border border-line bg-surface p-5 text-center">
+          <article className="surface-card rounded-card p-5 text-center">
             <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-accent-subtle text-accent">
               <svg
                 className="size-7"
@@ -171,13 +181,15 @@ export default function LandingPage() {
                 <path d="M12 17v4" />
               </svg>
             </div>
-            <h3 className="mt-4 font-display text-h2 font-semibold text-fg">Play & submit proof</h3>
+            <h3 className="mt-4 font-display text-h2 font-black uppercase text-fg">
+              Play & submit proof
+            </h3>
             <p className="mt-2 text-body-sm text-fg-muted">
               Join the match, play to win. Upload a screenshot or video &mdash; we verify it
               automatically.
             </p>
           </article>
-          <article className="rounded-card border border-line bg-surface p-5 text-center">
+          <article className="surface-card rounded-card p-5 text-center">
             <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-accent-subtle text-accent">
               <svg
                 className="size-7"
@@ -191,7 +203,9 @@ export default function LandingPage() {
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3 className="mt-4 font-display text-h2 font-semibold text-fg">Result confirmed</h3>
+            <h3 className="mt-4 font-display text-h2 font-black uppercase text-fg">
+              Result confirmed
+            </h3>
             <p className="mt-2 text-body-sm text-fg-muted">
               Once verified, ratings update instantly. Build your reputation and climb the
               leaderboard.
@@ -206,7 +220,7 @@ export default function LandingPage() {
           Why players trust RAISE
         </h2>
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-card border border-line bg-surface p-4">
+          <div className="surface-card rounded-card p-4">
             <div className="flex items-center gap-2">
               <span className="flex size-8 items-center justify-center rounded-control bg-success/15 text-success">
                 <svg
@@ -220,13 +234,13 @@ export default function LandingPage() {
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </span>
-              <h4 className="font-display text-h3 font-semibold text-fg">Verified proof</h4>
+              <h4 className="font-display text-h3 font-black uppercase text-fg">Verified proof</h4>
             </div>
             <p className="mt-1 text-body-sm text-fg-muted">
               Screenshots & videos auto-checked. No fake results, no disputes over evidence.
             </p>
           </div>
-          <div className="rounded-card border border-line bg-surface p-4">
+          <div className="surface-card rounded-card p-4">
             <div className="flex items-center gap-2">
               <span className="flex size-8 items-center justify-center rounded-control bg-accent-subtle text-accent">
                 <svg
@@ -241,13 +255,15 @@ export default function LandingPage() {
                   <path d="M12 6v6l4 2" />
                 </svg>
               </span>
-              <h4 className="font-display text-h3 font-semibold text-fg">Instant settlement</h4>
+              <h4 className="font-display text-h3 font-black uppercase text-fg">
+                Instant settlement
+              </h4>
             </div>
             <p className="mt-1 text-body-sm text-fg-muted">
               Ratings update the moment a result is confirmed. No waiting, no manual review.
             </p>
           </div>
-          <div className="rounded-card border border-line bg-surface p-4">
+          <div className="surface-card rounded-card p-4">
             <div className="flex items-center gap-2">
               <span className="flex size-8 items-center justify-center rounded-control bg-brand/15 text-brand">
                 <svg
@@ -264,7 +280,9 @@ export default function LandingPage() {
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </span>
-              <h4 className="font-display text-h3 font-semibold text-fg">Reputation system</h4>
+              <h4 className="font-display text-h3 font-black uppercase text-fg">
+                Reputation system
+              </h4>
             </div>
             <p className="mt-1 text-body-sm text-fg-muted">
               Every confirmed match builds your profile. Reliable players get priority matching.
@@ -275,16 +293,14 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="text-center py-4">
-        <h2 className="font-display text-h1 font-semibold text-fg">Ready to play?</h2>
+        <h2 className="font-display text-mk-h1 uppercase text-fg text-balance">Ready to play?</h2>
         <p className="mt-2 text-body-sm text-fg-muted">
           Join thousands of players in free, verified 1v1 challenges.
         </p>
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href="/onboarding/phone">
-            <Button size="lg" className="min-w-[200px]">
-              Create free account
-            </Button>
-          </Link>
+          <ButtonLink href="/onboarding/phone" size="lg" className="min-w-[200px]" arrow>
+            Create free account
+          </ButtonLink>
         </div>
       </section>
 

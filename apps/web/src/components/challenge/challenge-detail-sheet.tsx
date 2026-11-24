@@ -202,10 +202,10 @@ export function ChallengeDetailSheet({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-display text-h3 font-semibold text-fg">{c.game.name}</p>
+              <p className="font-display text-h3 font-black uppercase text-fg">{c.game.name}</p>
               <p className="text-body-sm text-fg-muted">{c.format.name}</p>
             </div>
-            <span className="font-display text-h3 font-semibold text-accent">
+            <span className="font-display text-h3 font-black uppercase text-accent">
               {c.stake.display}
             </span>
           </div>

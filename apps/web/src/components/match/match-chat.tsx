@@ -99,7 +99,7 @@ export function MatchChat({
   return (
     <section
       aria-labelledby="chat-heading"
-      className="flex min-h-[420px] flex-col rounded-card border border-line bg-surface"
+      className="flex min-h-[420px] flex-col surface-card rounded-card"
     >
       <h2 id="chat-heading" className="label-caps border-b border-line px-4 py-3 text-fg-muted">
         {heading}
@@ -402,7 +402,7 @@ function ReportSheet({
         </div>
       }
     >
-      <blockquote className="mb-4 rounded-card border border-line bg-raised px-3 py-2 text-body-sm text-fg-muted whitespace-pre-wrap break-words">
+      <blockquote className="mb-4 rounded-control border border-line-strong bg-surface px-3 py-2 text-body-sm text-fg-muted whitespace-pre-wrap break-words">
         {entry.body}
       </blockquote>
       <fieldset aria-describedby={`${groupId}-help`}>

@@ -7,7 +7,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
   return (
     <article className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
       <header className="flex flex-col gap-2">
-        <h1 className="font-display text-h1 font-semibold text-fg">{doc.title}</h1>
+        <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">{doc.title}</h1>
         <p className="text-caption text-fg-muted">Version {doc.version}</p>
         {doc.draft ? (
           <Banner variant="system">
@@ -18,7 +18,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
       </header>
       {doc.sections.map((s) => (
         <section key={s.heading} className="flex flex-col gap-2">
-          <h2 className="font-display text-h3 font-semibold text-fg">{s.heading}</h2>
+          <h2 className="font-display text-h3 font-black uppercase text-fg">{s.heading}</h2>
           {s.paragraphs.map((p) => (
             <p key={p} className="text-body-sm text-fg">
               {p}

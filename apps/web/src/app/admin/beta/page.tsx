@@ -93,9 +93,9 @@ export default function BetaInvitesPage() {
 
       <section
         aria-labelledby="new-code"
-        className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
+        className="flex flex-col gap-3 surface-card rounded-card p-4"
       >
-        <h2 id="new-code" className="font-display text-h3 font-semibold text-fg">
+        <h2 id="new-code" className="font-display text-h3 font-black uppercase text-fg">
           New codes
         </h2>
         <div className="grid gap-3 md:grid-cols-4">
@@ -234,7 +234,7 @@ export default function BetaInvitesPage() {
                         aria-label="Invite with code"
                         defaultValue=""
                         onChange={(e) => e.target.value && void invite(w.id, e.target.value)}
-                        className="h-9 rounded-card border border-line bg-raised px-2 text-body-sm text-fg"
+                        className="h-9 rounded-control border border-line-strong bg-surface px-2 text-body-sm text-fg"
                       >
                         <option value="">Invite with…</option>
                         {active.map((c) => (
