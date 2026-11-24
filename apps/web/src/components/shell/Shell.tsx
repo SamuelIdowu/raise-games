@@ -11,7 +11,7 @@ import { GameProvider } from './GameProvider';
 
 function Header() {
   return (
-    <header className="sticky top-0 z-nav flex h-[56px] items-center justify-between border-b border-line bg-bg/85 px-4 backdrop-blur lg:pl-[256px] lg:pr-8">
+    <header className="sticky top-0 z-nav flex h-[56px] items-center justify-between border-b border-line bg-bg px-4 lg:pl-[256px] lg:pr-8">
       <div className="flex items-center gap-2">
         <Sidebar />
         <GameSwitcherTrigger />
