@@ -63,7 +63,7 @@ function BottomNavView({ pathname }: { pathname: string }) {
   const badges = useNavBadges();
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 h-[56px] border-t border-line bg-raised safe-area-inset-bottom lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 h-[56px] border-t border-line bg-bg-subtle safe-area-inset-bottom lg:hidden"
       aria-label="Main navigation"
     >
       <ul className="flex h-full w-full items-center justify-around">
@@ -80,18 +80,20 @@ function BottomNavView({ pathname }: { pathname: string }) {
               <Link
                 href={item.href}
                 className={`flex min-h-11 flex-col items-center gap-1 px-2 py-1.5 transition-colors ${
-                  active ? 'text-accent' : 'text-fg-muted'
+                  active ? 'text-fg' : 'text-fg-subtle'
                 }`}
                 aria-current={active ? 'page' : undefined}
               >
-                <span className="relative">
+                <span className={`relative ${active ? 'text-accent' : ''}`}>
                   <Icon name={item.icon} size={24} />
                   <NavBadge
                     count={badges[item.href] ?? 0}
                     label={item.href === '/inbox' ? 'unread' : 'need your action'}
                   />
                 </span>
-                <span className="label-caps text-[12px]">{item.label}</span>
+                <span className="font-body text-[10px] font-semibold uppercase tracking-[0.1em]">
+                  {item.label}
+                </span>
               </Link>
             </li>
           );

@@ -11,7 +11,7 @@ import { GameProvider } from './GameProvider';
 
 function Header() {
   return (
-    <header className="sticky top-0 z-nav h-[56px] bg-raised border-b border-line flex items-center justify-between px-4">
+    <header className="sticky top-0 z-nav flex h-[56px] items-center justify-between border-b border-line bg-bg/85 px-4 backdrop-blur lg:pl-[256px] lg:pr-8">
       <div className="flex items-center gap-2">
         <Sidebar />
         <GameSwitcherTrigger />
@@ -38,18 +38,18 @@ export function Shell({ children }: { children: ReactNode }) {
         </Suspense>
 
         <Suspense
-          fallback={
-            <header className="sticky top-0 z-nav h-[56px] bg-raised border-b border-line" />
-          }
+          fallback={<header className="sticky top-0 z-nav h-[56px] border-b border-line bg-bg" />}
         >
           <Header />
         </Suspense>
 
-        <main className="flex-1 pb-[70px] pt-2 px-4 lg:pl-[248px] lg:pr-8">{children}</main>
+        <main className="flex-1 px-4 pb-[88px] pt-6 lg:pb-16 lg:pl-[288px] lg:pr-12 lg:pt-10">
+          {children}
+        </main>
 
         <Suspense
           fallback={
-            <nav className="fixed bottom-0 left-0 right-0 z-40 h-[56px] border-t border-line bg-raised lg:hidden" />
+            <nav className="fixed bottom-0 left-0 right-0 z-40 h-[56px] border-t border-line bg-bg-subtle lg:hidden" />
           }
         >
           <BottomNav />

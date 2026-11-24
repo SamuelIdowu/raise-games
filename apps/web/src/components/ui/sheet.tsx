@@ -46,7 +46,7 @@ export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: S
     >
       <div className="flex max-h-[90vh] flex-col">
         <header className="flex items-center justify-between border-b border-line p-4">
-          <h2 id={titleId} className="font-display text-h2 font-semibold text-fg">
+          <h2 id={titleId} className="font-display text-h3 font-black uppercase text-fg">
             {title}
           </h2>
           <button
