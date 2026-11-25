@@ -21,16 +21,16 @@ const DOC = {
     text2: '#B8BCC0',
     text3: '#7C8186',
     fgDisabled: '#4F5459',
-    accent: '#FF4F00',
-    accentHover: '#FF7433',
-    accentPress: '#E04400',
-    accentSubtle: 'rgba(255,79,0,0.12)',
-    onAccent: '#0A0C0D',
-    brand: '#8A2BFF',
-    brandHover: '#A25CFF',
-    brandPress: '#7016E0',
-    brandSubtle: 'rgba(138,43,255,0.16)',
-    onBrand: '#FFFFFF',
+    accent: '#8A2BFF',
+    accentHover: '#A25CFF',
+    accentPress: '#7016E0',
+    accentSubtle: 'rgba(138,43,255,0.16)',
+    onAccent: '#FFFFFF',
+    brand: '#FF4F00',
+    brandHover: '#FF7433',
+    brandPress: '#E04400',
+    brandSubtle: 'rgba(255,79,0,0.12)',
+    onBrand: '#0A0C0D',
     orange300: '#FF9A66',
     orange400: '#FF7433',
     orange500: '#FF4F00',
@@ -45,6 +45,11 @@ const DOC = {
     onCream: '#0A0C0D',
     onOrange: '#0A0C0D',
     scrim: 'rgba(0,0,0,0.64)',
+    purple700: '#4E14A3',
+    shadowInk: '#000000',
+    accentInk: '#3D0F80',
+    brandInk: '#A83300',
+    creamInk: '#8C887F',
   },
   light: {
     bg0: '#F5F1E8',
@@ -59,15 +64,15 @@ const DOC = {
     text2: '#3A3F43',
     text3: '#62686D',
     fgDisabled: '#8E9499',
-    accent: '#A83300',
-    accentHover: '#8F2A00',
-    accentPress: '#752200',
-    accentSubtle: 'rgba(168,51,0,0.10)',
+    accent: '#7016E0',
+    accentHover: '#5C10BC',
+    accentPress: '#480B96',
+    accentSubtle: 'rgba(112,22,224,0.10)',
     onAccent: '#FFFFFF',
-    brand: '#7016E0',
-    brandHover: '#5C10BC',
-    brandPress: '#480B96',
-    brandSubtle: 'rgba(112,22,224,0.10)',
+    brand: '#A83300',
+    brandHover: '#8F2A00',
+    brandPress: '#752200',
+    brandSubtle: 'rgba(168,51,0,0.10)',
     onBrand: '#FFFFFF',
     orange300: '#FF9A66',
     orange400: '#FF7433',
@@ -83,6 +88,11 @@ const DOC = {
     onCream: '#0A0C0D',
     onOrange: '#0A0C0D',
     scrim: 'rgba(10,12,13,0.48)',
+    purple700: '#4E14A3',
+    shadowInk: '#0A0C0D',
+    accentInk: '#0A0C0D',
+    brandInk: '#0A0C0D',
+    creamInk: '#0A0C0D',
   },
   status: {
     win: { dark: '#A3E635', light: '#4D7C0F' },
@@ -105,7 +115,7 @@ describe('tokens.json color tables match the Blocks design reference', () => {
     expect(JSON.stringify(tokens)).not.toMatch(/#22D3EE|#67E8F9|#06B6D4/i);
   });
   it('uses accessible light-theme accent and control borders', () => {
-    expect(tokens.color.light.accent).toBe('#A83300');
+    expect(tokens.color.light.accent).toBe('#7016E0');
     expect(tokens.color.light.onAccent).toBe('#FFFFFF');
     expect(tokens.color.dark.controlBorder).toBe('#5E6469');
     expect(tokens.color.light.controlBorder).toBe('#8F8575');
@@ -220,7 +230,7 @@ describe('tokens.json spacing/layout/shape/motion match the Blocks system', () =
   it('elevation and motion', () => {
     expect(tokens.elevation.card.dark).toContain('inset');
     expect(tokens.elevation.hard.light).toContain('4px 4px 0');
-    expect(tokens.elevation.glow).toContain('#FF4F00');
+    expect(tokens.elevation.glow).toContain('#8A2BFF');
     expect(tokens.motion.durationMs).toEqual({
       micro: 120,
       default: 200,
