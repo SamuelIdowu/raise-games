@@ -1,321 +1,315 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import Link from 'next/link';
+import { isParticipantView, type GameProfile } from '@raise/api-client';
 import {
   Avatar,
+  Banner,
   Button,
+  ButtonLink,
   Card,
   EmptyState,
   Icon,
   PageHeader,
   RankTierBadge,
+  ReputationBadge,
+  SkeletonCard,
   StatCard,
   StatusChip,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-  Tabs,
-  tabPanelProps,
   useToast,
 } from '@/components/ui';
-import { profilesApi, matchesApi, type GameProfile, type MatchView } from '@raise/api-client';
+import { AppPage, RailCard, SectionHeading } from '@/components/app/AppPage';
+import { NextMatchRail } from '@/components/app/widgets';
+import { RatingSparkline, ratingSeries } from '@/components/app/RatingSparkline';
+import { useGame } from '@/components/shell/GameProvider';
+import { useLeaderboard, useMatches, useMyProfiles } from '@/lib/app-data';
 import { formatRelative } from '@/lib/datetime';
-import { outcomeTag } from '@/lib/match-status';
-import { isParticipantView } from '@raise/api-client';
+import { TIER_LEVEL, matchChip, outcomeTag } from '@/lib/match-status';
 
-const ratingClass = (rating: number) =>
-  'font-display font-semibold tabular ' +
-  (rating > 0 ? 'text-success' : rating < 0 ? 'text-danger' : 'text-fg');
-
-type ProfileTab = 'overview' | 'matches' | 'game-ids';
-
-const PROFILE_TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'matches', label: 'Matches' },
-  { key: 'game-ids', label: 'Game IDs' },
-] as const;
-
-function GameIdRow({ label, value, onCopy }: { label: string; value: string; onCopy: () => void }) {
-  return (
-    <Card padding="sm" className="flex flex-wrap items-center justify-between gap-3 px-4">
-      <div className="flex items-center gap-3">
-        <span className="font-body text-body-sm font-bold uppercase tracking-[0.04em] text-fg">
-          {label}
-        </span>
-        <StatusChip label="Verified" variant="win" />
-      </div>
-      <div className="flex items-center gap-1">
-        <code className="rounded-xs bg-bg px-2 py-1 font-mono text-body-sm text-fg">{value}</code>
-        <Button variant="ghost" size="sm" onClick={onCopy} aria-label={`Copy ${label} ID ${value}`}>
-          <Icon name="copy" size={14} /> Copy
-        </Button>
-      </div>
-    </Card>
-  );
+function streakLabel(streak: number) {
+  if (streak > 0) return `W${streak}`;
+  if (streak < 0) return `L${-streak}`;
+  return '—';
 }
 
+/**
+ * My profile (UX Flow 8): rank, rating, record, streak and reputation per game, rating
+ * trend, recent matches and game IDs. The game in focus follows the header switcher.
+ */
 export default function ProfilePage() {
-  const router = useRouter();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const { currentGame, setCurrentGame } = useGame();
+  const profiles = useMyProfiles();
+  const finished = useMatches('finished');
+  const [copied, setCopied] = useState<string | null>(null);
 
-  const [profiles, setProfiles] = useState<GameProfile[]>([]);
-  const [matches, setMatches] = useState<MatchView[]>([]);
-  const [gameIds, setGameIds] = useState<{ gameKey: string; label: string; value: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const list = profiles.data ?? [];
+  const profile = list.find((p) => p.gameKey === currentGame) ?? list[0];
+  const ladder = useLeaderboard(profile?.gameKey ?? currentGame);
+  const me = ladder.data?.me ?? null;
 
-  useEffect(() => {
-    let live = true;
-
-    const load = async () => {
-      try {
-        const [prof, matchRes] = await Promise.all([
-          profilesApi.listMine(),
-          matchesApi.list('all'),
-        ]);
-        if (live) {
-          setProfiles(prof);
-          setMatches(matchRes.items.filter(isParticipantView));
-          setGameIds(
-            prof.map((p) => ({
-              gameKey: p.gameKey,
-              label: p.gameName,
-              value: p.inGameId,
-            })),
-          );
-          setError(null);
-        }
-      } catch (err) {
-        if (live) setError(err instanceof Error ? err.message : 'Could not load profile.');
-      } finally {
-        if (live) setLoading(false);
-      }
-    };
-
-    void load();
-    const id = setInterval(() => document.visibilityState === 'visible' && void load(), 30_000);
-    return () => {
-      live = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  if (loading) {
+  if (profiles.error && !profiles.data) {
     return (
-      <div className="mx-auto max-w-[880px] space-y-6" aria-busy="true">
-        <div className="flex items-center gap-4">
-          <div className="animate-shimmer h-16 w-16 rounded-xs" />
-          <div className="space-y-2">
-            <div className="animate-shimmer h-6 w-48 rounded-xs" />
-            <div className="animate-shimmer h-4 w-64 rounded-xs" />
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="animate-shimmer chamfer-tr h-28" />
-          <div className="animate-shimmer chamfer-tr h-28" />
-          <div className="animate-shimmer chamfer-tr h-28" />
+      <Banner variant="offline" action={<Button onClick={profiles.reload}>Retry</Button>}>
+        Could not load your profile. {profiles.error}
+      </Banner>
+    );
+  }
+
+  if (profiles.loading) {
+    return (
+      <div className="space-y-6" aria-busy="true">
+        <SkeletonCard className="h-28" />
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <SkeletonCard key={i} className="h-[104px]" />
+          ))}
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (!profile) {
     return (
-      <div className="space-y-6">
-        <p className="text-center text-fg-muted">{error}</p>
-        <Button variant="secondary" onClick={() => router.refresh()}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
-  // Use the first profile as the main profile (or current game if available)
-  const mainProfile = profiles[0];
-  const rating = mainProfile
-    ? {
-        value: mainProfile.rating,
-        tier: parseInt(mainProfile.rankTier) || 1,
-        tierLabel: mainProfile.rankLabel,
-        wins: mainProfile.wins,
-        losses: mainProfile.losses,
-        draws: mainProfile.draws,
-        streak: mainProfile.streak,
-        provisional: mainProfile.provisional,
-      }
-    : null;
-
-  const user = mainProfile
-    ? {
-        username: mainProfile.displayName ?? mainProfile.inGameId,
-        reputationLabel: mainProfile.reputation,
-        createdAt: mainProfile.createdAt,
-      }
-    : null;
-
-  const copy = (label: string, value: string) => {
-    void navigator.clipboard.writeText(value);
-    toast({ title: 'Copied', description: `${label} ID copied to clipboard` });
-  };
-
-  const joined = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-    : '2026';
-
-  const gameIdList =
-    gameIds.length > 0 ? (
-      <div className="space-y-2">
-        {gameIds.map((g) => (
-          <GameIdRow
-            key={g.gameKey}
-            label={g.label}
-            value={g.value}
-            onCopy={() => copy(g.label, g.value)}
-          />
-        ))}
-      </div>
-    ) : (
       <EmptyState
         icon="gamepad-2"
-        title="No game IDs added"
-        description="Add your game IDs so opponents can find you."
-        action={<Button onClick={() => router.push('/settings?tab=game-ids')}>Add game ID</Button>}
-      />
-    );
-
-  return (
-    <div className="mx-auto max-w-[880px] space-y-8">
-      <PageHeader
-        eyebrow={`Joined ${joined}`}
-        title="Profile"
+        title="No games yet"
+        description="Pick the games you play and add your in-game IDs so opponents can find you."
         action={
-          <Button variant="secondary" size="sm" onClick={() => router.push('/settings')}>
-            Edit profile
-          </Button>
+          <ButtonLink href="/onboarding/games" arrow>
+            Add a game
+          </ButtonLink>
         }
       />
+    );
+  }
 
-      {user && (
-        <div className="flex flex-col gap-6">
-          <Card className="flex flex-col items-start gap-4 md:flex-row md:items-center">
-            <Avatar username={user.username} size={64} />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="truncate font-display text-h2 font-black uppercase text-fg">
-                  {user.username}
-                </h2>
-                <StatusChip label="Active" variant="win" />
-              </div>
-              <div className="label-caps flex flex-wrap items-center gap-4 text-fg-subtle">
-                <span className="flex items-center gap-1.5">
-                  <Icon name="trophy" size={14} /> {rating?.tierLabel ?? 'Rookie'}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Icon name="shield" size={14} /> {user.reputationLabel ?? 'New'}
-                </span>
-              </div>
-            </div>
-            <RankTierBadge
-              tier={(rating?.tier ?? 1) as 1 | 2 | 3 | 4 | 5}
-              label={rating?.tierLabel}
-            />
-          </Card>
+  const username = profile.displayName ?? 'Player';
+  const joined = new Date(
+    Math.min(...list.map((p) => new Date(p.createdAt).getTime())),
+  ).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' });
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Rating" value={rating?.value ?? 0} icon="star" />
-            <StatCard
-              label="Record"
-              value={`${rating?.wins ?? 0}-${rating?.losses ?? 0}-${rating?.draws ?? 0}`}
-              icon="crown"
-            />
-            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="flame" />
-          </div>
+  const gameMatches = (finished.data?.items ?? [])
+    .filter(isParticipantView)
+    .filter((m) => m.game.key === profile.gameKey);
+  const series = ratingSeries(profile.rating, gameMatches);
 
-          <Tabs
-            idPrefix="profile"
-            aria-label="Profile sections"
-            items={PROFILE_TABS}
-            value={activeTab}
-            onChange={setActiveTab}
-          />
+  const copy = (p: GameProfile) => {
+    void navigator.clipboard.writeText(p.inGameId);
+    setCopied(p.gameKey);
+    toast({ title: 'Copied', description: `${p.gameName} ID copied`, variant: 'status' });
+  };
 
-          <div {...tabPanelProps('profile', activeTab)}>
-            {activeTab === 'overview' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="eyebrow">Game IDs</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveTab('game-ids')}>
-                    Edit
-                  </Button>
-                </div>
-                {gameIdList}
-              </div>
+  return (
+    <AppPage
+      header={
+        <PageHeader
+          eyebrow={`Joined ${joined}`}
+          title="Profile"
+          action={
+            <ButtonLink href="/settings" variant="secondary" size="sm">
+              Edit profile
+            </ButtonLink>
+          }
+        />
+      }
+      rail={
+        <>
+          <RailCard title="Rating trend" href="/leaderboard" linkLabel="Leaderboard">
+            {series.length > 1 ? (
+              <RatingSparkline points={series} />
+            ) : (
+              <p className="text-body-sm text-fg-muted">
+                Your rating line appears after your first confirmed {profile.gameName} match.
+              </p>
             )}
-
-            {activeTab === 'matches' && (
-              <Table>
-                <TableHead>
-                  <TableHeaderCell>Match</TableHeaderCell>
-                  <TableHeaderCell>Game</TableHeaderCell>
-                  <TableHeaderCell>Opponent</TableHeaderCell>
-                  <TableHeaderCell numeric>Result</TableHeaderCell>
-                  <TableHeaderCell numeric>Rating</TableHeaderCell>
-                  <TableHeaderCell>Date</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                </TableHead>
-                <TableBody>
-                  {matches.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-mono text-accent">{m.id}</TableCell>
-                      <TableCell>{m.game.name}</TableCell>
-                      <TableCell>{m.opponent?.username ?? '—'}</TableCell>
-                      <TableCell numeric>
-                        <StatusChip
-                          label={outcomeTag(m)?.label ?? '—'}
-                          variant={outcomeTag(m)?.variant ?? 'neutral'}
-                        />
-                      </TableCell>
-                      <TableCell numeric>
-                        <span className={ratingClass(m.ratingDelta ?? 0)}>
-                          {m.ratingDelta && m.ratingDelta > 0 ? '+' : ''}
-                          {m.ratingDelta ?? 0}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {formatRelative(m.confirmedAt ?? new Date().toISOString())}
-                      </TableCell>
-                      <TableCell>
-                        <StatusChip label="Confirmed" variant="win" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-
-            {activeTab === 'game-ids' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="eyebrow">Game IDs</h3>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => router.push('/settings?tab=game-ids')}
-                  >
-                    Add game ID
-                  </Button>
-                </div>
-                {gameIdList}
-              </div>
-            )}
+          </RailCard>
+          <NextMatchRail />
+        </>
+      }
+    >
+      {/* Identity */}
+      <Card className="flex flex-col gap-5 md:flex-row md:items-center">
+        <Avatar username={username} size={64} />
+        <div className="min-w-0 flex-1 space-y-2">
+          <h2 className="truncate font-display text-h2 font-black uppercase text-fg">{username}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <RankTierBadge tier={TIER_LEVEL[profile.rankTier] ?? 1} label={profile.rankLabel} />
+            <ReputationBadge level={profile.reputation} />
+            {profile.city || profile.campus ? (
+              <span className="label-caps flex items-center gap-1.5 text-fg-subtle">
+                <Icon name="map-pin" size={14} />
+                {[profile.campus, profile.city].filter(Boolean).join(' · ')}
+              </span>
+            ) : null}
           </div>
         </div>
-      )}
-    </div>
+      </Card>
+
+      {/* Games I play */}
+      <section aria-labelledby="my-games" className="space-y-4">
+        <SectionHeading id="my-games">Your games</SectionHeading>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
+          {list.map((p) => {
+            const selected = p.gameKey === profile.gameKey;
+            return (
+              <button
+                key={p.gameKey}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setCurrentGame(p.gameKey as typeof currentGame)}
+                className={`surface-card space-y-3 rounded-card p-4 text-left transition-colors hover:border-line-strong ${selected ? 'border-accent' : ''}`}
+              >
+                <p className="font-display text-[12px] font-bold uppercase tracking-[0.06em] text-fg">
+                  {p.gameName}
+                </p>
+                <p className="font-display text-[28px] font-black leading-none text-accent tabular">
+                  {p.rating.toLocaleString()}
+                </p>
+                <p className="text-caption text-fg-subtle tabular">
+                  {p.rankLabel} · {p.wins}-{p.losses}-{p.draws}
+                </p>
+              </button>
+            );
+          })}
+          {list.length < 3 ? (
+            <Link
+              href="/onboarding/games"
+              className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line-strong p-4 text-fg-subtle transition-colors hover:border-accent hover:text-accent"
+            >
+              <Icon name="plus" size={20} />
+              <span className="font-display text-[11px] font-bold uppercase tracking-[0.08em]">
+                Add a game
+              </span>
+            </Link>
+          ) : null}
+        </div>
+      </section>
+
+      {/* Focused game stats */}
+      <section aria-label={`${profile.gameName} stats`} className="space-y-4">
+        <SectionHeading>{profile.gameName}</SectionHeading>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <StatCard
+            label={profile.provisional ? 'Rating · provisional' : 'Rating'}
+            value={profile.rating}
+            icon="star"
+            size="md"
+          />
+          <StatCard
+            label="Rank"
+            value={me ? `#${me.rank}` : '—'}
+            icon="crown"
+            tone="dark"
+            size="md"
+          />
+          <StatCard
+            label="Record"
+            value={`${profile.wins}-${profile.losses}-${profile.draws}`}
+            icon="shield"
+            tone="dark"
+            size="md"
+          />
+          <StatCard
+            label="Streak"
+            value={streakLabel(profile.streak)}
+            icon="flame"
+            tone="dark"
+            size="md"
+          />
+        </div>
+      </section>
+
+      {/* Recent matches */}
+      <section aria-labelledby="recent" className="space-y-4">
+        <SectionHeading id="recent" href="/matches" linkLabel="All matches">
+          Recent {profile.gameName} matches
+        </SectionHeading>
+        {finished.loading ? (
+          <SkeletonCard className="h-40" />
+        ) : gameMatches.length > 0 ? (
+          <ul className="surface-card divide-y divide-line rounded-card">
+            {gameMatches.slice(0, 8).map((m) => {
+              const tag = outcomeTag(m);
+              const chip = matchChip(m);
+              return (
+                <li key={m.id}>
+                  <Link
+                    href={`/matches/${m.id}`}
+                    className="flex items-center gap-3 p-4 transition-colors hover:bg-bg-subtle"
+                  >
+                    <Avatar username={m.opponent.username} size={32} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-body-sm font-semibold text-fg">
+                        vs {m.opponent.username}
+                      </span>
+                      <span className="block truncate text-caption text-fg-subtle">
+                        {m.format.name}
+                        {m.completedAt ? ` · ${formatRelative(m.completedAt)}` : ''}
+                      </span>
+                    </span>
+                    {tag ? (
+                      <StatusChip label={tag.label} variant={tag.variant} icon={tag.icon} />
+                    ) : (
+                      <StatusChip label={chip.label} variant={chip.variant} icon={chip.icon} />
+                    )}
+                    {m.ratingDelta !== null ? (
+                      <span
+                        className={`w-12 text-right font-display text-body-sm font-bold tabular ${m.ratingDelta >= 0 ? 'text-success' : 'text-danger'}`}
+                      >
+                        {m.ratingDelta >= 0 ? `+${m.ratingDelta}` : m.ratingDelta}
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState
+            icon="trophy"
+            title="No matches yet"
+            description={`Play your first ${profile.gameName} match to start your record.`}
+            action={
+              <ButtonLink href="/play" arrow>
+                Find a challenge
+              </ButtonLink>
+            }
+          />
+        )}
+      </section>
+
+      {/* Game IDs */}
+      <section aria-labelledby="game-ids" className="space-y-4">
+        <SectionHeading id="game-ids" href="/settings?tab=game-ids" linkLabel="Edit">
+          Game IDs
+        </SectionHeading>
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
+          {list.map((p) => (
+            <li
+              key={p.gameKey}
+              className="surface-card flex items-center justify-between gap-3 rounded-card p-4"
+            >
+              <div className="min-w-0">
+                <p className="label-caps text-fg-subtle">{p.gameName}</p>
+                <code className="mt-1 block truncate font-mono text-body-sm text-fg">
+                  {p.inGameId}
+                </code>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copy(p)}
+                aria-label={`Copy ${p.gameName} ID ${p.inGameId}`}
+              >
+                <Icon name={copied === p.gameKey ? 'check' : 'copy'} size={14} />
+                {copied === p.gameKey ? 'Copied' : 'Copy'}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </AppPage>
   );
 }

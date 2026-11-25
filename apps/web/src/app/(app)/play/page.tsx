@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Avatar,
@@ -15,6 +16,11 @@ import {
   PageHeader,
 } from '@/components/ui';
 import { ChallengeCard } from '@/components/challenge/challenge-card';
+import { AppPage } from '@/components/app/AppPage';
+import { MyChallengesRail, NextMatchRail, RankRail } from '@/components/app/widgets';
+import { useGame } from '@/components/shell/GameProvider';
+import { useMyProfiles } from '@/lib/app-data';
+import { refresh } from '@/lib/use-api';
 import { useNow } from '@/lib/use-now';
 import { getSocket } from '@/lib/realtime';
 import { ChallengeDetailSheet } from '@/components/challenge/challenge-detail-sheet';
@@ -57,7 +63,17 @@ export default function PlayPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [games, setGames] = useState<Game[]>([]);
-  const [selectedGame, setSelectedGame] = useState('all');
+  const { currentGame, setCurrentGame, games: shellGames } = useGame();
+  // The board starts on the game picked in the header; "All games" is a local override.
+  const [selectedGame, setSelectedGame] = useState<string>(currentGame);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follow the header switcher
+    setSelectedGame(currentGame);
+    setLoading(true);
+  }, [currentGame]);
+  const profiles = useMyProfiles();
+  const myProfile = profiles.data?.find((p) => p.gameKey === selectedGame) ?? profiles.data?.[0];
+  const [where, setWhere] = useState<'all' | 'city' | 'campus'>('all');
   const [view, setView] = useState<'board' | 'players'>('board');
 
   const [challenges, setChallenges] = useState<ChallengeCardData[]>([]);
@@ -97,6 +113,8 @@ export default function PlayPage() {
     lastLoad.current = Date.now();
     const q: BoardQuery = { limit: 20 };
     if (selectedGame !== 'all') q.game = selectedGame;
+    if (where === 'city' && myProfile?.city) q.city = myProfile.city;
+    if (where === 'campus' && myProfile?.campus) q.campus = myProfile.campus;
     try {
       const [board, mine] = await Promise.all([
         challengesApi.list(q),
@@ -113,7 +131,7 @@ export default function PlayPage() {
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
-  }, [selectedGame]);
+  }, [selectedGame, where, myProfile?.city, myProfile?.campus]);
 
   useEffect(() => {
     // loadFirstPage sets state only after its fetch resolves; the rule cannot see past the await.
@@ -149,6 +167,8 @@ export default function PlayPage() {
     try {
       const q: BoardQuery = { limit: 20, cursor: nextCursor };
       if (selectedGame !== 'all') q.game = selectedGame;
+      if (where === 'city' && myProfile?.city) q.city = myProfile.city;
+      if (where === 'campus' && myProfile?.campus) q.campus = myProfile.campus;
       const page = await challengesApi.list(q);
       setChallenges((prev) => [
         ...prev,
@@ -174,6 +194,8 @@ export default function PlayPage() {
         description: 'Opening the match room.',
         variant: 'status',
       });
+      refresh('challenges');
+      refresh('matches');
       router.push(`/matches/${matchId}`);
     } catch (e) {
       toast({ title: 'Could not accept', description: (e as Error).message, variant: 'error' });
@@ -202,6 +224,7 @@ export default function PlayPage() {
     try {
       await challengesApi.cancel(c.id);
       setChallenges((prev) => prev.filter((x) => x.id !== c.id));
+      refresh('challenges');
       toast({ title: 'Challenge cancelled', variant: 'status' });
     } catch (e) {
       toast({ title: 'Could not cancel', description: (e as Error).message, variant: 'error' });
@@ -213,22 +236,32 @@ export default function PlayPage() {
   const detail = detailId ? findChallenge(detailId) : undefined;
 
   return (
-    <div className="mx-auto max-w-[880px] space-y-8">
-      <PageHeader
-        eyebrow="Open challenges"
-        title="Play"
-        action={
-          <Button
-            variant="brand"
-            arrow
-            onClick={() => setCreateOpen({})}
-            disabled={games.length === 0}
-          >
-            Create challenge
-          </Button>
-        }
-      />
-
+    <AppPage
+      rail={
+        <>
+          <NextMatchRail />
+          <MyChallengesRail />
+          <RankRail />
+        </>
+      }
+      header={
+        <PageHeader
+          eyebrow="Open challenges"
+          title="Play"
+          subtitle="Accept an open challenge and the match room opens straight away, or post your own."
+          action={
+            <Button
+              variant="brand"
+              arrow
+              onClick={() => setCreateOpen({})}
+              disabled={games.length === 0}
+            >
+              Create challenge
+            </Button>
+          }
+        />
+      }
+    >
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1 sm:flex-none">
           <Select
@@ -240,10 +273,33 @@ export default function PlayPage() {
             ]}
             onChange={(v) => {
               setSelectedGame(v);
+              // Keep the header in step when a single game is picked here.
+              if (shellGames.some((g) => g.id === v)) setCurrentGame(v as typeof currentGame);
               setLoading(true);
             }}
           />
         </div>
+        {myProfile?.city || myProfile?.campus ? (
+          <div className="min-w-48 flex-1 sm:flex-none">
+            <Select
+              label="Where"
+              value={where}
+              options={[
+                { value: 'all', label: 'Everywhere' },
+                ...(myProfile?.city
+                  ? [{ value: 'city', label: `My city · ${myProfile.city}` }]
+                  : []),
+                ...(myProfile?.campus
+                  ? [{ value: 'campus', label: `My campus · ${myProfile.campus}` }]
+                  : []),
+              ]}
+              onChange={(v) => {
+                setWhere(v as typeof where);
+                setLoading(true);
+              }}
+            />
+          </div>
+        ) : null}
         <div role="tablist" aria-label="Play views" className="flex gap-2">
           {(['board', 'players'] as const).map((v) => (
             <Button
@@ -267,18 +323,20 @@ export default function PlayPage() {
               <h2 id="for-me-heading" className="eyebrow">
                 Challenges for you · {forMe.length}
               </h2>
-              {forMe.map((c) => (
-                <ChallengeCard
-                  key={c.id}
-                  challenge={c}
-                  pending={pendingId === c.id}
-                  onAccept={() => accept(c)}
-                  onDecline={() => decline(c)}
-                  onCancel={() => setDetailId(c.id)}
-                  onDetails={() => setDetailId(c.id)}
-                  now={now}
-                />
-              ))}
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+                {forMe.map((c) => (
+                  <ChallengeCard
+                    key={c.id}
+                    challenge={c}
+                    pending={pendingId === c.id}
+                    onAccept={() => accept(c)}
+                    onDecline={() => decline(c)}
+                    onCancel={() => setDetailId(c.id)}
+                    onDetails={() => setDetailId(c.id)}
+                    now={now}
+                  />
+                ))}
+              </div>
             </section>
           ) : null}
 
@@ -287,7 +345,12 @@ export default function PlayPage() {
               Open challenges
             </h2>
             {loading && challenges.length === 0 ? (
-              <div className="space-y-3" aria-busy="true" aria-label="Loading challenges">
+              <div
+                className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2"
+                aria-busy="true"
+                aria-label="Loading challenges"
+              >
+                <SkeletonCard />
                 <SkeletonCard />
                 <SkeletonCard />
                 <SkeletonCard />
@@ -316,18 +379,20 @@ export default function PlayPage() {
               />
             ) : (
               <>
-                {challenges.map((c) => (
-                  <ChallengeCard
-                    key={c.id}
-                    challenge={c}
-                    pending={pendingId === c.id}
-                    onAccept={() => accept(c)}
-                    onDecline={() => decline(c)}
-                    onCancel={() => setDetailId(c.id)}
-                    onDetails={() => setDetailId(c.id)}
-                    now={now}
-                  />
-                ))}
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+                  {challenges.map((c) => (
+                    <ChallengeCard
+                      key={c.id}
+                      challenge={c}
+                      pending={pendingId === c.id}
+                      onAccept={() => accept(c)}
+                      onDecline={() => decline(c)}
+                      onCancel={() => setDetailId(c.id)}
+                      onDetails={() => setDetailId(c.id)}
+                      now={now}
+                    />
+                  ))}
+                </div>
                 {nextCursor ? (
                   <div className="py-2 text-center">
                     <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
@@ -377,7 +442,7 @@ export default function PlayPage() {
           }}
         />
       ) : null}
-    </div>
+    </AppPage>
   );
 }
 
@@ -428,7 +493,7 @@ function PlayersView({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
         <Select
           label="Rank"
           value={search.rank ?? ''}
@@ -476,32 +541,37 @@ function PlayersView({
           }
         />
       ) : (
-        <div className="space-y-3">
-          {players.map((p) => (
-            <article
-              key={`${p.userId}-${p.game.key}`}
-              className="flex items-center gap-3 surface-card rounded-card p-4"
-            >
-              <Avatar username={p.username} size={32} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-body font-semibold text-fg">
-                  {p.username}
-                </p>
-                <p className="text-caption text-fg-muted">
-                  {p.game.name} · {p.rankLabel}
-                  {p.city ? ` · ${p.city}` : ''}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <RatingBadge value={p.rating} provisional={p.provisional} />
-                  <span className="text-caption text-fg-muted tabular">{p.record}</span>
-                  <ReputationBadge level={p.reputation} />
+        <div className="space-y-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+            {players.map((p) => (
+              <article
+                key={`${p.userId}-${p.game.key}`}
+                className="flex items-center gap-3 surface-card rounded-card p-4"
+              >
+                <Avatar username={p.username} size={32} />
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/profile/${p.userId}`}
+                    className="block truncate font-display text-body font-semibold text-fg hover:text-accent"
+                  >
+                    {p.username}
+                  </Link>
+                  <p className="text-caption text-fg-muted">
+                    {p.game.name} · {p.rankLabel}
+                    {p.city ? ` · ${p.city}` : ''}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <RatingBadge value={p.rating} provisional={p.provisional} />
+                    <span className="text-caption text-fg-muted tabular">{p.record}</span>
+                    <ReputationBadge level={p.reputation} />
+                  </div>
                 </div>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => onChallenge(p)}>
-                Challenge
-              </Button>
-            </article>
-          ))}
+                <Button size="sm" variant="secondary" onClick={() => onChallenge(p)}>
+                  Challenge
+                </Button>
+              </article>
+            ))}
+          </div>
           {nextCursor ? (
             <div className="py-2 text-center">
               <Button variant="secondary" onClick={() => void loadMore()}>
