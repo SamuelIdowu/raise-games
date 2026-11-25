@@ -22,8 +22,25 @@ function clearTokens() {
   localStorage.removeItem('refresh_token');
 }
 
+/**
+ * One refresh at a time. Refresh tokens rotate, so when several requests hit 401 together
+ * (a page plus its rail, or Promise.all), only the first may spend the token; the rest
+ * wait for that result. Without this, the losers got 401 from /auth/refresh, cleared the
+ * tokens and signed the player out.
+ */
+let inflightRefresh: Promise<boolean> | null = null;
+
 /** Rotates the refresh token. Exported so the WebSocket can re-auth after expiry. */
-export async function refreshAccessToken(): Promise<boolean> {
+export function refreshAccessToken(): Promise<boolean> {
+  if (!inflightRefresh) {
+    inflightRefresh = rotateRefreshToken().finally(() => {
+      inflightRefresh = null;
+    });
+  }
+  return inflightRefresh;
+}
+
+async function rotateRefreshToken(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
 
@@ -67,7 +84,9 @@ export async function apiFetch<T>(
 
   if (res.status === 401 && retry) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) {
+    // Another tab may have rotated the tokens first: a newer access token is as good.
+    const rotatedElsewhere = !!getAccessToken() && getAccessToken() !== accessToken;
+    if (refreshed || rotatedElsewhere) {
       return apiFetch<T>(path, options, false);
     } else {
       clearTokens();
