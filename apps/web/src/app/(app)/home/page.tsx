@@ -1,172 +1,194 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { isParticipantView, type MatchView } from '@raise/api-client';
 import {
   Avatar,
   Banner,
   Button,
   ButtonLink,
-  Card,
   EmptyState,
-  Icon,
-  RatingBadge,
-  RankTierBadge,
-  StatCard,
-  StatusChip,
   PageHeader,
   PromoBanner,
+  SkeletonCard,
+  StatCard,
+  StatusChip,
 } from '@/components/ui';
+import { AppPage, SectionHeading } from '@/components/app/AppPage';
+import { ChallengeCard } from '@/components/challenge/challenge-card';
+import { ChallengeDetailSheet } from '@/components/challenge/challenge-detail-sheet';
 import {
-  challengesApi,
-  matchesApi,
-  profilesApi,
-  type GameProfile,
-  isParticipantView,
-} from '@raise/api-client';
-import { formatRelative } from '@/lib/datetime';
-import { matchChip, outcomeTag } from '@/lib/match-status';
+  HowItWorksRail,
+  MyChallengesRail,
+  NextMatchCard,
+  sortByUrgency,
+} from '@/components/app/widgets';
+import { useChallengeActions } from '@/components/app/use-challenge-actions';
 import { useGame } from '@/components/shell/GameProvider';
+import {
+  useBoard,
+  useChallengesForMe,
+  useLeaderboard,
+  useMatches,
+  useMyProfiles,
+  useNotifications,
+} from '@/lib/app-data';
+import { formatRelative } from '@/lib/datetime';
+import { outcomeTag } from '@/lib/match-status';
+import { useNow } from '@/lib/use-now';
 
-const POLL_MS = 20_000;
+function streakLabel(streak: number) {
+  if (streak > 0) return `W${streak}`;
+  if (streak < 0) return `L${-streak}`;
+  return '—';
+}
 
+/**
+ * Signed-in dashboard (UX spec: Shell + Flows 2, 4, 5, 8). Answers, in order: what needs
+ * me now, how am I doing in this game, what can I play next, what just happened.
+ * Scoped to the game picked in the header.
+ */
 export default function HomePage() {
-  const router = useRouter();
   const { currentGame, games } = useGame();
-  const gameLabel = games.find((g) => g.id === currentGame)?.label ?? 'Your';
+  const gameName = games.find((g) => g.id === currentGame)?.label ?? currentGame;
+  const now = useNow();
 
-  const [profiles, setProfiles] = useState<GameProfile[]>([]);
-  const [matches, setMatches] = useState<import('@raise/api-client').MatchView[]>([]);
-  const [challenges, setChallenges] = useState<import('@raise/api-client').ChallengeCard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const profiles = useMyProfiles();
+  const active = useMatches('active');
+  const finished = useMatches('finished');
+  const forMe = useChallengesForMe();
+  const board = useBoard({ game: currentGame, status: 'open', mine: 'false', limit: 6 });
+  const ladder = useLeaderboard(currentGame);
+  const notifications = useNotifications();
+  const actions = useChallengeActions();
+  const [detailId, setDetailId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let live = true;
-
-    const load = async () => {
-      try {
-        const [prof, matchRes, chalRes] = await Promise.all([
-          profilesApi.listMine(),
-          matchesApi.list('all'),
-          challengesApi.list({ limit: 5 }),
-        ]);
-        if (live) {
-          setProfiles(prof);
-          setMatches(matchRes.items.filter(isParticipantView).slice(0, 3));
-          setChallenges(chalRes.items);
-          setError(null);
-        }
-      } catch (err) {
-        if (live) setError(err instanceof Error ? err.message : 'Could not load dashboard.');
-      } finally {
-        if (live) setLoading(false);
-      }
-    };
-
-    void load();
-    const id = setInterval(() => document.visibilityState === 'visible' && void load(), POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  if (loading) {
+  if (profiles.error && !profiles.data) {
     return (
-      <div className="space-y-6" aria-busy="true">
-        <div className="animate-shimmer h-8 w-48 rounded-xs" />
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="animate-shimmer chamfer-tr h-28" />
-          <div className="animate-shimmer chamfer-tr h-28" />
-          <div className="animate-shimmer chamfer-tr h-28" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Banner variant="offline" action={<Button onClick={() => router.refresh()}>Retry</Button>}>
-        {error}
+      <Banner variant="offline" action={<Button onClick={profiles.reload}>Retry</Button>}>
+        Could not load your dashboard. {profiles.error}
       </Banner>
     );
   }
 
-  // Find the profile for the current game
-  const profile = profiles.find((p) => p.gameKey === currentGame) ?? profiles[0];
-  const rating = profile
-    ? {
-        value: profile.rating,
-        tier: profile.rankTier,
-        tierLabel: profile.rankLabel,
-        wins: profile.wins,
-        losses: profile.losses,
-        draws: profile.draws,
-        streak: profile.streak,
-        provisional: profile.provisional,
-      }
-    : null;
+  const profile = profiles.data?.find((p) => p.gameKey === currentGame);
+  const displayName = profiles.data?.[0]?.displayName ?? 'Player';
+  const activeMatches = sortByUrgency((active.data?.items ?? []).filter(isParticipantView));
+  const recent = (finished.data?.items ?? []).filter(isParticipantView).slice(0, 5);
+  const openBoard = (board.data?.items ?? []).filter((c) => !c.isMine).slice(0, 4);
+  const directForMe = forMe.data?.items ?? [];
+  const me = ladder.data?.me ?? null;
+  const allChallenges = [...directForMe, ...openBoard];
+  const detail = detailId ? allChallenges.find((c) => c.id === detailId) : undefined;
 
-  const user = profile
-    ? {
-        username: profile.displayName ?? profile.inGameId,
-        reputationLabel: profile.reputation,
-        createdAt: profile.createdAt,
-      }
-    : null;
+  const challengeCard = (c: (typeof allChallenges)[number]) => (
+    <ChallengeCard
+      key={c.id}
+      challenge={c}
+      pending={actions.pendingId === c.id}
+      onAccept={() => void actions.accept(c)}
+      onDecline={() => void actions.decline(c)}
+      onCancel={() => setDetailId(c.id)}
+      onDetails={() => setDetailId(c.id)}
+      now={now}
+    />
+  );
 
   return (
-    <div className="mx-auto max-w-[880px] space-y-10">
-      <PageHeader
-        eyebrow={`${gameLabel} dashboard`}
-        title={`Welcome back, ${user?.username ?? 'Player'}`}
-        action={
-          <ButtonLink href="/play" arrow>
-            Find a challenge
-          </ButtonLink>
-        }
-      />
-
-      {user && (
-        <div className="flex flex-col gap-4">
-          <Card className="flex flex-col items-start gap-4 md:flex-row md:items-center">
-            <Avatar username={user.username} size={64} />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="truncate font-display text-h2 font-black uppercase text-fg">
-                  {user.username}
-                </h2>
-                <StatusChip label="Active" variant="win" />
-              </div>
-              <div className="label-caps flex flex-wrap items-center gap-4 text-fg-subtle">
-                <span className="flex items-center gap-1.5">
-                  <Icon name="trophy" size={14} /> {rating?.tierLabel ?? 'Rookie'}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Icon name="shield" size={14} /> {user.reputationLabel ?? 'New'}
-                </span>
-              </div>
-            </div>
-            <RankTierBadge
-              tier={(parseInt(rating?.tier as string) || 1) as 1 | 2 | 3 | 4 | 5}
-              label={rating?.tierLabel}
+    <AppPage
+      header={
+        <PageHeader
+          eyebrow={`${gameName} dashboard`}
+          title={`Welcome back, ${displayName}`}
+          action={
+            <ButtonLink href="/play" arrow>
+              Find a challenge
+            </ButtonLink>
+          }
+        />
+      }
+      rail={
+        <>
+          <MyChallengesRail />
+          <HowItWorksRail />
+        </>
+      }
+    >
+      {/* Standing in the current game */}
+      <section aria-label={`Your ${gameName} standing`}>
+        {profiles.loading ? (
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => (
+              <SkeletonCard key={i} className="h-[120px]" />
+            ))}
+          </div>
+        ) : profile ? (
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            <StatCard
+              label={profile.provisional ? 'Rating · provisional' : 'Rating'}
+              value={profile.rating}
+              icon="star"
+              size="md"
             />
-          </Card>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Rating" value={rating?.value ?? 0} icon="star" />
+            <StatCard
+              label="Rank"
+              value={me ? `#${me.rank}` : '—'}
+              icon="crown"
+              tone="dark"
+              size="md"
+              delta={me ? undefined : 'Play a match to rank'}
+            />
             <StatCard
               label="Record"
-              value={`${rating?.wins ?? 0}-${rating?.losses ?? 0}-${rating?.draws ?? 0}`}
-              icon="crown"
+              value={`${profile.wins}-${profile.losses}-${profile.draws}`}
+              icon="shield"
+              tone="dark"
+              size="md"
             />
-            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="flame" />
+            <StatCard
+              label="Streak"
+              value={streakLabel(profile.streak)}
+              icon="flame"
+              tone="dark"
+              size="md"
+            />
           </div>
+        ) : (
+          <EmptyState
+            icon="gamepad-2"
+            title={`You don't play ${gameName} yet`}
+            description={`Add your ${gameName} ID so opponents can find you, or switch game in the header.`}
+            action={
+              <ButtonLink href="/onboarding/games" arrow>
+                Add {gameName}
+              </ButtonLink>
+            }
+          />
+        )}
+      </section>
 
+      {/* Up next */}
+      <section aria-labelledby="up-next" className="space-y-4">
+        <SectionHeading
+          id="up-next"
+          href={activeMatches.length > 2 ? '/matches' : undefined}
+          linkLabel={`All ${activeMatches.length} matches`}
+        >
+          Up next
+        </SectionHeading>
+        {active.loading ? (
+          <SkeletonCard className="h-48" />
+        ) : activeMatches.length > 0 ? (
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
+            {activeMatches.slice(0, 2).map((m) => (
+              <NextMatchCard key={m.id} match={m} />
+            ))}
+            {activeMatches.length === 1 ? <MatchChecklist match={activeMatches[0]!} /> : null}
+          </div>
+        ) : (
           <PromoBanner
-            eyebrow="Play and climb"
+            eyebrow="Free to play"
             title={
               <>
                 Post a challenge,
@@ -180,108 +202,204 @@ export default function HomePage() {
               </ButtonLink>
             }
           >
-            Pick a game and format, invite anyone or open it to the board. Both players report,
-            proof settles disputes.
+            No match on right now. Pick a format and time, invite a player or open it to the board.
+            Both players report, proof settles disputes.
           </PromoBanner>
+        )}
+      </section>
 
-          {matches.length > 0 ? (
-            <section aria-labelledby="recent-matches" className="space-y-3">
-              <h3 id="recent-matches" className="eyebrow">
-                Recent matches
-              </h3>
-              {matches.map((match) => (
-                <Link
-                  key={match.id}
-                  href={`/matches/${match.id}`}
-                  className="surface-card flex flex-col gap-2 rounded-card p-4 transition-[transform,border-color] hover:-translate-y-0.5 hover:border-line-strong"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-display text-h3 font-black uppercase text-fg">
-                      {match.game.name} <span className="text-fg-muted">· {match.format.name}</span>
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {outcomeTag(match) ? (
-                        <StatusChip
-                          label={outcomeTag(match)!.label}
-                          variant={outcomeTag(match)!.variant}
-                          icon={outcomeTag(match)!.icon}
-                        />
-                      ) : null}
-                      <StatusChip
-                        label={matchChip(match).label}
-                        variant={matchChip(match).variant}
-                        icon={matchChip(match).icon}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {match.opponent ? (
-                      <>
-                        <Avatar username={match.opponent.username} size={32} />
-                        <span className="min-w-0 flex-1 truncate text-body text-fg">
-                          {match.opponent.username}
-                        </span>
-                        <RatingBadge
-                          value={match.opponent.rating}
-                          provisional={match.opponent.provisional}
-                        />
-                      </>
-                    ) : (
-                      <span className="text-fg-muted">Opponent unknown</span>
-                    )}
-                  </div>
-                  <p className="text-caption text-fg-muted">
-                    {match.status === 'confirmed' ? 'Confirmed' : match.status}
-                    {match.confirmedAt && (
-                      <>
-                        {' '}
-                        <time dateTime={match.confirmedAt} className="ml-2">
-                          {formatRelative(match.confirmedAt)}
-                        </time>
-                      </>
-                    )}
-                  </p>
-                </Link>
+      {directForMe.length > 0 ? (
+        <section aria-labelledby="for-you" className="space-y-4">
+          <SectionHeading id="for-you">Challenges for you · {directForMe.length}</SectionHeading>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+            {directForMe.map(challengeCard)}
+          </div>
+        </section>
+      ) : null}
+
+      {/* What to play */}
+      <section aria-labelledby="open-board" className="space-y-4">
+        <SectionHeading id="open-board" href="/play" linkLabel="Open board">
+          Open {gameName} challenges
+        </SectionHeading>
+        {board.loading ? (
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+            <SkeletonCard className="h-44" />
+            <SkeletonCard className="h-44" />
+          </div>
+        ) : openBoard.length > 0 ? (
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
+            {openBoard.map(challengeCard)}
+          </div>
+        ) : (
+          <EmptyState
+            icon="trophy"
+            title={`No open ${gameName} challenges`}
+            description="Be the first: post one and it shows on the board straight away."
+            action={
+              <ButtonLink href="/play?create=1" arrow>
+                Create challenge
+              </ButtonLink>
+            }
+          />
+        )}
+      </section>
+
+      {/* What happened */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 xl:grid-cols-2">
+        <section aria-labelledby="recent-results" className="space-y-4">
+          <SectionHeading id="recent-results" href="/matches" linkLabel="History">
+            Recent results
+          </SectionHeading>
+          {finished.loading ? (
+            <SkeletonCard className="h-40" />
+          ) : recent.length > 0 ? (
+            <ul className="surface-card divide-y divide-line rounded-card">
+              {recent.map((m) => (
+                <RecentResultRow key={m.id} match={m} />
               ))}
-            </section>
+            </ul>
           ) : (
-            <EmptyState
-              icon="trophy"
-              title="No matches yet"
-              description="Accept a challenge or post your own to start playing."
-              action={
-                <ButtonLink href="/play" arrow>
-                  Find a challenge
-                </ButtonLink>
-              }
-            />
+            <p className="surface-card rounded-card p-5 text-body-sm text-fg-muted">
+              Confirmed results and rating changes show up here after your first match.
+            </p>
           )}
+        </section>
 
-          {challenges.length > 0 ? (
-            <section aria-labelledby="recent-challenges" className="space-y-3">
-              <h3 id="recent-challenges" className="eyebrow">
-                Your open challenges
-              </h3>
-              {challenges.map((c) => (
-                <article
-                  key={c.id}
-                  className="flex items-center gap-3 surface-card rounded-card p-3"
-                >
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="font-display text-body font-semibold text-fg">
-                      {c.game.name}
+        <section aria-labelledby="activity" className="space-y-4">
+          <SectionHeading id="activity" href="/inbox" linkLabel="Inbox">
+            Activity
+          </SectionHeading>
+          {notifications.loading ? (
+            <SkeletonCard className="h-40" />
+          ) : (notifications.data?.items.length ?? 0) > 0 ? (
+            <ul className="surface-card divide-y divide-line rounded-card">
+              {notifications.data!.items.slice(0, 5).map((n) => (
+                <li key={n.id}>
+                  <Link
+                    href={n.link || '/inbox'}
+                    className="flex items-start gap-3 p-4 transition-colors hover:bg-bg-subtle"
+                  >
+                    <span
+                      aria-hidden
+                      className={`mt-1.5 size-2 shrink-0 rounded-full ${n.read ? 'bg-line-strong' : 'bg-accent'}`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-body-sm font-semibold text-fg">
+                        {n.title}
+                      </span>
+                      <span className="block truncate text-caption text-fg-subtle">{n.body}</span>
                     </span>
-                    <StatusChip label={c.format.name} variant="neutral" />
-                  </div>
-                  <p className="shrink-0 font-display text-h3 font-black uppercase text-accent tabular">
-                    {c.stake.display}
-                  </p>
-                </article>
+                    <time dateTime={n.createdAt} className="shrink-0 text-caption text-fg-subtle">
+                      {formatRelative(n.createdAt, now)}
+                    </time>
+                  </Link>
+                </li>
               ))}
-            </section>
-          ) : null}
-        </div>
-      )}
-    </div>
+            </ul>
+          ) : (
+            <p className="surface-card rounded-card p-5 text-body-sm text-fg-muted">
+              Challenges, results and disputes that involve you show up here.
+            </p>
+          )}
+        </section>
+      </div>
+
+      {detailId ? (
+        <ChallengeDetailSheet
+          challengeId={detailId}
+          summary={detail}
+          pending={actions.pendingId === detailId}
+          onClose={() => setDetailId(null)}
+          onAccept={() => detail && void actions.accept(detail)}
+          onDecline={() => detail && void actions.decline(detail)}
+          onCancel={async () => {
+            if (detail) await actions.cancel(detail);
+            setDetailId(null);
+          }}
+        />
+      ) : null}
+    </AppPage>
+  );
+}
+
+function RecentResultRow({ match }: { match: MatchView }) {
+  const tag = outcomeTag(match);
+  const delta = match.ratingDelta;
+  return (
+    <li>
+      <Link
+        href={`/matches/${match.id}`}
+        className="flex items-center gap-3 p-4 transition-colors hover:bg-bg-subtle"
+      >
+        <Avatar username={match.opponent?.username ?? '?'} size={32} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-body-sm font-semibold text-fg">
+            vs {match.opponent?.username ?? 'Opponent'}
+          </span>
+          <span className="block truncate text-caption text-fg-subtle">
+            {match.game.name}
+            {match.confirmedAt ? ` · ${formatRelative(match.confirmedAt)}` : ''}
+          </span>
+        </span>
+        {tag ? <StatusChip label={tag.label} variant={tag.variant} icon={tag.icon} /> : null}
+        {delta !== null ? (
+          <span
+            className={`w-12 text-right font-display text-body-sm font-bold tabular ${delta >= 0 ? 'text-success' : 'text-danger'}`}
+          >
+            {delta >= 0 ? `+${delta}` : delta}
+          </span>
+        ) : null}
+      </Link>
+    </li>
+  );
+}
+
+/** Shown beside a single active match: the steps that stop most disputes. */
+function MatchChecklist({ match }: { match: MatchView }) {
+  const opponentId = match.opponent?.inGameId;
+  const steps = [
+    {
+      title: 'Find them in game',
+      body: opponentId
+        ? `Their ${match.game.name} ID is ${opponentId}.`
+        : 'Their game ID is in the match room.',
+    },
+    {
+      title: 'Agree the room in chat',
+      body: 'Confirm the time, room code and settings before you start.',
+    },
+    {
+      title: 'Screenshot the final score',
+      body: 'Capture the full result screen. It is your proof.',
+    },
+    {
+      title: 'Report together',
+      body: 'Both submit the score. Matching reports confirm straight away.',
+    },
+  ];
+  return (
+    <section className="surface-card space-y-4 rounded-card p-5 md:p-6">
+      <h3 className="eyebrow">Before you play</h3>
+      <ol className="space-y-3">
+        {steps.map((step, i) => (
+          <li key={step.title} className="flex gap-3">
+            <span className="font-display text-[12px] font-bold italic text-accent tabular">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <div className="min-w-0">
+              <p className="text-body-sm font-semibold text-fg">{step.title}</p>
+              <p className="break-words text-caption text-fg-subtle">{step.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <Link
+        href={`/matches/${match.id}`}
+        className="inline-block font-display text-[10px] font-bold uppercase tracking-[0.08em] text-accent hover:underline"
+      >
+        Open match chat →
+      </Link>
+    </section>
   );
 }

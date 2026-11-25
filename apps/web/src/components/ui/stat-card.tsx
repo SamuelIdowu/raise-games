@@ -11,6 +11,8 @@ export interface StatCardProps {
   delta?: ReactNode;
   icon?: PixelIconName;
   tone?: 'accent' | 'brand' | 'dark';
+  /** `md` for dense rows of four (dashboard); `lg` is the marketing numeral. */
+  size?: 'md' | 'lg';
   className?: string;
 }
 
@@ -31,12 +33,21 @@ const inks = {
  * triangle and a pixel icon in the notch, tiny caption over a huge numeral.
  * The sharp shadow is a drop-shadow on the wrapper so the chamfer keeps it.
  */
-export function StatCard({ label, value, delta, icon, tone = 'accent', className }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  delta,
+  icon,
+  tone = 'accent',
+  size = 'lg',
+  className,
+}: StatCardProps) {
   return (
     <div className={cn('group/stat drop-hard relative', inks[tone], className)}>
       <div
         className={cn(
-          'chamfer-tr relative flex min-h-[120px] flex-col justify-between gap-4 p-5 md:p-6',
+          size === 'lg' ? 'min-h-[120px]' : 'min-h-[104px]',
+          'chamfer-tr relative flex flex-col justify-between gap-4 p-5 md:p-6',
           'transition-transform duration-[var(--motion-default)] ease-standard group-hover/stat:-translate-y-0.5',
           tones[tone],
         )}
@@ -49,7 +60,14 @@ export function StatCard({ label, value, delta, icon, tone = 'accent', className
           {label}
         </span>
         <div>
-          <p className="font-display text-mk-display-lg uppercase leading-none tabular">
+          <p
+            className={cn(
+              'font-display uppercase leading-none tabular',
+              size === 'lg'
+                ? 'text-mk-display-lg'
+                : 'whitespace-nowrap text-[clamp(1.75rem,2.6vw,2.5rem)] font-black tracking-[-0.02em]',
+            )}
+          >
             {typeof value === 'number' ? <CountUp value={value} /> : value}
           </p>
           {delta ? (
