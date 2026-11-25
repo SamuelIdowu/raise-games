@@ -45,7 +45,9 @@ export default function OtpPage() {
       // Clear onboarding phone and invite
       sessionStorage.removeItem('onboarding_phone');
       sessionStorage.removeItem('onboarding_invite');
-      router.push('/onboarding/username');
+      // Consent first: profiles and challenges are refused until terms are accepted. The
+      // consent page forwards straight to username when both are already accepted.
+      router.push('/onboarding/consent');
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Invalid code. Try again or request a new one.',

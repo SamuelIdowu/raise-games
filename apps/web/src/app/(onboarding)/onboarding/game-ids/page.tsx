@@ -138,7 +138,7 @@ export default function GameIdsPage() {
 
       // Clean up sessionStorage
       sessionStorage.removeItem('onboarding_selected_games');
-      router.push('/');
+      router.push('/home');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete setup');
     } finally {
