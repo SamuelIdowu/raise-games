@@ -18,38 +18,36 @@ export type ButtonVariant =
   'primary' | 'brand' | 'secondary' | 'white' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
-// Hover lifts 1px and grows the shadow; press sinks into it.
+// Shape, shadow and press motion come from .btn-chamfer (globals.css):
+// rounded corners with the top-right corner cut at 45deg, sharp drop-shadow.
 const base =
-  'group/btn relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border ' +
+  'btn-chamfer group/btn inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap ' +
   'font-display text-[11px] font-bold uppercase tracking-[0.04em] leading-none ' +
-  'transition-[transform,box-shadow,background-color,border-color,color] duration-[var(--motion-micro)] ease-standard ' +
-  'shadow-[3px_3px_0_0_var(--hard-ink)] ' +
-  'hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_var(--hard-ink)] ' +
-  'active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_0_var(--hard-ink)] ' +
-  'disabled:pointer-events-none disabled:border-transparent disabled:bg-raised disabled:text-fg-disabled disabled:[--hard-ink:transparent] ' +
+  'disabled:pointer-events-none disabled:text-fg-disabled ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-hover';
 
 // Mobile keeps a 44px touch target; desktop uses the reference 32/36/44 heights.
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-11 px-3 lg:h-8',
-  md: 'h-11 px-4 lg:h-9',
-  lg: 'h-11 px-5 text-[12px] lg:h-11',
+  sm: 'h-11 px-3 [--btn-cut:8px] lg:h-8',
+  md: 'h-11 px-4 [--btn-cut:9px] lg:h-9',
+  lg: 'h-11 px-5 text-[12px] [--btn-cut:11px]',
 };
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'border-transparent bg-accent text-on-accent [--hard-ink:var(--accent-ink)] hover:bg-accent-hover active:bg-accent-press',
+    'text-on-accent [--btn-bg:var(--accent)] [--hard-ink:var(--accent-ink)] hover:[--btn-bg:var(--accent-hover)] active:[--btn-bg:var(--accent-press)]',
   brand:
-    'border-transparent bg-brand text-on-brand [--hard-ink:var(--brand-ink)] hover:bg-brand-hover active:bg-brand-press',
+    'text-on-brand [--btn-bg:var(--brand)] [--hard-ink:var(--brand-ink)] hover:[--btn-bg:var(--brand-hover)] active:[--btn-bg:var(--brand-press)]',
   secondary:
-    'border-transparent bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-fg)] [--hard-ink:var(--cream-ink)] hover:bg-[var(--btn-secondary-hover)]',
-  white: 'border-transparent bg-white text-on-cream [--hard-ink:var(--cream-ink)] hover:bg-cream',
+    'text-[var(--btn-secondary-fg)] [--btn-bg:var(--btn-secondary-bg)] [--hard-ink:var(--cream-ink)] hover:[--btn-bg:var(--btn-secondary-hover)]',
+  white:
+    'text-on-cream [--btn-bg:white] [--hard-ink:var(--cream-ink)] hover:[--btn-bg:var(--cream)]',
   outline:
-    'border-line-strong bg-bg text-fg [--hard-ink:var(--border-strong)] hover:border-fg-subtle',
+    'text-fg [--btn-bg:var(--border-strong)] [--btn-fill:var(--bg-0)] [--hard-ink:var(--border-strong)] hover:[--btn-bg:var(--text-3)]',
   ghost:
-    'border-transparent bg-transparent text-accent [--hard-ink:transparent] hover:bg-accent-subtle active:bg-accent-subtle',
+    'text-accent [--btn-bg:transparent] [--hard-ink:transparent] hover:[--btn-bg:var(--accent-subtle)]',
   danger:
-    'border-loss/60 bg-bg text-loss [--hard-ink:color-mix(in_srgb,var(--loss)_40%,var(--bg-0))] hover:bg-loss/10',
+    'text-loss [--btn-bg:color-mix(in_srgb,var(--loss)_60%,transparent)] [--btn-fill:var(--bg-0)] [--hard-ink:color-mix(in_srgb,var(--loss)_40%,var(--bg-0))] hover:[--btn-fill:color-mix(in_srgb,var(--loss)_12%,var(--bg-0))]',
 };
 
 export interface ButtonStyleOptions {

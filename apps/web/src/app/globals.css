@@ -402,6 +402,79 @@
   }
 
   /* Sharp offset shadows, like the pixel icons. Ink colour per surface. */
+  /*
+   * Blocks.fun button shape: rounded corners with the top-right corner cut at 45deg.
+   * The fill lives on ::before (clipped); the button itself carries the sharp
+   * drop-shadow, which follows the clipped shape. Outline variants paint the
+   * border colour on ::before and the inner fill on ::after.
+   *   --btn-bg    fill (or border colour for outline variants)
+   *   --btn-fill  inner fill for outline variants (default: none)
+   *   --btn-cut   size of the corner cut
+   *   --hard-ink  shadow colour
+   */
+  .btn-chamfer {
+    position: relative;
+    isolation: isolate;
+    border: 0;
+    background: transparent;
+    filter: drop-shadow(3px 3px 0 var(--hard-ink, transparent));
+    transition:
+      transform var(--motion-micro) var(--motion-ease-standard),
+      filter var(--motion-micro) var(--motion-ease-standard),
+      color var(--motion-micro);
+  }
+
+  .btn-chamfer::before,
+  .btn-chamfer::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: var(--radius-token-control);
+    transition: background-color var(--motion-micro);
+  }
+
+  .btn-chamfer::before {
+    inset: 0;
+    background: var(--btn-bg, transparent);
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--btn-cut, 9px)) 0,
+      100% var(--btn-cut, 9px),
+      100% 100%,
+      0 100%
+    );
+  }
+
+  .btn-chamfer::after {
+    inset: 1px;
+    border-radius: calc(var(--radius-token-control) - 1px);
+    background: var(--btn-fill, transparent);
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--btn-cut, 9px) + 0.4px) 0,
+      100% calc(var(--btn-cut, 9px) - 0.4px),
+      100% 100%,
+      0 100%
+    );
+  }
+
+  .btn-chamfer:hover {
+    transform: translate(-1px, -1px);
+    filter: drop-shadow(4px 4px 0 var(--hard-ink, transparent));
+  }
+
+  .btn-chamfer:active {
+    transform: translate(2px, 2px);
+    filter: drop-shadow(1px 1px 0 var(--hard-ink, transparent));
+  }
+
+  .btn-chamfer:disabled {
+    --btn-bg: var(--bg-3);
+    --btn-fill: transparent;
+    --hard-ink: transparent;
+    transform: none;
+  }
+
   .shadow-hard {
     box-shadow: 4px 4px 0 0 var(--hard-ink, var(--shadow-ink));
   }
