@@ -65,7 +65,7 @@ const tableRows = [
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="surface-card rounded-card p-5">
-      <h2 className="label-caps mb-4 text-fg-muted">{title}</h2>
+      <h2 className="eyebrow mb-4">{title}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
   );

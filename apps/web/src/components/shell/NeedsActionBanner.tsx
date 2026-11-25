@@ -26,7 +26,7 @@ export function NeedsActionBanner() {
     <div className="px-4 pt-2">
       <Banner
         variant="needs-action"
-        className="mx-auto max-w-[640px]"
+        className="mx-auto max-w-[880px]"
         action={
           <button
             type="button"

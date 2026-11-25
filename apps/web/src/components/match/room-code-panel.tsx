@@ -59,7 +59,7 @@ export function RoomCodePanel({
 
   return (
     <section aria-label="Room code" className="surface-card rounded-card p-4">
-      <h2 className="label-caps mb-2 text-fg-muted">Room code</h2>
+      <h2 className="eyebrow mb-2">Room code</h2>
       {showForm ? (
         <form
           className="space-y-2"

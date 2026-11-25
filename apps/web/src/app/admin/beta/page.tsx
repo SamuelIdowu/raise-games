@@ -127,7 +127,7 @@ export default function BetaInvitesPage() {
       </section>
 
       <section aria-labelledby="codes-heading" className="flex flex-col gap-2">
-        <h2 id="codes-heading" className="label-caps text-fg-muted">
+        <h2 id="codes-heading" className="eyebrow">
           Codes
           {codes.data?.cohorts.length
             ? ` · ${codes.data.cohorts.map((c) => `${c.cohort} ${c.players}`).join(' · ')}`
@@ -183,7 +183,7 @@ export default function BetaInvitesPage() {
       </section>
 
       <section aria-labelledby="waitlist-heading" className="flex flex-col gap-2">
-        <h2 id="waitlist-heading" className="label-caps text-fg-muted">
+        <h2 id="waitlist-heading" className="eyebrow">
           Waitlist (kept 90 days)
         </h2>
         {message ? (

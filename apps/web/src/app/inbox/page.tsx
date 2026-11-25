@@ -60,7 +60,7 @@ function Inbox() {
     { key: 'preferences', label: 'Preferences' },
   ];
   return (
-    <div className="mx-auto max-w-[720px] space-y-6">
+    <div className="mx-auto max-w-[880px] space-y-6">
       <PageHeader eyebrow="Stay in the loop" title="Inbox" />
       <Tabs idPrefix="inbox" aria-label="Inbox" items={tabs} value={tab} onChange={setTab} />
       <div {...tabPanelProps('inbox', tab)}>
@@ -310,7 +310,7 @@ function DirectMessages() {
     <>
       {requests && (requests.incoming.length > 0 || requests.outgoing.length > 0) ? (
         <section aria-labelledby="requests-heading" className="space-y-2">
-          <h2 id="requests-heading" className="label-caps text-fg-muted">
+          <h2 id="requests-heading" className="eyebrow">
             Friend requests
           </h2>
           <ul className="divide-y divide-line surface-card rounded-card">
@@ -369,7 +369,7 @@ function DirectMessages() {
 
       <section aria-labelledby="dm-heading" className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 id="dm-heading" className="label-caps text-fg-muted">
+          <h2 id="dm-heading" className="eyebrow">
             Direct messages
           </h2>
           <Link
@@ -588,7 +588,7 @@ function Preferences() {
   return (
     <div className="space-y-6">
       <section aria-labelledby={`${ids}-push`} className="space-y-2">
-        <h2 id={`${ids}-push`} className="label-caps text-fg-muted">
+        <h2 id={`${ids}-push`} className="eyebrow">
           This device
         </h2>
         {!s.push.available ? (
@@ -616,7 +616,7 @@ function Preferences() {
       </section>
 
       <section aria-labelledby={`${ids}-email`} className="space-y-2">
-        <h2 id={`${ids}-email`} className="label-caps text-fg-muted">
+        <h2 id={`${ids}-email`} className="eyebrow">
           Email
         </h2>
         <label htmlFor={`${ids}-email-input`} className="block text-body-sm text-fg">
@@ -671,7 +671,7 @@ function Preferences() {
       </section>
 
       <section aria-labelledby={`${ids}-types`}>
-        <h2 id={`${ids}-types`} className="label-caps mb-2 text-fg-muted">
+        <h2 id={`${ids}-types`} className="eyebrow mb-2">
           What you get
         </h2>
         <table className="w-full text-body-sm">
@@ -713,7 +713,7 @@ function Preferences() {
       </section>
 
       <section aria-labelledby={`${ids}-quiet`} className="space-y-2">
-        <h2 id={`${ids}-quiet`} className="label-caps text-fg-muted">
+        <h2 id={`${ids}-quiet`} className="eyebrow">
           Quiet hours
         </h2>
         <p className="text-body-sm text-fg-muted">

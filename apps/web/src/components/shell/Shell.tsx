@@ -4,48 +4,40 @@ import { type ReactNode, Suspense } from 'react';
 import { Banner } from '@/components/ui';
 import { FEATURE_FLAGS } from '@/lib/feature-flags';
 import { BottomNav } from './BottomNav';
-import { Sidebar } from './Sidebar';
-import { GameSwitcher, GameSwitcherTrigger } from './GameSwitcher';
 import { NeedsActionBanner } from './NeedsActionBanner';
 import { GameProvider } from './GameProvider';
+import { SiteFooter } from './SiteFooter';
+import { TopNav } from './TopNav';
 
-function Header() {
-  return (
-    <header className="sticky top-0 z-nav flex h-[56px] items-center justify-between border-b border-line bg-bg px-4 lg:pl-[256px] lg:pr-8">
-      <div className="flex items-center gap-2">
-        <Sidebar />
-        <GameSwitcherTrigger />
-      </div>
-      <div className="flex items-center gap-2">
-        <GameSwitcher size="sm" />
-      </div>
-    </header>
-  );
-}
-
+/**
+ * Blocks.fun layout: 72px top nav (bottom nav on mobile), one centred column
+ * per page, checker band + footer at the end.
+ */
 export function Shell({ children }: { children: ReactNode }) {
   return (
     <GameProvider>
-      <div className="relative min-h-screen flex flex-col bg-bg text-fg">
+      <div id="top" className="relative flex min-h-screen flex-col bg-bg text-fg">
         {FEATURE_FLAGS.playCredits && (
           <Banner variant="system" className="mx-auto max-w-[480px] animate-in">
             Play credits, not cash. No deposit or withdrawal actions available in Stage 1.
           </Banner>
         )}
-        {/* usePathname() in Sidebar/BottomNav needs Suspense under Cache Components. */}
+        {/* usePathname() in the navs needs Suspense under Cache Components. */}
         <Suspense fallback={null}>
           <NeedsActionBanner />
         </Suspense>
 
         <Suspense
-          fallback={<header className="sticky top-0 z-nav h-[56px] border-b border-line bg-bg" />}
+          fallback={
+            <header className="sticky top-0 z-nav h-14 border-b border-line bg-bg lg:h-[72px]" />
+          }
         >
-          <Header />
+          <TopNav />
         </Suspense>
 
-        <main className="flex-1 px-4 pb-[88px] pt-6 lg:pb-16 lg:pl-[288px] lg:pr-12 lg:pt-10">
-          {children}
-        </main>
+        <main className="w-full flex-1 px-4 pt-8 lg:px-12 lg:pt-16">{children}</main>
+
+        <SiteFooter />
 
         <Suspense
           fallback={

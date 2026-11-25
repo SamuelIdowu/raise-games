@@ -247,7 +247,7 @@ export function ChallengeDetailSheet({
           </dl>
 
           <section aria-label="Rules">
-            <h3 className="label-caps mb-1 text-fg-muted">Rules</h3>
+            <h3 className="eyebrow mb-1">Rules</h3>
             {detail ? (
               <p className="whitespace-pre-wrap text-body-sm text-fg">
                 {detail.rules || 'Standard format rules.'}

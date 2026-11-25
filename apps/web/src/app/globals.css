@@ -39,7 +39,12 @@
   --color-purple-400: var(--purple-400);
   --color-purple-500: var(--purple-500);
   --color-purple-600: var(--purple-600);
+  --color-purple-700: var(--purple-700);
   --color-purple-900: var(--purple-900);
+  --color-shadow-ink: var(--shadow-ink);
+  --color-accent-ink: var(--accent-ink);
+  --color-brand-ink: var(--brand-ink);
+  --color-cream-ink: var(--cream-ink);
 
   /* Status (semantic only) */
   --color-win: var(--win);
@@ -265,7 +270,8 @@
   }
 
   .label-caps {
-    font-family: var(--font-body);
+    font-family: var(--font-display);
+    font-weight: 700;
     font-size: var(--type-label-size);
     line-height: var(--type-label-line);
     font-weight: var(--type-label-weight);
@@ -331,10 +337,10 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: var(--font-body);
-    font-size: var(--type-mk-label-size);
+    font-family: var(--font-display);
+    font-size: 10px;
     line-height: 1;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: var(--type-mk-label-tracking);
     text-transform: uppercase;
     color: var(--text-1);
@@ -345,7 +351,7 @@
     width: 6px;
     height: 6px;
     flex-shrink: 0;
-    background: var(--orange-500);
+    background: var(--accent);
   }
 
   /* Blocks.fun §2.2: purple spotlight for hero / create cards. */
@@ -384,13 +390,70 @@
     );
   }
 
+  /* Blocks.fun §4.5: full-bleed 24px pixel checker band between product area and footer. */
   .checker-band {
+    height: 24px;
     background-image: repeating-conic-gradient(
       from 0deg,
-      var(--accent) 0deg 90deg,
+      var(--bg-3) 0deg 90deg,
       var(--bg-0) 90deg 180deg
     );
-    background-size: 8px 8px;
+    background-size: 12px 12px;
+  }
+
+  /* Sharp offset shadows, like the pixel icons. Ink colour per surface. */
+  .shadow-hard {
+    box-shadow: 4px 4px 0 0 var(--hard-ink, var(--shadow-ink));
+  }
+
+  .shadow-hard-sm {
+    box-shadow: 3px 3px 0 0 var(--hard-ink, var(--shadow-ink));
+  }
+
+  /* For clip-path shapes (chamfers), where box-shadow is clipped away. */
+  .drop-hard {
+    filter: drop-shadow(4px 4px 0 var(--hard-ink, var(--shadow-ink)));
+  }
+
+  .drop-hard-sm {
+    filter: drop-shadow(2px 2px 0 var(--hard-ink, var(--shadow-ink)));
+  }
+
+  /* Tiny pixel crosses scattered on dark backgrounds (hero decoration, §7.5). */
+  .pixel-field {
+    background-image:
+      linear-gradient(var(--accent) 0 0), linear-gradient(var(--accent) 0 0),
+      linear-gradient(var(--brand) 0 0), linear-gradient(var(--brand) 0 0);
+    background-size:
+      6px 2px,
+      2px 6px,
+      6px 2px,
+      2px 6px;
+    background-position:
+      12% 22%,
+      calc(12% + 2px) calc(22% - 2px),
+      86% 64%,
+      calc(86% + 2px) calc(64% - 2px);
+    background-repeat: no-repeat;
+  }
+
+  @keyframes float {
+    from {
+      transform: translateY(0) rotate(var(--float-rot, 0deg));
+    }
+    to {
+      transform: translateY(-10px) rotate(calc(var(--float-rot, 0deg) + 4deg));
+    }
+  }
+
+  .animate-float {
+    animation: float 7s var(--motion-ease-standard) infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float {
+      animation: none;
+    }
   }
 
   .animate-in {

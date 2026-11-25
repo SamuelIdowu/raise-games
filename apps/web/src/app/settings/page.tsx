@@ -73,7 +73,7 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="mx-auto flex max-w-[720px] flex-col gap-4">
+    <div className="mx-auto flex max-w-[880px] flex-col gap-4">
       <PageHeader eyebrow="Your account" title="Settings" />
       {error ? <Banner variant="system">{error}</Banner> : null}
 

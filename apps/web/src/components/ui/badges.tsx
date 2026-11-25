@@ -41,7 +41,7 @@ export function RankTierBadge({
       role="img"
       aria-label={`Rank ${tierLabel}`}
       className={cn(
-        'chamfer-tr-sm inline-flex items-center gap-1.5 bg-accent px-3 py-1.5 pr-4 text-on-accent',
+        'drop-hard-sm [--hard-ink:var(--accent-ink)] chamfer-tr-sm inline-flex items-center gap-1.5 bg-accent px-3 py-1.5 pr-4 text-on-accent',
         tier === 5 && 'shadow-glow',
         className,
       )}

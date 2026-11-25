@@ -182,11 +182,11 @@ function RulingView({ ruling, compact = false }: { ruling: DisputeRuling; compac
         {outcomeLabel(ruling.outcomeForViewer, ruling.outcome)}
       </p>
       <p className="mt-1 text-caption text-fg-muted">{formatAbsolute(ruling.ruledAt)}</p>
-      <h3 className="label-caps mt-2 text-fg-muted">{disputeCopy.ruling.reason}</h3>
+      <h3 className="eyebrow mt-2">{disputeCopy.ruling.reason}</h3>
       <p className="whitespace-pre-wrap text-body-sm text-fg">{ruling.justification}</p>
       {ruling.sanctionNote ? (
         <>
-          <h3 className="label-caps mt-2 text-fg-muted">{disputeCopy.ruling.sanction}</h3>
+          <h3 className="eyebrow mt-2">{disputeCopy.ruling.sanction}</h3>
           <p className="text-body-sm text-fg">{ruling.sanctionNote}</p>
         </>
       ) : null}

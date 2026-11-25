@@ -1,11 +1,152 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Banner, ButtonLink, StatusChip } from '@/components/ui';
+import {
+  Accordion,
+  ButtonLink,
+  Eyebrow,
+  Icon,
+  PixelCube,
+  PixelIcon,
+  PromoBanner,
+  StatCard,
+  type PixelIconName,
+} from '@/components/ui';
+import { cn } from '@/lib/cn';
 
 const GAMES = ['eFootball', 'Call of Duty: Mobile', 'PUBG Mobile'];
+
+const STEPS: Array<{ title: string; body: string; icon: PixelIconName }> = [
+  {
+    title: 'Create your account',
+    body: 'Sign up with your phone number. No fees and no wallet. Add the game IDs you play under so opponents can find you.',
+    icon: 'heart',
+  },
+  {
+    title: 'Pick a challenge',
+    body: 'Browse open challenges by game and format, or post your own. Invite a friend directly or open it to the whole board.',
+    icon: 'gamepad',
+  },
+  {
+    title: 'Play your match',
+    body: 'Meet in game, play it out, then both players report the result. A screenshot is your proof.',
+    icon: 'flame',
+  },
+  {
+    title: 'Climb the ladder',
+    body: 'Confirmed results update your rating and reputation. Disputes go to real moderators who review the proof.',
+    icon: 'crown',
+  },
+];
+
+const FAQ = [
+  {
+    question: 'What is RAISE?',
+    answer:
+      'A place to find 1v1 challenges for eFootball, Call of Duty: Mobile and PUBG Mobile, play them, and get a verified, ranked result.',
+  },
+  {
+    question: 'Does it cost anything?',
+    answer: 'No. Challenges are free to play right now. There are no deposits and no withdrawals.',
+  },
+  {
+    question: 'How is a result confirmed?',
+    answer:
+      'Both players report the result. If the reports match, it is confirmed. If they do not, either player can open a dispute and a moderator reviews the proof.',
+  },
+  {
+    question: 'How does my rating work?',
+    answer:
+      'Each game has its own ladder. Your rating moves after every confirmed result, and it is marked provisional until you have played enough rated matches.',
+  },
+  {
+    question: 'Is it safe to play?',
+    answer:
+      'Proof is kept on every match, reputation shows who reports honestly, and you can block or report any player.',
+  },
+] as const;
+
+/** Floating pixel blocks in the hero corners (the reference's cubes). */
+const FLOATERS: Array<{
+  icon: PixelIconName;
+  tile: string;
+  className: string;
+  rot: string;
+  delay: string;
+}> = [
+  {
+    icon: 'heart',
+    tile: 'bg-accent text-white',
+    className: 'left-[6%] top-[8%]',
+    rot: '-16deg',
+    delay: '0s',
+  },
+  {
+    icon: 'star',
+    tile: 'bg-brand text-white',
+    className: 'left-[16%] top-[52%]',
+    rot: '12deg',
+    delay: '-2s',
+  },
+  {
+    icon: 'coin',
+    tile: 'bg-cream text-accent',
+    className: 'right-[14%] top-[44%]',
+    rot: '-10deg',
+    delay: '-4s',
+  },
+  {
+    icon: 'bolt',
+    tile: 'bg-cream text-brand',
+    className: 'right-[5%] top-[4%]',
+    rot: '18deg',
+    delay: '-1s',
+  },
+];
+
+function Floater({ icon, tile, className, rot, delay }: (typeof FLOATERS)[number]) {
+  return (
+    <span
+      aria-hidden
+      className={cn('animate-float absolute hidden md:block', className)}
+      style={{ ['--float-rot' as string]: rot, animationDelay: delay }}
+    >
+      <span
+        className={cn(
+          'flex size-16 items-center justify-center rounded-md shadow-hard [--hard-ink:var(--shadow-ink)]',
+          tile,
+        )}
+      >
+        <PixelIcon name={icon} size={30} className="[--hard-ink:var(--shadow-ink)]" />
+      </span>
+    </span>
+  );
+}
+
+/** The slanted barcode stripe + "001" counter above each step (§7.8). */
+function StepHeader({ index, icon }: { index: number; icon: PixelIconName }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span aria-hidden className="flex gap-[3px]">
+        {Array.from({ length: 8 }, (_, i) => (
+          <span
+            key={i}
+            className={cn(
+              'h-3 w-1.5 -skew-x-[20deg]',
+              i < (index + 1) * 2 ? 'bg-accent' : 'bg-line-strong',
+            )}
+          />
+        ))}
+      </span>
+      <span className="font-display text-[12px] font-bold italic text-accent tabular">
+        {String(index + 1).padStart(3, '0')}
+      </span>
+      <PixelIcon name={icon} size={18} className="text-accent [--hard-ink:var(--accent-ink)]" />
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const pathname = usePathname();
@@ -13,315 +154,201 @@ export default function LandingPage() {
 
   // Client-side redirect for signed-in users
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isSignedIn = document.cookie.includes('raise_access=');
-      if (isSignedIn && pathname === '/') {
-        router.push('/home');
-        router.refresh();
-      }
+    const isSignedIn = document.cookie.includes('raise_access=');
+    if (isSignedIn && pathname === '/') {
+      router.push('/home');
+      router.refresh();
     }
   }, [pathname, router]);
 
-  // Marquee animation state
-  const [marqueeOffset, setMarqueeOffset] = useState(0);
-  const marqueeRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const element = marqueeRef.current;
-    if (!element) return;
-
-    const contentWidth = element.scrollWidth;
-    const containerWidth = element.parentElement?.clientWidth ?? 0;
-    if (contentWidth <= containerWidth) return;
-
-    const duration = contentWidth * 20; // ~20ms per px
-    let start: number | null = null;
-    let animationId: number;
-
-    function animate(timestamp: number) {
-      if (start === null) start = timestamp;
-      const progress = (timestamp - start) % duration;
-      const offset = -(progress / duration) * contentWidth;
-      element!.style.transform = `translateX(${offset}px)`;
-      animationId = requestAnimationFrame(animate);
-    }
-
-    animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 p-4 md:p-8">
+    <div className="-mt-8 lg:-mt-16">
       {/* Hero */}
-      <header className="text-center pt-4 md:pt-12">
-        <span className="inline-flex items-center gap-2 rounded-full border border-accent bg-accent-subtle px-3 py-1 text-caption font-semibold text-accent">
-          <span className="size-2 rounded-full bg-accent animate-pulse" aria-hidden="true" />
-          Free 1v1 challenges — no entry fees
-        </span>
-        <h1 className="mt-6 font-display text-display font-bold uppercase tracking-tight text-fg md:text-[48px]">
-          Your game.
-          <br />
-          <span className="text-accent">Your stake.</span>
-          <br />
-          Verified results.
-        </h1>
-        <p className="mt-4 text-body text-fg-muted max-w-xl mx-auto">
-          Challenge real players in eFootball, Call of Duty: Mobile or PUBG Mobile. Post a match,
-          play, submit proof &mdash; we verify and update your rating instantly.
-        </p>
-
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <ButtonLink
-            href="/onboarding/phone"
-            size="lg"
-            fullWidth
-            className="sm:w-auto min-w-[200px]"
-            arrow
-          >
-            Start playing free
-          </ButtonLink>
-          <ButtonLink
-            href="/play"
-            variant="secondary"
-            size="lg"
-            fullWidth
-            className="sm:w-auto min-w-[200px]"
-          >
-            Browse open challenges
-          </ButtonLink>
+      <section className="pixel-field relative -mx-4 overflow-hidden px-4 pb-12 pt-16 lg:-mx-12 lg:pt-24">
+        {FLOATERS.map((floater) => (
+          <Floater key={floater.icon} {...floater} />
+        ))}
+        <div className="relative mx-auto flex max-w-[880px] flex-col items-center text-center">
+          <Eyebrow>Play and win</Eyebrow>
+          <h1 className="mt-5 font-display text-mk-display-xl uppercase text-fg">
+            Challenge
+            <br />
+            any player
+          </h1>
+          <p className="mt-5 max-w-[380px] text-[13px] font-medium leading-relaxed text-fg">
+            Free 1v1 challenges in eFootball, Call of Duty: Mobile and PUBG Mobile. Play, report,
+            and every result is settled with proof.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <ButtonLink href="/onboarding/phone" arrow>
+              Start playing now!
+            </ButtonLink>
+            <ButtonLink href="/leaderboard" variant="secondary" arrow>
+              View leaderboard
+            </ButtonLink>
+          </div>
+          <p className="mt-5 flex items-center gap-1.5 text-[10px] text-fg-disabled">
+            <Icon name="shield" size={12} /> Free to play. No deposits, no wallet.
+          </p>
         </div>
+      </section>
 
-        <p className="mt-4 text-caption text-fg-subtle">
-          No wallet. No crypto. Just verified 1v1 gaming.
-        </p>
-      </header>
+      <div className="mx-auto max-w-[880px]">
+        {/* Supported games marquee */}
+        <section aria-label="Supported games" className="relative overflow-hidden py-6">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-bg to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-bg to-transparent" />
+          <div className="animate-marquee flex w-max items-center gap-12">
+            {[...GAMES, ...GAMES, ...GAMES, ...GAMES].map((game, i) => (
+              <span
+                key={`${game}-${i}`}
+                aria-hidden={i >= GAMES.length}
+                className="shrink-0 font-display text-[15px] font-black uppercase tracking-[-0.01em] text-fg-subtle opacity-70 transition hover:text-fg hover:opacity-100"
+              >
+                {game}
+              </span>
+            ))}
+          </div>
+        </section>
 
-      {/* Supported games ticker */}
-      <section
-        aria-label="Supported games"
-        className="overflow-hidden bg-accent-subtle border-y border-accent py-3"
-      >
-        <div
-          ref={marqueeRef}
-          className="flex items-center gap-8 whitespace-nowrap animate-marquee"
-          style={{ willChange: 'transform' }}
+        {/* Stats */}
+        <section
+          aria-label="RAISE at a glance"
+          className="grid grid-cols-1 gap-5 py-10 sm:grid-cols-3"
         >
-          {GAMES.flatMap((game, i) => [
-            <span
-              key={`${game}-${i}`}
-              className="font-display text-h3 font-black uppercase text-accent shrink-0"
-            >
-              {game}
-            </span>,
-            i < GAMES.length - 1 && (
-              <span key={`sep-${i}`} className="text-fg-muted shrink-0">
-                ·
-              </span>
-            ),
-          ])}
-          {GAMES.flatMap((game, i) => [
-            <span
-              key={`${game}-repeat-${i}`}
-              className="font-display text-h3 font-black uppercase text-accent shrink-0"
-            >
-              {game}
-            </span>,
-            i < GAMES.length - 1 && (
-              <span key={`sep-repeat-${i}`} className="text-fg-muted shrink-0">
-                ·
-              </span>
-            ),
-          ])}
-        </div>
-      </section>
+          <StatCard label="Games" value={3} icon="gamepad" />
+          <StatCard label="Entry fee" value="₦0" icon="coin" />
+          <StatCard label="Wallet needed" value="No" icon="shield" />
+        </section>
 
-      {/* How it works */}
-      <section aria-labelledby="how-heading">
-        <h2 id="how-heading" className="sr-only">
-          How it works
-        </h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <article className="surface-card rounded-card p-5 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-accent-subtle text-accent">
-              <svg
-                className="size-7"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h3 className="mt-4 font-display text-h2 font-black uppercase text-fg">
-              Post a challenge
-            </h3>
-            <p className="mt-2 text-body-sm text-fg-muted">
-              Pick your game, set the stake (NGN) and format. Your challenge appears in the lobby
-              instantly.
-            </p>
-          </article>
-          <article className="surface-card rounded-card p-5 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-accent-subtle text-accent">
-              <svg
-                className="size-7"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8" />
-                <path d="M12 17v4" />
-              </svg>
-            </div>
-            <h3 className="mt-4 font-display text-h2 font-black uppercase text-fg">
-              Play & submit proof
-            </h3>
-            <p className="mt-2 text-body-sm text-fg-muted">
-              Join the match, play to win. Upload a screenshot or video &mdash; we verify it
-              automatically.
-            </p>
-          </article>
-          <article className="surface-card rounded-card p-5 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-accent-subtle text-accent">
-              <svg
-                className="size-7"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            </div>
-            <h3 className="mt-4 font-display text-h2 font-black uppercase text-fg">
-              Result confirmed
-            </h3>
-            <p className="mt-2 text-body-sm text-fg-muted">
-              Once verified, ratings update instantly. Build your reputation and climb the
-              leaderboard.
-            </p>
-          </article>
-        </div>
-      </section>
+        <hr className="border-line" />
 
-      {/* Trust signals */}
-      <section aria-labelledby="trust-heading" className="py-4 border-t border-line">
-        <h2 id="trust-heading" className="sr-only">
-          Why players trust RAISE
-        </h2>
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="surface-card rounded-card p-4">
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-control bg-success/15 text-success">
-                <svg
-                  className="size-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
+        {/* How it works */}
+        <section aria-labelledby="how-heading" className="py-20">
+          <Eyebrow>Learn</Eyebrow>
+          <h2 id="how-heading" className="mt-3 font-display text-mk-h2 uppercase text-fg">
+            How it works
+          </h2>
+          <ol className="mt-12 grid gap-x-12 gap-y-14 md:grid-cols-2">
+            {STEPS.map((step, index) => (
+              <li key={step.title} className="space-y-3">
+                <StepHeader index={index} icon={step.icon} />
+                <h3 className="font-display text-[15px] font-bold uppercase tracking-[0.02em] text-fg">
+                  {step.title}
+                </h3>
+                <p className="max-w-[320px] text-[11px] font-medium uppercase leading-relaxed tracking-[0.04em] text-fg-subtle">
+                  {step.body}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <PromoBanner
+          eyebrow="Play and win"
+          title="Get started now!"
+          action={
+            <ButtonLink href="/onboarding/phone" variant="white" arrow>
+              Create free account
+            </ButtonLink>
+          }
+        >
+          Post a challenge, play your rival, and build a rating that means something.
+        </PromoBanner>
+
+        <hr className="mt-20 border-line" />
+
+        {/* Feature split */}
+        <section
+          aria-labelledby="learn-heading"
+          className="grid items-center gap-10 py-20 md:grid-cols-[5fr_6fr]"
+        >
+          <div className="flex justify-center">
+            <PixelCube size={280} className="animate-float [--float-rot:-4deg]" />
+          </div>
+          <div className="space-y-5">
+            <Eyebrow>Built for fair play</Eyebrow>
+            <h2 id="learn-heading" className="font-display text-mk-h2-mixed text-fg">
+              Learn more about{' '}
+              <span className="bg-gradient-to-r from-accent to-purple-300 bg-clip-text text-transparent">
+                RAISE
               </span>
-              <h4 className="font-display text-h3 font-black uppercase text-fg">Verified proof</h4>
-            </div>
-            <p className="mt-1 text-body-sm text-fg-muted">
-              Screenshots & videos auto-checked. No fake results, no disputes over evidence.
+            </h2>
+            <p className="text-[13px] leading-relaxed text-fg-muted">
+              Every match keeps its proof. Both players report the result, and anything that does
+              not match goes to a moderator, not a coin flip.
+            </p>
+            <p className="text-[13px] leading-relaxed text-fg-muted">
+              Your rating, record and reputation are public, so you always know who you are about to
+              play.
+            </p>
+            <ButtonLink href="/onboarding/phone" arrow>
+              Start playing now!
+            </ButtonLink>
+          </div>
+        </section>
+      </div>
+
+      {/* FAQ */}
+      <section aria-labelledby="faq-heading" className="mx-auto max-w-[880px] py-16">
+        <div className="max-w-[560px]">
+          <div className="relative inline-block">
+            <PixelIcon
+              name="chat"
+              size={64}
+              className="absolute -top-14 left-20 rotate-[8deg] text-accent [--hard-ink:var(--accent-ink)]"
+            />
+            <h2 id="faq-heading" className="font-display text-mk-h2 uppercase text-fg">
+              FAQ
+            </h2>
+          </div>
+          <div className="mt-3">
+            <p className="eyebrow">
+              More questions?{' '}
+              <Link
+                href="/feedback"
+                className="text-fg underline underline-offset-4 hover:text-accent"
+              >
+                Send us feedback
+              </Link>
             </p>
           </div>
-          <div className="surface-card rounded-card p-4">
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-control bg-accent-subtle text-accent">
-                <svg
-                  className="size-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-              </span>
-              <h4 className="font-display text-h3 font-black uppercase text-fg">
-                Instant settlement
-              </h4>
-            </div>
-            <p className="mt-1 text-body-sm text-fg-muted">
-              Ratings update the moment a result is confirmed. No waiting, no manual review.
-            </p>
-          </div>
-          <div className="surface-card rounded-card p-4">
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-control bg-brand/15 text-brand">
-                <svg
-                  className="size-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </span>
-              <h4 className="font-display text-h3 font-black uppercase text-fg">
-                Reputation system
-              </h4>
-            </div>
-            <p className="mt-1 text-body-sm text-fg-muted">
-              Every confirmed match builds your profile. Reliable players get priority matching.
-            </p>
-          </div>
+          <Accordion items={FAQ} className="mt-8" />
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="text-center py-4">
-        <h2 className="font-display text-mk-h1 uppercase text-fg text-balance">Ready to play?</h2>
-        <p className="mt-2 text-body-sm text-fg-muted">
-          Join thousands of players in free, verified 1v1 challenges.
-        </p>
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <ButtonLink href="/onboarding/phone" size="lg" className="min-w-[200px]" arrow>
-            Create free account
-          </ButtonLink>
+      {/* Create CTA */}
+      <section className="mx-auto max-w-[880px] pt-16">
+        <div className="spotlight-purple relative rounded-lg border border-line px-6 pb-12 pt-20 text-center shadow-hard [--hard-ink:var(--accent-ink)] md:px-8">
+          <PixelCube size={120} className="absolute -top-14 left-1/2 -translate-x-1/2" />
+          <PixelIcon
+            name="coin"
+            size={34}
+            className="animate-float absolute left-[8%] top-[40%] hidden text-cream sm:block"
+          />
+          <PixelIcon
+            name="coin"
+            size={26}
+            className="animate-float absolute right-[10%] top-[22%] hidden text-cream [animation-delay:-3s] sm:block"
+          />
+          <Eyebrow className="justify-center">Your rivalry</Eyebrow>
+          <h2 className="mt-4 font-display text-mk-h2-mixed text-fg">
+            Create your first challenge
+          </h2>
+          <p className="mx-auto mt-4 max-w-[400px] text-[12px] leading-relaxed text-fg-muted">
+            Choose the game and the format, invite a friend or open it to everyone. Once someone
+            accepts, the match room opens and the clock starts.
+          </p>
+          <div className="mt-7 flex justify-center">
+            <ButtonLink href="/onboarding/phone" variant="white" arrow>
+              Create free account
+            </ButtonLink>
+          </div>
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-fg-subtle">
+            <Icon name="shield" size={12} /> Free to play. Every result settled with proof.
+          </p>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-line text-caption text-fg-subtle">
-        <p>RAISE — Free 1v1 gaming challenges</p>
-        <nav className="flex flex-wrap items-center justify-center gap-4">
-          <Link href="/community-rules" className="hover:text-fg transition-colors">
-            Community rules
-          </Link>
-          <Link href="/privacy" className="hover:text-fg transition-colors">
-            Privacy
-          </Link>
-          <Link href="/terms" className="hover:text-fg transition-colors">
-            Terms
-          </Link>
-          <Link href="/status" className="hover:text-fg transition-colors">
-            Status
-          </Link>
-        </nav>
-      </footer>
-    </main>
+    </div>
   );
 }

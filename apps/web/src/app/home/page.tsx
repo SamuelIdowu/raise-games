@@ -16,6 +16,7 @@ import {
   StatCard,
   StatusChip,
   PageHeader,
+  PromoBanner,
 } from '@/components/ui';
 import {
   challengesApi,
@@ -32,7 +33,8 @@ const POLL_MS = 20_000;
 
 export default function HomePage() {
   const router = useRouter();
-  const { currentGame } = useGame();
+  const { currentGame, games } = useGame();
+  const gameLabel = games.find((g) => g.id === currentGame)?.label ?? 'Your';
 
   const [profiles, setProfiles] = useState<GameProfile[]>([]);
   const [matches, setMatches] = useState<import('@raise/api-client').MatchView[]>([]);
@@ -116,9 +118,9 @@ export default function HomePage() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[880px] space-y-10">
       <PageHeader
-        eyebrow={`${currentGame} dashboard`}
+        eyebrow={`${gameLabel} dashboard`}
         title={`Welcome back, ${user?.username ?? 'Player'}`}
         action={
           <ButtonLink href="/play" arrow>
@@ -158,14 +160,33 @@ export default function HomePage() {
             <StatCard
               label="Record"
               value={`${rating?.wins ?? 0}-${rating?.losses ?? 0}-${rating?.draws ?? 0}`}
-              icon="trophy"
+              icon="crown"
             />
-            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="trend-up" />
+            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="flame" />
           </div>
+
+          <PromoBanner
+            eyebrow="Play and climb"
+            title={
+              <>
+                Post a challenge,
+                <br />
+                settle it fair
+              </>
+            }
+            action={
+              <ButtonLink href="/play?create=1" variant="white" arrow>
+                Create challenge
+              </ButtonLink>
+            }
+          >
+            Pick a game and format, invite anyone or open it to the board. Both players report,
+            proof settles disputes.
+          </PromoBanner>
 
           {matches.length > 0 ? (
             <section aria-labelledby="recent-matches" className="space-y-3">
-              <h3 id="recent-matches" className="label-caps text-accent">
+              <h3 id="recent-matches" className="eyebrow">
                 Recent matches
               </h3>
               {matches.map((match) => (
@@ -238,7 +259,7 @@ export default function HomePage() {
 
           {challenges.length > 0 ? (
             <section aria-labelledby="recent-challenges" className="space-y-3">
-              <h3 id="recent-challenges" className="label-caps text-accent">
+              <h3 id="recent-challenges" className="eyebrow">
                 Your open challenges
               </h3>
               {challenges.map((c) => (

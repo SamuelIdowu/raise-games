@@ -119,7 +119,7 @@ export default function LeaderboardPage() {
   const gameName = games.find((g) => g.key === gameKey)?.name ?? '';
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-4 pb-24">
+    <div className="mx-auto flex max-w-[880px] flex-col gap-4 pb-24">
       <PageHeader eyebrow="Top players" title="Leaderboard" />
 
       <div className="sticky top-14 z-20 -mx-4 flex flex-wrap gap-2 border-b border-line bg-bg px-4 py-2">
@@ -234,7 +234,7 @@ export default function LeaderboardPage() {
           className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 border-t border-line-strong bg-raised px-4 sm:bottom-0"
           aria-label="Your position"
         >
-          <ol className="mx-auto max-w-[640px]">
+          <ol className="mx-auto max-w-[880px]">
             <Row row={me} mine />
           </ol>
         </div>

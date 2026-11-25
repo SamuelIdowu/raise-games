@@ -5,45 +5,51 @@ import { Icon } from './icons';
 import { Spinner } from './spinner';
 
 /**
- * Blocks.fun §7.3 buttons.
- * - primary: orange action
- * - brand: purple brand moment (hero CTA, banners)
- * - secondary: cream on dark (dark ink on light theme)
+ * Blocks.fun §7.3 buttons, with a sharp offset "pixel" shadow.
+ * - primary: purple, the main action
+ * - brand: orange, the secondary highlight
+ * - secondary: cream on dark (ink on light theme)
  * - white: on purple/orange banners
  * - outline: quiet hairline button for tertiary actions
- * - ghost: text-only accent
+ * - ghost: text-only accent, no shadow
  * - danger: destructive outline
  */
 export type ButtonVariant =
   'primary' | 'brand' | 'secondary' | 'white' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
+// Hover lifts 1px and grows the shadow; press sinks into it.
 const base =
   'group/btn relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border ' +
-  'font-body text-mk-button font-bold uppercase tracking-[0.06em] leading-none ' +
-  'transition-[transform,background-color,border-color,color] duration-[var(--motion-micro)] ease-standard ' +
-  'hover:-translate-y-px active:translate-y-0 ' +
-  'disabled:pointer-events-none disabled:border-transparent disabled:bg-raised disabled:text-fg-disabled ' +
+  'font-display text-[11px] font-bold uppercase tracking-[0.04em] leading-none ' +
+  'transition-[transform,box-shadow,background-color,border-color,color] duration-[var(--motion-micro)] ease-standard ' +
+  'shadow-[3px_3px_0_0_var(--hard-ink)] ' +
+  'hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_var(--hard-ink)] ' +
+  'active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_0_var(--hard-ink)] ' +
+  'disabled:pointer-events-none disabled:border-transparent disabled:bg-raised disabled:text-fg-disabled disabled:[--hard-ink:transparent] ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-hover';
 
 // Mobile keeps a 44px touch target; desktop uses the reference 32/36/44 heights.
 const sizes: Record<ButtonSize, string> = {
   sm: 'h-11 px-3 lg:h-8',
   md: 'h-11 px-4 lg:h-9',
-  lg: 'h-11 px-5',
+  lg: 'h-11 px-5 text-[12px] lg:h-11',
 };
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'border-transparent bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-press',
-  brand: 'border-transparent bg-brand text-on-brand hover:bg-brand-hover active:bg-brand-press',
+    'border-transparent bg-accent text-on-accent [--hard-ink:var(--accent-ink)] hover:bg-accent-hover active:bg-accent-press',
+  brand:
+    'border-transparent bg-brand text-on-brand [--hard-ink:var(--brand-ink)] hover:bg-brand-hover active:bg-brand-press',
   secondary:
-    'border-transparent bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-fg)] hover:bg-[var(--btn-secondary-hover)]',
-  white: 'border-transparent bg-white text-on-cream hover:bg-cream',
-  outline: 'border-line-strong bg-transparent text-fg hover:border-fg-subtle hover:bg-overlay',
+    'border-transparent bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-fg)] [--hard-ink:var(--cream-ink)] hover:bg-[var(--btn-secondary-hover)]',
+  white: 'border-transparent bg-white text-on-cream [--hard-ink:var(--cream-ink)] hover:bg-cream',
+  outline:
+    'border-line-strong bg-bg text-fg [--hard-ink:var(--border-strong)] hover:border-fg-subtle',
   ghost:
-    'border-transparent bg-transparent text-accent hover:bg-accent-subtle active:bg-accent-subtle',
-  danger: 'border-loss/60 bg-transparent text-loss hover:bg-loss/10 active:bg-loss/20',
+    'border-transparent bg-transparent text-accent [--hard-ink:transparent] hover:bg-accent-subtle active:bg-accent-subtle',
+  danger:
+    'border-loss/60 bg-bg text-loss [--hard-ink:color-mix(in_srgb,var(--loss)_40%,var(--bg-0))] hover:bg-loss/10',
 };
 
 export interface ButtonStyleOptions {

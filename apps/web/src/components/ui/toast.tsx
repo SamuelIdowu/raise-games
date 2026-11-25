@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role={item.variant === 'error' ? 'alert' : 'status'}
             className={cn(
-              'pointer-events-auto w-full max-w-md rounded-sm border border-line border-l-4 bg-raised p-3 text-body-sm',
+              'pointer-events-auto w-full max-w-md rounded-sm border border-line border-l-4 bg-raised p-3 text-body-sm shadow-hard',
               item.variant === 'error' ? 'border-l-loss text-fg' : 'border-l-accent text-fg',
             )}
           >

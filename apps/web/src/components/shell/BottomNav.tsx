@@ -91,7 +91,7 @@ function BottomNavView({ pathname }: { pathname: string }) {
                     label={item.href === '/inbox' ? 'unread' : 'need your action'}
                   />
                 </span>
-                <span className="font-body text-[10px] font-semibold uppercase tracking-[0.1em]">
+                <span className="font-display text-[9px] font-bold uppercase tracking-[0.08em]">
                   {item.label}
                 </span>
               </Link>

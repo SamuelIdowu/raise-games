@@ -104,7 +104,7 @@ export function ProfileClient() {
   const p = profiles[Math.min(selected, Math.max(profiles.length - 1, 0))];
 
   return (
-    <div className="mx-auto max-w-[960px] space-y-6">
+    <div className="mx-auto max-w-[880px] space-y-6">
       <Card
         as="header"
         className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center"

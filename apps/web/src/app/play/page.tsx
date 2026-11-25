@@ -68,6 +68,15 @@ export default function PlayPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState<{ target?: DirectTarget } | null>(null);
+
+  // The header CTA links to /play?create=1: open the create sheet, then drop the param.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('create') !== '1') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL intent
+    setCreateOpen({});
+    router.replace('/play');
+  }, [router]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const requestSeq = useRef(0);
@@ -204,7 +213,7 @@ export default function PlayPage() {
   const detail = detailId ? findChallenge(detailId) : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[880px] space-y-8">
       <PageHeader
         eyebrow="Open challenges"
         title="Play"
@@ -255,7 +264,7 @@ export default function PlayPage() {
         <div className="space-y-6">
           {forMe.length > 0 ? (
             <section aria-labelledby="for-me-heading" className="space-y-3">
-              <h2 id="for-me-heading" className="label-caps text-accent">
+              <h2 id="for-me-heading" className="eyebrow">
                 Challenges for you · {forMe.length}
               </h2>
               {forMe.map((c) => (

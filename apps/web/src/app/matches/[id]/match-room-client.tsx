@@ -117,7 +117,7 @@ function MatchRoom({ id }: { id: string }) {
 
           {view.rules ? (
             <section aria-label="Rules" className="surface-card rounded-card p-4">
-              <h2 className="label-caps mb-2 text-fg-muted">Rules</h2>
+              <h2 className="eyebrow mb-2">Rules</h2>
               <p className="whitespace-pre-wrap text-body-sm text-fg">{view.rules}</p>
             </section>
           ) : null}

@@ -28,8 +28,8 @@ export const Stats: Story = {
   render: () => (
     <div className="grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
       <StatCard label="Rating" value={1180} delta="+12 vs last week" icon="star" />
-      <StatCard label="Record" value="20-5-1" icon="trophy" />
-      <StatCard label="Streak" value="W3" delta="+3 vs last week" icon="trend-up" />
+      <StatCard label="Record" value="20-5-1" icon="crown" />
+      <StatCard label="Streak" value="W3" delta="+3 vs last week" icon="flame" />
     </div>
   ),
 };

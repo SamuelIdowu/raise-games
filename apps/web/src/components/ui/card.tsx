@@ -24,7 +24,7 @@ export function Card({
         'surface-card rounded-card',
         paddings[padding],
         interactive &&
-          'transition-[transform,border-color] duration-[var(--motion-default)] ease-standard hover:-translate-y-1 hover:border-line-strong',
+          'transition-[transform,border-color,box-shadow] duration-[var(--motion-default)] ease-standard hover:-translate-x-0.5 hover:-translate-y-1 hover:border-accent hover:shadow-[4px_4px_0_0_var(--accent-ink)]',
         className,
       )}
       {...props}

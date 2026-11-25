@@ -107,7 +107,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[960px] space-y-6" aria-busy="true">
+      <div className="mx-auto max-w-[880px] space-y-6" aria-busy="true">
         <div className="flex items-center gap-4">
           <div className="animate-shimmer h-16 w-16 rounded-xs" />
           <div className="space-y-2">
@@ -189,7 +189,7 @@ export default function ProfilePage() {
     );
 
   return (
-    <div className="mx-auto max-w-[960px] space-y-8">
+    <div className="mx-auto max-w-[880px] space-y-8">
       <PageHeader
         eyebrow={`Joined ${joined}`}
         title="Profile"
@@ -231,9 +231,9 @@ export default function ProfilePage() {
             <StatCard
               label="Record"
               value={`${rating?.wins ?? 0}-${rating?.losses ?? 0}-${rating?.draws ?? 0}`}
-              icon="trophy"
+              icon="crown"
             />
-            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="trend-up" />
+            <StatCard label="Streak" value={`W${rating?.streak ?? 0}`} icon="flame" />
           </div>
 
           <Tabs

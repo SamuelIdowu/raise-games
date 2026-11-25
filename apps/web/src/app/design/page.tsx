@@ -64,7 +64,7 @@ const tableRows = [
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="surface-card rounded-card p-5">
-      <h2 className="label-caps mb-4 text-fg-muted">{title}</h2>
+      <h2 className="eyebrow mb-4">{title}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
   );
@@ -78,7 +78,7 @@ export default function DesignPage() {
   const { toast } = useToast();
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-[880px] flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-display font-bold uppercase tracking-tight text-fg">

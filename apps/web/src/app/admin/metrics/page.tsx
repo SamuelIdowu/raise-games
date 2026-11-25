@@ -116,7 +116,7 @@ export default function MetricsPage() {
           </p>
 
           <section aria-labelledby="gate-heading" className="flex flex-col gap-2">
-            <h2 id="gate-heading" className="label-caps text-fg-muted">
+            <h2 id="gate-heading" className="eyebrow">
               Exit gate: open issues by severity
             </h2>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -171,7 +171,7 @@ export default function MetricsPage() {
           </Table>
 
           <section aria-labelledby="funnel-heading" className="flex flex-col gap-2">
-            <h2 id="funnel-heading" className="label-caps text-fg-muted">
+            <h2 id="funnel-heading" className="eyebrow">
               Funnel
             </h2>
             <ol className="grid grid-cols-2 gap-3 md:grid-cols-4">

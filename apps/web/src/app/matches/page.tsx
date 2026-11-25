@@ -53,7 +53,7 @@ export default function MatchesPage() {
     ) ?? [];
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-6">
+    <div className="mx-auto flex max-w-[880px] flex-col gap-6">
       <PageHeader eyebrow="Your games" title="Matches" />
 
       {needsAction.length > 0 ? (

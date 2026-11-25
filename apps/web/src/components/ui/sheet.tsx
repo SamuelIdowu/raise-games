@@ -39,7 +39,7 @@ export function Sheet({ open, onClose, title, children, footer, size = 'sm' }: S
       }}
       aria-labelledby={titleId}
       className={cn(
-        'm-auto w-[calc(100%-2rem)] rounded-modal border border-line bg-raised p-0 text-fg backdrop:bg-scrim',
+        'm-auto w-[calc(100%-2rem)] rounded-modal border border-line-strong bg-surface p-0 text-fg shadow-[6px_6px_0_0_var(--accent-ink)] backdrop:bg-scrim',
         'max-sm:mb-0 max-sm:mt-auto max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none',
         size === 'sm' ? 'max-w-[480px]' : 'max-w-[640px]',
       )}
