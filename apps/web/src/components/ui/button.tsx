@@ -26,11 +26,12 @@ const base =
   'disabled:pointer-events-none disabled:text-fg-disabled ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-hover';
 
-// Mobile keeps a 44px touch target; desktop uses the reference 32/36/44 heights.
+// One control scale with Input and Select: mobile keeps a 44px touch target; on desktop
+// md matches a field (40px), sm sits inside rows and cards (36px), lg is a hero CTA (48px).
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-11 px-3 [--btn-cut:8px] lg:h-8',
-  md: 'h-11 px-4 [--btn-cut:9px] lg:h-9',
-  lg: 'h-11 px-5 text-[12px] [--btn-cut:11px]',
+  sm: 'h-11 px-3 [--btn-cut:8px] lg:h-9',
+  md: 'h-11 px-5 [--btn-cut:9px] lg:h-10',
+  lg: 'h-12 px-6 text-[12px] [--btn-cut:11px]',
 };
 
 const variants: Record<ButtonVariant, string> = {

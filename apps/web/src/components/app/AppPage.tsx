@@ -24,7 +24,7 @@ export function AppPage({
       {rail ? (
         <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-8">{children}</div>
-          <aside aria-label="Shortcuts" className="space-y-6 lg:sticky lg:top-[96px]">
+          <aside aria-label="Shortcuts" className="space-y-6 lg:sticky lg:top-[88px]">
             {rail}
           </aside>
         </div>

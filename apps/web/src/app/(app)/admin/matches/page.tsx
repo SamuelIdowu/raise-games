@@ -86,7 +86,7 @@ export default function MatchesPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="h-11 rounded-control border border-line bg-surface px-2 text-fg"
+            className="h-11 lg:h-10 rounded-control border border-line bg-surface px-2 text-fg"
           >
             <option value="">Any</option>
             {STATUSES.map((s) => (

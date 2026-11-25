@@ -57,7 +57,7 @@ export default function HomePage() {
   const profiles = useMyProfiles();
   const active = useMatches('active');
   const finished = useMatches('finished');
-  const forMe = useChallengesForMe();
+  const forMe = useChallengesForMe(currentGame);
   const board = useBoard({ game: currentGame, status: 'open', mine: 'false', limit: 6 });
   const ladder = useLeaderboard(currentGame);
   const notifications = useNotifications();
@@ -75,7 +75,10 @@ export default function HomePage() {
   const profile = profiles.data?.find((p) => p.gameKey === currentGame);
   const displayName = profiles.data?.[0]?.displayName ?? 'Player';
   const activeMatches = sortByUrgency((active.data?.items ?? []).filter(isParticipantView));
-  const recent = (finished.data?.items ?? []).filter(isParticipantView).slice(0, 5);
+  const recent = (finished.data?.items ?? [])
+    .filter(isParticipantView)
+    .filter((m) => m.game.key === currentGame)
+    .slice(0, 5);
   const openBoard = (board.data?.items ?? []).filter((c) => !c.isMine).slice(0, 4);
   const directForMe = forMe.data?.items ?? [];
   const me = ladder.data?.me ?? null;

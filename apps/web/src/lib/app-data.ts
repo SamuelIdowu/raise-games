@@ -68,9 +68,9 @@ export function useMyOpenChallenges(game?: string) {
   return useBoard({ mine: 'true', status: 'open', game, limit: 10 });
 }
 
-export function useChallengesForMe() {
+export function useChallengesForMe(game?: string) {
   ensureLive();
-  return useBoard({ forMe: 'true', status: 'open', limit: 10 });
+  return useBoard({ forMe: 'true', status: 'open', game, limit: 10 });
 }
 
 export function useLeaderboard(gameKey: string, limit = 50) {

@@ -221,7 +221,7 @@ export default function SettingsPage() {
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               autoComplete="off"
-              className="h-11 rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+              className="h-11 lg:h-10 rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
             />
           </label>
           {deleteError ? <Banner variant="system">{deleteError}</Banner> : null}

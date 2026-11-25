@@ -61,7 +61,7 @@ export function Select({
         value={value ?? ''}
         onChange={handleChange}
         className={cn(
-          'h-11 w-full rounded-control border bg-surface px-3 pr-10 py-2 text-body text-fg ' +
+          'h-11 lg:h-10 w-full rounded-control border bg-surface px-3 pr-10 py-2 text-body text-fg ' +
             'focus:border-accent focus:shadow-[3px_3px_0_0_var(--accent-ink)] focus:outline-none appearance-none ' +
             'bg-[url(\'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2362686D" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M6 9l6 6 6-6"/></svg>\')] ' +
             'bg-no-repeat bg-right-3 bg-center ' +

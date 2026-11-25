@@ -137,7 +137,7 @@ function FeedbackQueue() {
           aria-label="Status filter"
           value={status}
           onChange={(e) => setStatus(e.target.value as FeedbackStatus | 'open')}
-          className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
+          className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="open">Open (new and triaged)</option>
           {(Object.keys(STATUS_LABEL) as FeedbackStatus[]).map((s) => (

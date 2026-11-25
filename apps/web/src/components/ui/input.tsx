@@ -34,7 +34,7 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         className={cn(
-          'h-11 w-full rounded-control border bg-surface px-3 text-body text-fg placeholder:text-fg-subtle ' +
+          'h-11 lg:h-10 w-full rounded-control border bg-surface px-3 text-body text-fg placeholder:text-fg-subtle ' +
             'focus:border-accent focus:shadow-[3px_3px_0_0_var(--accent-ink)] focus:outline-none transition-colors duration-[var(--motion-micro)] ease-standard',
           error ? 'border-loss' : 'border-line-strong hover:border-control',
           className,

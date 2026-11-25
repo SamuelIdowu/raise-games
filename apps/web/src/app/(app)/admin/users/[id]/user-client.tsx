@@ -319,7 +319,7 @@ export function UserDetailClient() {
           aria-label="Role"
           value={role}
           onChange={(e) => setRole(e.target.value as typeof role)}
-          className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
+          className="h-11 lg:h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="player">Player</option>
           <option value="moderator">Moderator</option>

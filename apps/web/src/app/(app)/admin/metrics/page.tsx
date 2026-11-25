@@ -91,7 +91,7 @@ export default function MetricsPage() {
           aria-label="Cohort"
           value={cohort}
           onChange={(e) => setCohort(e.target.value)}
-          className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
+          className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="">All players</option>
           {data?.cohorts.map((c) => (

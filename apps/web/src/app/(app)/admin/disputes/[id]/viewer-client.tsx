@@ -325,7 +325,7 @@ export function DisputeViewerClient() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Only moderators see notes"
-                className="h-11 flex-1 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
+                className="h-11 lg:h-10 flex-1 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
               />
               <Button variant="secondary" onClick={() => void addNote()} disabled={!note.trim()}>
                 Add note
@@ -366,7 +366,7 @@ export function DisputeViewerClient() {
                     }
                   }}
                   defaultValue=""
-                  className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
+                  className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
                 >
                   <option value="" disabled>
                     Choose a template
@@ -406,7 +406,7 @@ export function DisputeViewerClient() {
                       aria-label="Player to sanction"
                       value={sanctionUser}
                       onChange={(e) => setSanctionUser(e.target.value)}
-                      className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
+                      className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
                     >
                       <option value="" disabled>
                         Choose a player
@@ -422,7 +422,7 @@ export function DisputeViewerClient() {
                       value={sanctionReason}
                       onChange={(e) => setSanctionReason(e.target.value)}
                       placeholder="Reason (kept on their record)"
-                      className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle"
+                      className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle"
                     />
                   </>
                 ) : null}

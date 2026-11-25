@@ -6,7 +6,9 @@ import { NeedsActionBanner } from './NeedsActionBanner';
 import { GameProvider } from './GameProvider';
 import { PublicHeader } from './PublicHeader';
 import { SiteFooter } from './SiteFooter';
-import { TopNav } from './TopNav';
+import { AppFooter, AppTopBar } from './AppTopBar';
+import { AuthGate } from './AuthGate';
+import { Sidebar } from './Sidebar';
 
 /**
  * Public layout: landing, legal, status (route group `(marketing)`) and onboarding
@@ -30,36 +32,45 @@ export function PublicShell({
 }
 
 /**
- * Signed-in layout (route group `(app)`): 72px top nav (bottom nav on mobile), the
- * needs-action banner, and a 1280px content frame. Pages lay out a main column and a
- * rail inside it with `AppPage`.
+ * Signed-in dashboard layout (route group `(app)`): fixed 248px sidebar on desktop, a
+ * sticky top bar, the needs-action banner, page content up to 1280px, and a one-line
+ * footer. Below lg the sidebar folds into the top bar's menu and the bottom nav.
  */
 export function Shell({ children }: { children: ReactNode }) {
   return (
     <GameProvider>
-      <div id="top" className="relative flex min-h-screen flex-col overflow-x-clip bg-bg text-fg">
-        {FEATURE_FLAGS.playCredits && (
-          <Banner variant="system" className="mx-auto max-w-[480px] animate-in">
-            Play credits, not cash. No deposit or withdrawal actions available in Stage 1.
-          </Banner>
-        )}
+      <AuthGate />
+      <div id="top" className="relative min-h-screen overflow-x-clip bg-bg text-fg">
         {/* usePathname() in the navs needs Suspense under Cache Components. */}
         <Suspense
           fallback={
-            <header className="sticky top-0 z-nav h-14 border-b border-line bg-bg lg:h-[72px]" />
+            <aside className="fixed inset-y-0 left-0 hidden w-[248px] border-r border-line bg-bg-subtle lg:block" />
           }
         >
-          <TopNav />
-        </Suspense>
-        <Suspense fallback={null}>
-          <NeedsActionBanner />
+          <Sidebar />
         </Suspense>
 
-        <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 pt-6 lg:px-12 lg:pt-10">
-          {children}
-        </main>
+        <div className="flex min-h-screen flex-col lg:pl-[248px]">
+          {FEATURE_FLAGS.playCredits && (
+            <Banner variant="system" className="mx-auto max-w-[480px] animate-in">
+              Play credits, not cash. No deposit or withdrawal actions available in Stage 1.
+            </Banner>
+          )}
+          <Suspense
+            fallback={<header className="sticky top-0 z-nav h-16 border-b border-line bg-bg" />}
+          >
+            <AppTopBar />
+          </Suspense>
+          <Suspense fallback={null}>
+            <NeedsActionBanner />
+          </Suspense>
 
-        <SiteFooter />
+          <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 pt-6 lg:px-8 lg:pt-8">
+            {children}
+          </main>
+
+          <AppFooter />
+        </div>
 
         <Suspense
           fallback={

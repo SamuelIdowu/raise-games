@@ -80,7 +80,7 @@ export default function ReportsPage() {
             setStatus(e.target.value as typeof status);
             setPicked(new Set());
           }}
-          className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
+          className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
         >
           <option value="open">Open</option>
           <option value="actioned">Actioned</option>

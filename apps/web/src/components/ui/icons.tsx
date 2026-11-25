@@ -22,6 +22,8 @@ import {
   Loader2,
   Lock,
   MapPin,
+  Bell,
+  Medal,
   LogOut,
   Settings,
   Mail,
@@ -80,6 +82,8 @@ export type IconName =
   | 'settings'
   | 'minus'
   | 'map-pin'
+  | 'bell'
+  | 'medal'
   | 'camera'
   | 'image'
   | 'refresh'
@@ -120,6 +124,8 @@ const ICONS: Record<IconName, LucideIcon> = {
   upload: Upload,
   lock: Lock,
   'map-pin': MapPin,
+  bell: Bell,
+  medal: Medal,
   'log-out': LogOut,
   settings: Settings,
   minus: Minus,

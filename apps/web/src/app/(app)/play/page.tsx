@@ -19,7 +19,6 @@ import { ChallengeCard } from '@/components/challenge/challenge-card';
 import { AppPage } from '@/components/app/AppPage';
 import { MyChallengesRail, NextMatchRail, RankRail } from '@/components/app/widgets';
 import { useGame } from '@/components/shell/GameProvider';
-import { useMyProfiles } from '@/lib/app-data';
 import { refresh } from '@/lib/use-api';
 import { useNow } from '@/lib/use-now';
 import { getSocket } from '@/lib/realtime';
@@ -66,11 +65,6 @@ export default function PlayPage() {
   const { currentGame, setCurrentGame, games: shellGames } = useGame();
   // The board starts on the game picked in the header; "All games" is a local override.
   const [selectedGame, setSelectedGame] = useState<string>(currentGame);
-  const profiles = useMyProfiles();
-  const myProfile = profiles.data?.find((p) => p.gameKey === selectedGame) ?? profiles.data?.[0];
-  const myCity = myProfile?.city ?? null;
-  const myCampus = myProfile?.campus ?? null;
-  const [where, setWhere] = useState<'all' | 'city' | 'campus'>('all');
   const [view, setView] = useState<'board' | 'players'>('board');
 
   const [challenges, setChallenges] = useState<ChallengeCardData[]>([]);
@@ -115,8 +109,6 @@ export default function PlayPage() {
     lastLoad.current = Date.now();
     const q: BoardQuery = { limit: 20 };
     if (selectedGame !== 'all') q.game = selectedGame;
-    if (where === 'city' && myCity) q.city = myCity;
-    if (where === 'campus' && myCampus) q.campus = myCampus;
     try {
       const [board, mine] = await Promise.all([
         challengesApi.list(q),
@@ -133,7 +125,7 @@ export default function PlayPage() {
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
-  }, [selectedGame, where, myCity, myCampus]);
+  }, [selectedGame]);
 
   useEffect(() => {
     // loadFirstPage sets state only after its fetch resolves; the rule cannot see past the await.
@@ -169,8 +161,6 @@ export default function PlayPage() {
     try {
       const q: BoardQuery = { limit: 20, cursor: nextCursor };
       if (selectedGame !== 'all') q.game = selectedGame;
-      if (where === 'city' && myCity) q.city = myCity;
-      if (where === 'campus' && myCampus) q.campus = myCampus;
       const page = await challengesApi.list(q);
       setChallenges((prev) => [
         ...prev,
@@ -281,39 +271,26 @@ export default function PlayPage() {
             }}
           />
         </div>
-        {myProfile?.city || myProfile?.campus ? (
-          <div className="min-w-48 flex-1 sm:flex-none">
-            <Select
-              label="Where"
-              value={where}
-              options={[
-                { value: 'all', label: 'Everywhere' },
-                ...(myProfile?.city
-                  ? [{ value: 'city', label: `My city · ${myProfile.city}` }]
-                  : []),
-                ...(myProfile?.campus
-                  ? [{ value: 'campus', label: `My campus · ${myProfile.campus}` }]
-                  : []),
-              ]}
-              onChange={(v) => {
-                setWhere(v as typeof where);
-                setLoading(true);
-              }}
-            />
-          </div>
-        ) : null}
-        <div role="tablist" aria-label="Play views" className="flex gap-2">
+
+        {/* Segmented control: same height as the fields beside it. */}
+        <div
+          role="tablist"
+          aria-label="Play views"
+          className="inline-flex h-11 rounded-control border border-line bg-surface p-1 lg:h-10"
+        >
           {(['board', 'players'] as const).map((v) => (
-            <Button
+            <button
               key={v}
+              type="button"
               role="tab"
               aria-selected={view === v}
-              variant={view === v ? 'primary' : 'ghost'}
-              size="sm"
               onClick={() => setView(v)}
+              className={`rounded-[calc(var(--radius-control)-2px)] px-4 font-display text-[11px] font-bold uppercase tracking-[0.04em] transition-colors ${
+                view === v ? 'bg-accent text-on-accent' : 'text-fg-subtle hover:text-fg'
+              }`}
             >
               {v === 'board' ? 'Board' : 'Players'}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
@@ -477,7 +454,7 @@ function PlayersView({
         })
         .catch((e: Error) => mine === seq.current && setError(e.message))
         .finally(() => mine === seq.current && setLoading(false));
-    }, 250); // debounce typing in campus/city
+    }, 150);
     return () => clearTimeout(t);
   }, [search, selectedGame]);
 
@@ -490,12 +467,9 @@ function PlayersView({
     setNextCursor(res.nextCursor);
   };
 
-  const inputClass =
-    'h-11 w-full rounded-control border border-control bg-raised px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none';
-
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
+      <div className="max-w-xs">
         <Select
           label="Rank"
           value={search.rank ?? ''}
@@ -504,24 +478,6 @@ function PlayersView({
             setSearch((s) => ({ ...s, rank: (v || undefined) as PlayerSearchQuery['rank'] }))
           }
         />
-        <label className="block">
-          <span className="mb-1 block text-body-sm text-fg">Campus</span>
-          <input
-            className={inputClass}
-            value={search.campus ?? ''}
-            placeholder="e.g. UNILAG"
-            onChange={(e) => setSearch((s) => ({ ...s, campus: e.target.value || undefined }))}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-body-sm text-fg">City</span>
-          <input
-            className={inputClass}
-            value={search.city ?? ''}
-            placeholder="e.g. Lagos"
-            onChange={(e) => setSearch((s) => ({ ...s, city: e.target.value || undefined }))}
-          />
-        </label>
       </div>
 
       {loading && players.length === 0 ? (

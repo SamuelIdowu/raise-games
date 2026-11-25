@@ -38,8 +38,6 @@ export default function LeaderboardPage() {
   // Follows the header game switcher; picking a game here moves the header too.
   const gameKey = currentGame;
   const setGameKey = (key: string) => setCurrentGame(key as typeof currentGame);
-  const [scope, setScope] = useState<'all' | 'campus' | 'city'>('all');
-  const [place, setPlace] = useState('');
   const [page, setPage] = useState<LeaderboardPage | null>(null);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +55,7 @@ export default function LeaderboardPage() {
       .catch(() => setError('Could not load games.'));
   }, []);
 
-  const filter = scope !== 'all' && place.trim() ? { [scope]: place.trim() } : {};
+  const filter = {};
   const filterKey = JSON.stringify(filter);
 
   const [reloadKey, setReloadKey] = useState(0);
@@ -141,13 +139,13 @@ export default function LeaderboardPage() {
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="sticky top-14 z-20 -mx-4 flex flex-wrap gap-2 border-b border-line bg-bg px-4 py-2 lg:top-[72px] lg:mx-0 lg:px-0">
+        <div className="sticky top-14 z-20 -mx-4 flex flex-wrap gap-2 border-b border-line bg-bg px-4 py-2 lg:top-16 lg:mx-0 lg:px-0">
           <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
             <span className="sr-only">Game</span>
             <select
               value={gameKey}
               onChange={(e) => setGameKey(e.target.value)}
-              className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
+              className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
             >
               {games.map((g) => (
                 <option key={g.key} value={g.key}>
@@ -157,36 +155,13 @@ export default function LeaderboardPage() {
             </select>
           </label>
           <label className="flex min-w-[7rem] flex-col gap-1">
-            <span className="sr-only">Area</span>
-            <select
-              value={scope}
-              onChange={(e) => setScope(e.target.value as typeof scope)}
-              className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg focus:border-accent focus:outline-none"
-            >
-              <option value="all">Everywhere</option>
-              <option value="campus">Campus</option>
-              <option value="city">City</option>
-            </select>
-          </label>
-          {scope !== 'all' ? (
-            <label className="flex min-w-[8rem] flex-1 flex-col gap-1">
-              <span className="sr-only">{scope === 'campus' ? 'Campus name' : 'City name'}</span>
-              <input
-                value={place}
-                onChange={(e) => setPlace(e.target.value)}
-                placeholder={scope === 'campus' ? 'e.g. UNILAG' : 'e.g. Lagos'}
-                className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
-              />
-            </label>
-          ) : null}
-          <label className="flex min-w-[7rem] flex-col gap-1">
             <span className="sr-only">Period</span>
             {/* Seasons come later (F10.3); all-time is the only period today. */}
             <select
               value="all_time"
               disabled
               aria-describedby="period-note"
-              className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg-muted"
+              className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg-muted"
             >
               <option value="all_time">All-time</option>
             </select>
@@ -229,7 +204,7 @@ export default function LeaderboardPage() {
           />
         ) : null}
 
-        {rows.length >= 3 && scope === 'all' ? <Podium rows={rows.slice(0, 3)} /> : null}
+        {rows.length >= 3 ? <Podium rows={rows.slice(0, 3)} /> : null}
 
         {rows.length > 0 ? (
           <ol aria-label={`${gameName} leaderboard`} className="flex flex-col">
@@ -252,7 +227,7 @@ export default function LeaderboardPage() {
 
         {me && (!meInList || !meVisible) ? (
           <div
-            className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 border-t border-line-strong bg-raised px-4 sm:bottom-0"
+            className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 lg:left-[248px] border-t border-line-strong bg-raised px-4 sm:bottom-0"
             aria-label="Your position"
           >
             <ol className="mx-auto max-w-[1184px]">

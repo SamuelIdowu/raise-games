@@ -637,7 +637,7 @@ function Preferences() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+          className="h-11 lg:h-10 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
         />
         <p className="text-caption text-fg-muted">
           Only used for notifications. Never shown to other players.
@@ -736,7 +736,7 @@ function Preferences() {
               type="time"
               value={quiet.start}
               onChange={(e) => setQuiet({ ...quiet, start: e.target.value })}
-              className="mt-1 h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg"
+              className="mt-1 h-11 lg:h-10 w-full rounded-control border border-line bg-raised px-3 text-body text-fg"
             />
           </label>
           <label className="flex-1 text-caption text-fg-muted">
@@ -745,7 +745,7 @@ function Preferences() {
               type="time"
               value={quiet.end}
               onChange={(e) => setQuiet({ ...quiet, end: e.target.value })}
-              className="mt-1 h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg"
+              className="mt-1 h-11 lg:h-10 w-full rounded-control border border-line bg-raised px-3 text-body text-fg"
             />
           </label>
         </div>

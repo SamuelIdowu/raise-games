@@ -202,7 +202,7 @@ export function CreateChallengeSheet({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+                className="h-11 lg:h-10 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
               />
             </div>
             <div>
@@ -216,7 +216,7 @@ export function CreateChallengeSheet({
                 onChange={(e) => setTime(e.target.value)}
                 aria-invalid={Boolean(startError) || undefined}
                 aria-describedby={startError ? `${ids}-start-err` : undefined}
-                className="h-11 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
+                className="h-11 lg:h-10 w-full rounded-control border border-line bg-raised px-3 text-body text-fg focus:border-accent focus:outline-none"
               />
             </div>
             <Select

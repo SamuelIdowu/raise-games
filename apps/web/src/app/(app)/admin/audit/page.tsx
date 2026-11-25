@@ -58,7 +58,7 @@ export default function AuditPage() {
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="h-11 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
+            className="h-11 lg:h-10 rounded-control border border-line-strong bg-surface px-3 text-body text-fg"
           >
             {[25, 50, 100].map((n) => (
               <option key={n} value={n}>
