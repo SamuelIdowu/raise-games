@@ -12,7 +12,7 @@ export interface PromoBannerProps {
   className?: string;
 }
 
-/** Scattered pixel icons on the right, like the coin cluster in the reference. */
+/** Scattered pixel icons on the right, an original cluster (no currency symbols). */
 const CLUSTER = [
   { size: 64, className: 'right-[14%] top-[18%] rotate-[-14deg]' },
   { size: 44, className: 'right-[4%] top-[8%] rotate-[18deg]' },
@@ -31,7 +31,7 @@ export function PromoBanner({
   title,
   children,
   action,
-  icon = 'coin',
+  icon = 'star',
   className,
 }: PromoBannerProps) {
   return (

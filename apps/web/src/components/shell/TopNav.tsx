@@ -10,10 +10,10 @@ import { NAV_ITEMS, NavBadge, isActive, useNavBadges } from './BottomNav';
 import { GameSwitcher } from './GameSwitcher';
 
 /** Blocks.fun §7.1: pixel "X" cluster mark + display wordmark. */
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, href = '/home' }: { className?: string; href?: string }) {
   return (
     <Link
-      href="/home"
+      href={href}
       className={cn('flex shrink-0 items-center gap-2', className)}
       aria-label="RAISE home"
     >
@@ -103,14 +103,12 @@ export function TopNav() {
           >
             <Icon name="settings" size={18} />
           </Link>
-          <ButtonLink
-            href="/play?create=1"
-            variant="secondary"
-            arrow
-            className="hidden lg:inline-flex"
-          >
-            Create challenge
-          </ButtonLink>
+          {/* Wrapped: cn() does not merge classes, so `hidden` on the button would lose. */}
+          <div className="hidden lg:block">
+            <ButtonLink href="/play?create=1" variant="secondary" arrow>
+              Create challenge
+            </ButtonLink>
+          </div>
         </div>
       </div>
 

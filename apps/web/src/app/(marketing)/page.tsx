@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated } from '@raise/api-client';
 import {
   Accordion,
   ButtonLink,
@@ -38,6 +39,36 @@ const STEPS: Array<{ title: string; body: string; icon: PixelIconName }> = [
     title: 'Climb the ladder',
     body: 'Confirmed results update your rating and reputation. Disputes go to real moderators who review the proof.',
     icon: 'crown',
+  },
+];
+
+const GAME_CARDS: Array<{
+  name: string;
+  body: string;
+  format: string;
+  proof: string;
+  icon: PixelIconName;
+}> = [
+  {
+    name: 'eFootball',
+    body: 'Friend match, one game, full time. Settle who really runs the pitch.',
+    format: '1v1 duel',
+    proof: 'Final score screen',
+    icon: 'gamepad',
+  },
+  {
+    name: 'Call of Duty: Mobile',
+    body: 'Private multiplayer room, agreed map and mode. First to the score limit takes it.',
+    format: '1v1 duel',
+    proof: 'Scoreboard screenshot',
+    icon: 'bolt',
+  },
+  {
+    name: 'PUBG Mobile',
+    body: 'Custom room team deathmatch, one on one. Rules are agreed before the room opens.',
+    format: '1v1 TDM duel',
+    proof: 'Results screen',
+    icon: 'flame',
   },
 ];
 
@@ -91,7 +122,7 @@ const FLOATERS: Array<{
     delay: '-2s',
   },
   {
-    icon: 'coin',
+    icon: 'shield',
     tile: 'bg-cream text-accent',
     className: 'right-[14%] top-[44%]',
     rot: '-10deg',
@@ -149,17 +180,13 @@ function StepHeader({ index, icon }: { index: number; icon: PixelIconName }) {
 }
 
 export default function LandingPage() {
-  const pathname = usePathname();
   const router = useRouter();
 
-  // Client-side redirect for signed-in users
+  // Signed-in players land on their dashboard. Tokens live in localStorage, so this
+  // can only run on the client.
   useEffect(() => {
-    const isSignedIn = document.cookie.includes('raise_access=');
-    if (isSignedIn && pathname === '/') {
-      router.push('/home');
-      router.refresh();
-    }
-  }, [pathname, router]);
+    if (isAuthenticated()) router.replace('/home');
+  }, [router]);
 
   return (
     <div className="-mt-8 lg:-mt-16">
@@ -168,8 +195,8 @@ export default function LandingPage() {
         {FLOATERS.map((floater) => (
           <Floater key={floater.icon} {...floater} />
         ))}
-        <div className="relative mx-auto flex max-w-[880px] flex-col items-center text-center">
-          <Eyebrow>Play and win</Eyebrow>
+        <div className="relative mx-auto flex max-w-[1120px] flex-col items-center text-center">
+          <Eyebrow>Free 1v1 challenges</Eyebrow>
           <h1 className="mt-5 font-display text-mk-display-xl uppercase text-fg">
             Challenge
             <br />
@@ -193,7 +220,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-[880px]">
+      <div className="mx-auto max-w-[1120px]">
         {/* Supported games marquee */}
         <section aria-label="Supported games" className="relative overflow-hidden py-6">
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-bg to-transparent" />
@@ -217,8 +244,44 @@ export default function LandingPage() {
           className="grid grid-cols-1 gap-5 py-10 sm:grid-cols-3"
         >
           <StatCard label="Games" value={3} icon="gamepad" />
-          <StatCard label="Entry fee" value="₦0" icon="coin" />
+          <StatCard label="Entry fee" value="₦0" icon="star" />
           <StatCard label="Wallet needed" value="No" icon="shield" />
+        </section>
+
+        {/* Games and formats */}
+        <section aria-labelledby="games-heading" className="py-16">
+          <Eyebrow>Launch games</Eyebrow>
+          <h2 id="games-heading" className="mt-3 font-display text-mk-h2 uppercase text-fg">
+            Pick your game
+          </h2>
+          <ul className="mt-10 grid gap-5 md:grid-cols-3">
+            {GAME_CARDS.map((game) => (
+              <li
+                key={game.name}
+                className="surface-card flex flex-col gap-4 rounded-card p-6 shadow-hard-sm [--hard-ink:var(--shadow-ink)]"
+              >
+                <PixelIcon
+                  name={game.icon}
+                  size={28}
+                  className="text-accent [--hard-ink:var(--accent-ink)]"
+                />
+                <h3 className="font-display text-[18px] font-black uppercase tracking-[-0.01em] text-fg">
+                  {game.name}
+                </h3>
+                <p className="text-[12px] leading-relaxed text-fg-muted">{game.body}</p>
+                <dl className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-4 text-[11px]">
+                  <div>
+                    <dt className="label-caps text-fg-subtle">Format</dt>
+                    <dd className="mt-1 font-semibold text-fg">{game.format}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-caps text-fg-subtle">Proof</dt>
+                    <dd className="mt-1 font-semibold text-fg">{game.proof}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <hr className="border-line" />
@@ -229,7 +292,7 @@ export default function LandingPage() {
           <h2 id="how-heading" className="mt-3 font-display text-mk-h2 uppercase text-fg">
             How it works
           </h2>
-          <ol className="mt-12 grid gap-x-12 gap-y-14 md:grid-cols-2">
+          <ol className="mt-12 grid gap-x-10 gap-y-14 md:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step, index) => (
               <li key={step.title} className="space-y-3">
                 <StepHeader index={index} icon={step.icon} />
@@ -245,7 +308,7 @@ export default function LandingPage() {
         </section>
 
         <PromoBanner
-          eyebrow="Play and win"
+          eyebrow="Free to play"
           title="Get started now!"
           action={
             <ButtonLink href="/onboarding/phone" variant="white" arrow>
@@ -290,44 +353,46 @@ export default function LandingPage() {
       </div>
 
       {/* FAQ */}
-      <section aria-labelledby="faq-heading" className="mx-auto max-w-[880px] py-16">
-        <div className="max-w-[560px]">
-          <div className="relative inline-block">
-            <PixelIcon
-              name="chat"
-              size={64}
-              className="absolute -top-14 left-20 rotate-[8deg] text-accent [--hard-ink:var(--accent-ink)]"
-            />
-            <h2 id="faq-heading" className="font-display text-mk-h2 uppercase text-fg">
-              FAQ
-            </h2>
+      <section aria-labelledby="faq-heading" className="mx-auto max-w-[1120px] py-16">
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.4fr]">
+          <div>
+            <div className="relative inline-block">
+              <PixelIcon
+                name="chat"
+                size={64}
+                className="absolute -top-14 left-20 rotate-[8deg] text-accent [--hard-ink:var(--accent-ink)]"
+              />
+              <h2 id="faq-heading" className="font-display text-mk-h2 uppercase text-fg">
+                FAQ
+              </h2>
+            </div>
+            <div className="mt-3">
+              <p className="eyebrow">
+                More questions?{' '}
+                <Link
+                  href="/feedback"
+                  className="text-fg underline underline-offset-4 hover:text-accent"
+                >
+                  Send us feedback
+                </Link>
+              </p>
+            </div>
           </div>
-          <div className="mt-3">
-            <p className="eyebrow">
-              More questions?{' '}
-              <Link
-                href="/feedback"
-                className="text-fg underline underline-offset-4 hover:text-accent"
-              >
-                Send us feedback
-              </Link>
-            </p>
-          </div>
-          <Accordion items={FAQ} className="mt-8" />
+          <Accordion items={FAQ} className="lg:mt-4" />
         </div>
       </section>
 
       {/* Create CTA */}
-      <section className="mx-auto max-w-[880px] pt-16">
+      <section className="mx-auto max-w-[1120px] pt-16">
         <div className="spotlight-purple relative rounded-lg border border-line px-6 pb-12 pt-20 text-center shadow-hard [--hard-ink:var(--accent-ink)] md:px-8">
           <PixelCube size={120} className="absolute -top-14 left-1/2 -translate-x-1/2" />
           <PixelIcon
-            name="coin"
+            name="star"
             size={34}
             className="animate-float absolute left-[8%] top-[40%] hidden text-cream sm:block"
           />
           <PixelIcon
-            name="coin"
+            name="bolt"
             size={26}
             className="animate-float absolute right-[10%] top-[22%] hidden text-cream [animation-delay:-3s] sm:block"
           />

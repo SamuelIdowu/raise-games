@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk, Unbounded } from 'next/font/google';
-import { Shell } from '@/components/shell';
 import { ToastProvider } from '@/components/ui';
 import { ErrorReporting } from '@/components/error-reporting';
 import { theme } from '@/lib/tokens.generated';
@@ -93,9 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="flex min-h-full flex-col bg-bg text-fg">
         <ErrorReporting />
-        <ToastProvider>
-          <Shell>{children}</Shell>
-        </ToastProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

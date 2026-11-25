@@ -4,3 +4,5 @@ export { NeedsActionBanner } from './NeedsActionBanner';
 export { Shell } from './Shell';
 export { SiteFooter } from './SiteFooter';
 export { Logo, TopNav } from './TopNav';
+export { PublicHeader } from './PublicHeader';
+export { PublicShell } from './Shell';
