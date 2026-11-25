@@ -119,6 +119,11 @@ export default function PhoneEntryPage() {
       // If turnstile required but not provided, backend will throw error handled below.
       // Store phone (and the invite, needed again when the account is created) for OTP page
       sessionStorage.setItem('onboarding_phone', cleaned);
+      // Where to return after sign-in (set when an expired session sent the player here).
+      const next = new URLSearchParams(window.location.search).get('next');
+      if (next && next.startsWith('/') && !next.startsWith('//')) {
+        sessionStorage.setItem('onboarding_next', next);
+      }
       if (invite.trim()) sessionStorage.setItem('onboarding_invite', invite.trim());
       else sessionStorage.removeItem('onboarding_invite');
       resetTurnstile();

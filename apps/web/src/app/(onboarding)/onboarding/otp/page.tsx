@@ -45,9 +45,17 @@ export default function OtpPage() {
       // Clear onboarding phone and invite
       sessionStorage.removeItem('onboarding_phone');
       sessionStorage.removeItem('onboarding_invite');
-      // Consent first: profiles and challenges are refused until terms are accepted. The
-      // consent page forwards straight to username when both are already accepted.
-      router.push('/onboarding/consent');
+      // Returning players (they already have a username) go back to where they were, or
+      // home. Consent still comes first: it forwards at once when nothing changed.
+      // New players: consent, then username, games and game IDs.
+      const next = sessionStorage.getItem('onboarding_next');
+      sessionStorage.removeItem('onboarding_next');
+      const me = await authApi.me().catch(() => null);
+      if (me?.displayName) {
+        router.push('/onboarding/consent?next=' + encodeURIComponent(next ?? '/home'));
+      } else {
+        router.push('/onboarding/consent');
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Invalid code. Try again or request a new one.',
