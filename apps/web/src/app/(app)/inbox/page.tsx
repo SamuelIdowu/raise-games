@@ -26,6 +26,8 @@ import {
   type IconName,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { AppPage } from '@/components/app/AppPage';
+import { MyChallengesRail, NextMatchRail } from '@/components/app/widgets';
 import { setUnread, useBadges } from '@/lib/badges';
 import { useDmEnabled } from '@/features/dm/dm-kit';
 import { disablePush, enablePush, currentSubscription, pushSupport } from '@/lib/push';
@@ -60,8 +62,15 @@ function Inbox() {
     { key: 'preferences', label: 'Preferences' },
   ];
   return (
-    <div className="mx-auto max-w-[880px] space-y-6">
-      <PageHeader eyebrow="Stay in the loop" title="Inbox" />
+    <AppPage
+      header={<PageHeader eyebrow="Stay in the loop" title="Inbox" />}
+      rail={
+        <>
+          <NextMatchRail />
+          <MyChallengesRail />
+        </>
+      }
+    >
       <Tabs idPrefix="inbox" aria-label="Inbox" items={tabs} value={tab} onChange={setTab} />
       <div {...tabPanelProps('inbox', tab)}>
         {tab === 'notifications' ? (
@@ -72,7 +81,7 @@ function Inbox() {
           <Preferences />
         )}
       </div>
-    </div>
+    </AppPage>
   );
 }
 

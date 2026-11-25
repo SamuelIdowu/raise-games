@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import {
   challengesApi,
   isParticipantView,
@@ -12,7 +11,6 @@ import {
   Avatar,
   Button,
   ButtonLink,
-  Icon,
   RatingBadge,
   Skeleton,
   StatusChip,

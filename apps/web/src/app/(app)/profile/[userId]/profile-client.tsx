@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { gamesApi, isParticipantView, type Game } from '@raise/api-client';
 import {
   Avatar,
   Button,
@@ -19,6 +21,13 @@ import {
   type TierLevel,
 } from '@/components/ui';
 import { DmActions } from '@/features/dm/dm-kit';
+import { AppPage, SectionHeading } from '@/components/app/AppPage';
+import { NextMatchRail } from '@/components/app/widgets';
+import { CreateChallengeSheet } from '@/components/challenge/create-challenge-sheet';
+import { useMatches } from '@/lib/app-data';
+import { refresh } from '@/lib/use-api';
+import { formatRelative } from '@/lib/datetime';
+import { outcomeTag } from '@/lib/match-status';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -76,6 +85,16 @@ export function ProfileClient() {
   const [selected, setSelected] = useState(0);
   const tabsId = useId();
   const { toast } = useToast();
+  const [games, setGames] = useState<Game[]>([]);
+  const [challengeOpen, setChallengeOpen] = useState(false);
+  const finished = useMatches('finished');
+
+  useEffect(() => {
+    gamesApi
+      .list()
+      .then(setGames)
+      .catch(() => setGames([]));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,32 +117,49 @@ export function ProfileClient() {
     }
   };
 
-  if (loading)
-    return <div className="mx-auto max-w-2xl p-6 text-body-sm text-fg-muted">Loading profile…</div>;
+  if (loading) return <div className="p-6 text-body-sm text-fg-muted">Loading profile…</div>;
 
   const p = profiles[Math.min(selected, Math.max(profiles.length - 1, 0))];
+  const name = p?.displayName ?? 'Player';
+
+  // Head-to-head: my finished matches against this player.
+  const h2h = (finished.data?.items ?? [])
+    .filter(isParticipantView)
+    .filter((m) => m.opponent.userId === userId);
+  const h2hRecord = h2h.reduce(
+    (acc, m) => {
+      if (m.outcomeForViewer === 'win') acc.w++;
+      else if (m.outcomeForViewer === 'loss') acc.l++;
+      else if (m.outcomeForViewer === 'draw') acc.d++;
+      return acc;
+    },
+    { w: 0, l: 0, d: 0 },
+  );
 
   return (
-    <div className="mx-auto max-w-[880px] space-y-6">
-      <Card
-        as="header"
-        className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center"
-      >
-        <div className="flex items-center gap-3">
+    <AppPage rail={<NextMatchRail />}>
+      <Card as="header" className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
           <Avatar username={p?.displayName ?? p?.gameName ?? 'Player'} size={64} />
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">
+            <h1 className="font-display text-[clamp(1.5rem,3.2vw,2.5rem)] font-black uppercase leading-none text-fg [overflow-wrap:anywhere]">
               {p?.displayName ?? p?.gameName ?? 'Player'}
             </h1>
-            <p className="label-caps mt-2 text-fg-subtle">{p?.city ?? 'Unknown city'}</p>
+            {p?.city || p?.campus ? (
+              <p className="label-caps mt-2 text-fg-subtle">
+                {[p?.campus, p?.city].filter(Boolean).join(' · ')}
+              </p>
+            ) : null}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
           <CountUp
             value={p?.rating ?? 1000}
             className="font-display text-stat-lg font-semibold text-fg tabular"
           />
-          <Button arrow>Challenge</Button>
+          <Button arrow onClick={() => setChallengeOpen(true)} disabled={!p}>
+            Challenge
+          </Button>
         </div>
       </Card>
 
@@ -191,27 +227,21 @@ export function ProfileClient() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="eyebrow">Game IDs</h3>
-          <Button variant="ghost" size="sm">
-            Add game ID
-          </Button>
         </div>
         <div className="space-y-2">
           {profiles.map((profile) => (
             <div
               key={profile.gameId}
-              className="surface-card flex items-center justify-between rounded-card px-4 py-2"
+              className="surface-card flex flex-wrap items-center justify-between gap-x-3 rounded-card px-4 py-2"
             >
               <div className="flex items-center gap-3">
                 <span className="font-display text-body-sm font-semibold text-fg">
                   {profile.gameName}
                 </span>
-                <StatusChip
-                  label={profile.provisional ? 'Provisional' : 'Verified'}
-                  variant="neutral"
-                />
+                {profile.provisional ? <StatusChip label="Provisional" variant="neutral" /> : null}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-display text-body-sm font-semibold text-fg tabular">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 truncate font-display text-body-sm font-semibold text-fg tabular">
                   {profile.inGameId}
                 </span>
                 <button
@@ -228,19 +258,72 @@ export function ProfileClient() {
         </div>
       </div>
 
-      <div className="surface-card rounded-card p-4">
-        <h3 className="eyebrow">Recent matches</h3>
-        <div className="mt-4 flex flex-col items-center gap-3 rounded-card border border-dashed border-line p-6 text-center">
-          <Icon name="trophy" size={32} className="text-fg-subtle" />
-          <h3 className="font-display text-h3 font-black uppercase text-fg">No matches yet</h3>
-          <p className="text-body-sm text-fg-muted">Play your first match to see results here.</p>
-          <Button>Find a challenge</Button>
-        </div>
-      </div>
+      <section aria-labelledby="h2h" className="space-y-4">
+        <SectionHeading id="h2h">
+          {h2h.length > 0
+            ? `You vs ${name} · ${h2hRecord.w}W ${h2hRecord.l}L ${h2hRecord.d}D`
+            : `You vs ${name}`}
+        </SectionHeading>
+        {h2h.length > 0 ? (
+          <ul className="surface-card divide-y divide-line rounded-card">
+            {h2h.slice(0, 8).map((m) => {
+              const tag = outcomeTag(m);
+              return (
+                <li key={m.id}>
+                  <Link
+                    href={`/matches/${m.id}`}
+                    className="flex items-center gap-3 p-4 transition-colors hover:bg-bg-subtle"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-body-sm font-semibold text-fg">
+                        {m.game.name} · {m.format.name}
+                      </span>
+                      {m.completedAt ? (
+                        <span className="block text-caption text-fg-subtle">
+                          {formatRelative(m.completedAt)}
+                        </span>
+                      ) : null}
+                    </span>
+                    {tag ? (
+                      <StatusChip label={tag.label} variant={tag.variant} icon={tag.icon} />
+                    ) : null}
+                    {m.ratingDelta !== null ? (
+                      <span
+                        className={`w-12 text-right font-display text-body-sm font-bold tabular ${m.ratingDelta >= 0 ? 'text-success' : 'text-danger'}`}
+                      >
+                        {m.ratingDelta >= 0 ? `+${m.ratingDelta}` : m.ratingDelta}
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="surface-card flex flex-col items-start gap-3 rounded-card p-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-body-sm text-fg-muted">
+              You have not played {name} yet. Send a direct challenge and only they can accept it.
+            </p>
+            <Button arrow onClick={() => setChallengeOpen(true)} disabled={!p}>
+              Challenge {name}
+            </Button>
+          </div>
+        )}
+      </section>
 
-      <div className="hidden sm:block">
-        <Button>Challenge</Button>
-      </div>
-    </div>
+      {challengeOpen && p ? (
+        <CreateChallengeSheet
+          open
+          games={games}
+          target={{ userId, username: name, gameKey: p.gameKey }}
+          onClose={() => setChallengeOpen(false)}
+          onCreated={() => {
+            setChallengeOpen(false);
+            refresh('challenges');
+            toast({ title: `Challenge sent to ${name}`, variant: 'status' });
+          }}
+        />
+      ) : null}
+    </AppPage>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { isAuthenticated } from '@raise/api-client';
 import { ButtonLink } from '@/components/ui';
@@ -19,9 +19,12 @@ const LINKS = [
  * `minimal` drops the links and CTAs for onboarding, where the only way out is forward.
  */
 export function PublicHeader({ minimal = false }: { minimal?: boolean }) {
-  // Tokens live in localStorage, so the signed-in state is only known after mount.
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  useEffect(() => setSignedIn(isAuthenticated()), []);
+  // Tokens live in localStorage: unknown (null) on the server, read on the client.
+  const signedIn = useSyncExternalStore<boolean | null>(
+    () => () => {},
+    () => isAuthenticated(),
+    () => null,
+  );
 
   return (
     <header className="sticky top-0 z-nav border-b border-line bg-bg">

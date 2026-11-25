@@ -57,7 +57,7 @@ export function ConversationClient() {
   };
 
   return (
-    <div className="mx-auto flex max-w-[880px] flex-col gap-3">
+    <div className="flex max-w-[880px] flex-col gap-3">
       <header className="flex flex-wrap items-center gap-2">
         <Link
           href="/inbox?tab=messages"

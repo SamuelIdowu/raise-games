@@ -45,7 +45,7 @@ export default function BlockedPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-[880px] flex-col gap-4">
+    <div className="flex max-w-[880px] flex-col gap-4">
       <h1 className="font-display text-mk-h1 uppercase text-fg text-balance">Blocked players</h1>
       <p className="text-body-sm text-fg-muted">
         Blocked players cannot message you or send you friend requests, and are not told. Blocked

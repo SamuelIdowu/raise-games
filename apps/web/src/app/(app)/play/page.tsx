@@ -66,13 +66,10 @@ export default function PlayPage() {
   const { currentGame, setCurrentGame, games: shellGames } = useGame();
   // The board starts on the game picked in the header; "All games" is a local override.
   const [selectedGame, setSelectedGame] = useState<string>(currentGame);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- follow the header switcher
-    setSelectedGame(currentGame);
-    setLoading(true);
-  }, [currentGame]);
   const profiles = useMyProfiles();
   const myProfile = profiles.data?.find((p) => p.gameKey === selectedGame) ?? profiles.data?.[0];
+  const myCity = myProfile?.city ?? null;
+  const myCampus = myProfile?.campus ?? null;
   const [where, setWhere] = useState<'all' | 'city' | 'campus'>('all');
   const [view, setView] = useState<'board' | 'players'>('board');
 
@@ -82,6 +79,11 @@ export default function PlayPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follow the header switcher
+    setSelectedGame(currentGame);
+    setLoading(true);
+  }, [currentGame]);
 
   const [createOpen, setCreateOpen] = useState<{ target?: DirectTarget } | null>(null);
 
@@ -113,8 +115,8 @@ export default function PlayPage() {
     lastLoad.current = Date.now();
     const q: BoardQuery = { limit: 20 };
     if (selectedGame !== 'all') q.game = selectedGame;
-    if (where === 'city' && myProfile?.city) q.city = myProfile.city;
-    if (where === 'campus' && myProfile?.campus) q.campus = myProfile.campus;
+    if (where === 'city' && myCity) q.city = myCity;
+    if (where === 'campus' && myCampus) q.campus = myCampus;
     try {
       const [board, mine] = await Promise.all([
         challengesApi.list(q),
@@ -131,7 +133,7 @@ export default function PlayPage() {
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
-  }, [selectedGame, where, myProfile?.city, myProfile?.campus]);
+  }, [selectedGame, where, myCity, myCampus]);
 
   useEffect(() => {
     // loadFirstPage sets state only after its fetch resolves; the rule cannot see past the await.
@@ -167,8 +169,8 @@ export default function PlayPage() {
     try {
       const q: BoardQuery = { limit: 20, cursor: nextCursor };
       if (selectedGame !== 'all') q.game = selectedGame;
-      if (where === 'city' && myProfile?.city) q.city = myProfile.city;
-      if (where === 'campus' && myProfile?.campus) q.campus = myProfile.campus;
+      if (where === 'city' && myCity) q.city = myCity;
+      if (where === 'campus' && myCampus) q.campus = myCampus;
       const page = await challengesApi.list(q);
       setChallenges((prev) => [
         ...prev,
