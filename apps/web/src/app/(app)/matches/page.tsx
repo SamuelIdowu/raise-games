@@ -110,11 +110,9 @@ export default function MatchesPage() {
               <li key={c.id} className="flex flex-wrap items-center gap-3 p-4">
                 <Avatar username={c.poster.username} size={32} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-body-sm font-semibold text-fg">
-                    {c.poster.username}{' '}
-                    <span className="font-normal text-fg-subtle">
-                      · {c.game.name} · {c.format.name}
-                    </span>
+                  <p className="truncate text-body-sm font-semibold text-fg">{c.poster.username}</p>
+                  <p className="truncate text-caption text-fg-subtle">
+                    {c.game.name} · {c.format.name}
                   </p>
                   <p className="text-caption text-fg-subtle">
                     {formatAbsolute(c.timeWindow.startsAt)} · expires{' '}
