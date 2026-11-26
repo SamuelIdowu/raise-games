@@ -1,17 +1,31 @@
 'use client';
 
 import { useEffect } from 'react';
-import { isAuthenticated } from '@raise/api-client';
+import { isAuthenticated, setSessionExpiredHandler } from '@raise/api-client';
+
+function toSignIn() {
+  const here = window.location.pathname + window.location.search;
+  window.location.replace('/onboarding/phone?next=' + encodeURIComponent(here));
+}
 
 /**
- * App routes need a session. Without tokens, go to sign-in and come back here after.
- * (An expired session is handled where it is detected, in apiFetch.)
+ * Signed-in pages need a session. Without tokens, go to sign-in and come back here after.
+ * While mounted, a session that expires mid-visit (refresh refused) does the same, once,
+ * instead of every widget showing an auth error.
  */
 export function AuthGate() {
   useEffect(() => {
-    if (isAuthenticated()) return;
-    const here = window.location.pathname + window.location.search;
-    window.location.replace('/onboarding/phone?next=' + encodeURIComponent(here));
+    if (!isAuthenticated()) {
+      toSignIn();
+      return;
+    }
+    let sent = false;
+    setSessionExpiredHandler(() => {
+      if (sent) return;
+      sent = true;
+      toSignIn();
+    });
+    return () => setSessionExpiredHandler(null);
   }, []);
   return null;
 }

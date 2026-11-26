@@ -3,6 +3,7 @@ export {
   API_BASE_URL,
   apiFetch,
   isAuthenticated,
+  setSessionExpiredHandler,
   getAccessToken,
   getRefreshToken,
   setTokens,

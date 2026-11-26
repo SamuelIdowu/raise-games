@@ -60,23 +60,13 @@ async function rotateRefreshToken(): Promise<boolean> {
 }
 
 /**
- * The session is gone (refresh token expired, revoked, or from a reset database). Send the
- * player to sign in once, coming back to this page after, instead of leaving every widget
- * on the page showing an error. Public pages and onboarding are left alone.
+ * Called once the session is gone (refresh token expired, revoked, or from a reset
+ * database) and the tokens are cleared. The web app registers a redirect to sign-in on
+ * its signed-in pages; the client itself knows no page routes.
  */
-let redirecting = false;
-function redirectToSignIn() {
-  if (typeof window === 'undefined' || redirecting) return;
-  const path = window.location.pathname;
-  const isPublic =
-    path === '/' ||
-    ['/onboarding', '/terms', '/privacy', '/community-rules', '/status', '/verify-email'].some(
-      (p) => path === p || path.startsWith(`${p}/`),
-    );
-  if (isPublic) return;
-  redirecting = true;
-  const here = path + window.location.search;
-  window.location.assign('/onboarding/phone?next=' + encodeURIComponent(here));
+let sessionExpiredHandler: (() => void) | null = null;
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  sessionExpiredHandler = handler;
 }
 
 export async function apiFetch<T>(
@@ -110,7 +100,7 @@ export async function apiFetch<T>(
       return apiFetch<T>(path, options, false);
     } else {
       clearTokens();
-      redirectToSignIn();
+      sessionExpiredHandler?.();
       throw new ApiError('Your session ended. Sign in again.', 401, 'session_expired');
     }
   }
