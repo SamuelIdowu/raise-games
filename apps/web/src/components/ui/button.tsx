@@ -22,16 +22,16 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 // rounded corners with the top-right corner cut at 45deg, sharp drop-shadow.
 const base =
   'btn-chamfer group/btn inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap ' +
-  'font-display text-[11px] font-bold uppercase tracking-[0.04em] leading-none ' +
+  'font-display text-[10px] font-bold uppercase tracking-[0.04em] leading-none ' +
   'disabled:pointer-events-none disabled:text-fg-disabled ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-hover';
 
 // One control scale with Input and Select: mobile keeps a 44px touch target; on desktop
 // md matches a field (40px), sm sits inside rows and cards (36px), lg is a hero CTA (48px).
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-11 px-3 [--btn-cut:8px] lg:h-9',
-  md: 'h-11 px-5 [--btn-cut:9px] lg:h-10',
-  lg: 'h-12 px-6 text-[12px] [--btn-cut:11px]',
+  sm: 'h-11 px-3 [--btn-cut:7px] lg:h-7',
+  md: 'h-11 px-4 [--btn-cut:8px] lg:h-8',
+  lg: 'h-11 px-5 text-[11px] [--btn-cut:10px] lg:h-10',
 };
 
 const variants: Record<ButtonVariant, string> = {

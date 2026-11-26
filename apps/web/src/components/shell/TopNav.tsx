@@ -4,7 +4,16 @@ import Link from 'next/link';
 import { cn } from '@/lib/cn';
 
 /** Blocks.fun §7.1: pixel "X" cluster mark + display wordmark. */
-export function Logo({ className, href = '/home' }: { className?: string; href?: string }) {
+export function Logo({
+  className,
+  href = '/home',
+  compact = false,
+}: {
+  className?: string;
+  href?: string;
+  /** Mark only, no wordmark (collapsed sidebar). */
+  compact?: boolean;
+}) {
   return (
     <Link
       href={href}
@@ -21,9 +30,11 @@ export function Logo({ className, href = '/home' }: { className?: string; href?:
       >
         <path fill="currentColor" d="M0 0h3v3H0zM7 0h3v3H7zM3 3h4v4H3zM0 7h3v3H0zM7 7h3v3H7z" />
       </svg>
-      <span className="font-display text-[18px] font-black uppercase leading-none tracking-[-0.02em] text-fg">
-        Raise
-      </span>
+      {compact ? null : (
+        <span className="font-display text-[16px] font-black uppercase leading-none tracking-[-0.02em] text-fg">
+          Raise
+        </span>
+      )}
     </Link>
   );
 }

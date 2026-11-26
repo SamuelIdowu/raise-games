@@ -139,7 +139,7 @@ export default function LeaderboardPage() {
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="sticky top-14 z-20 -mx-4 flex flex-wrap gap-2 border-b border-line bg-bg px-4 py-2 lg:top-16 lg:mx-0 lg:px-0">
+        <div className="sticky top-14 z-20 -mx-4 flex flex-wrap gap-2 border-b border-line bg-bg px-4 py-2 lg:top-14 lg:mx-0 lg:px-0">
           <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
             <span className="sr-only">Game</span>
             <select
@@ -227,7 +227,7 @@ export default function LeaderboardPage() {
 
         {me && (!meInList || !meVisible) ? (
           <div
-            className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 lg:left-[248px] border-t border-line-strong bg-raised px-4 sm:bottom-0"
+            className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 lg:left-[var(--sidebar-w)] border-t border-line-strong bg-raised px-4 sm:bottom-0"
             aria-label="Your position"
           >
             <ol className="mx-auto max-w-[1184px]">

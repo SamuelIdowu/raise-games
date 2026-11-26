@@ -23,7 +23,7 @@ export function AppTopBar() {
 
   return (
     <header className="sticky top-0 z-nav border-b border-line bg-bg">
-      <div className="flex h-16 items-center gap-3 px-4 lg:px-8">
+      <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -52,7 +52,7 @@ export function AppTopBar() {
           <Link
             href="/inbox"
             aria-label={unread > 0 ? `Inbox, ${unread} unread` : 'Inbox'}
-            className="relative inline-flex size-10 items-center justify-center rounded-control border border-line text-fg-subtle transition-colors hover:border-line-strong hover:text-fg"
+            className="relative inline-flex size-9 items-center justify-center rounded-control border border-line text-fg-subtle transition-colors hover:border-line-strong hover:text-fg"
           >
             <Icon name="bell" size={18} />
             {unread > 0 ? (

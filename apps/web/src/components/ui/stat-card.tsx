@@ -46,8 +46,8 @@ export function StatCard({
     <div className={cn('group/stat drop-hard relative', inks[tone], className)}>
       <div
         className={cn(
-          size === 'lg' ? 'min-h-[120px]' : 'min-h-[104px]',
-          'chamfer-tr relative flex flex-col justify-between gap-4 p-5 md:p-6',
+          size === 'lg' ? 'min-h-[104px]' : 'min-h-[92px]',
+          'chamfer-tr relative flex flex-col justify-between gap-3 p-4 md:p-5',
           'transition-transform duration-[var(--motion-default)] ease-standard group-hover/stat:-translate-y-0.5',
           tones[tone],
         )}

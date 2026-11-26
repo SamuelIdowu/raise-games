@@ -9,6 +9,7 @@ import { SiteFooter } from './SiteFooter';
 import { AppFooter, AppTopBar } from './AppTopBar';
 import { AuthGate } from './AuthGate';
 import { Sidebar } from './Sidebar';
+import { AppFrame } from './AppFrame';
 
 /**
  * Public layout: landing, legal, status (route group `(marketing)`) and onboarding
@@ -32,7 +33,7 @@ export function PublicShell({
 }
 
 /**
- * Signed-in dashboard layout (route group `(app)`): fixed 248px sidebar on desktop, a
+ * Signed-in dashboard layout (route group `(app)`): collapsible 216/64px sidebar on desktop, a
  * sticky top bar, the needs-action banner, page content up to 1280px, and a one-line
  * footer. Below lg the sidebar folds into the top bar's menu and the bottom nav.
  */
@@ -40,24 +41,24 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <GameProvider>
       <AuthGate />
-      <div id="top" className="relative min-h-screen overflow-x-clip bg-bg text-fg">
+      <AppFrame>
         {/* usePathname() in the navs needs Suspense under Cache Components. */}
         <Suspense
           fallback={
-            <aside className="fixed inset-y-0 left-0 hidden w-[248px] border-r border-line bg-bg-subtle lg:block" />
+            <aside className="fixed inset-y-0 left-0 hidden w-[var(--sidebar-w)] border-r border-line bg-bg-subtle lg:block" />
           }
         >
           <Sidebar />
         </Suspense>
 
-        <div className="flex min-h-screen flex-col lg:pl-[248px]">
+        <div className="flex min-h-screen min-w-0 flex-col transition-[padding] duration-[var(--motion-default)] ease-standard lg:pl-[var(--sidebar-w)]">
           {FEATURE_FLAGS.playCredits && (
             <Banner variant="system" className="mx-auto max-w-[480px] animate-in">
               Play credits, not cash. No deposit or withdrawal actions available in Stage 1.
             </Banner>
           )}
           <Suspense
-            fallback={<header className="sticky top-0 z-nav h-16 border-b border-line bg-bg" />}
+            fallback={<header className="sticky top-0 z-nav h-14 border-b border-line bg-bg" />}
           >
             <AppTopBar />
           </Suspense>
@@ -65,7 +66,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <NeedsActionBanner />
           </Suspense>
 
-          <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 pt-6 lg:px-8 lg:pt-8">
+          <main className="mx-auto w-full min-w-0 max-w-[1240px] flex-1 px-4 pt-5 lg:px-6 lg:pt-6">
             {children}
           </main>
 
@@ -79,7 +80,7 @@ export function Shell({ children }: { children: ReactNode }) {
         >
           <BottomNav />
         </Suspense>
-      </div>
+      </AppFrame>
     </GameProvider>
   );
 }

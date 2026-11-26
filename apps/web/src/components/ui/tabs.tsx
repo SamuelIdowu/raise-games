@@ -86,7 +86,7 @@ export function Tabs<K extends string>({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(item.key)}
             className={cn(
-              '-mb-px inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap border-b-2 px-3 sm:px-4',
+              '-mb-px inline-flex min-h-11 lg:min-h-10 items-center justify-center gap-2 whitespace-nowrap border-b-2 px-3 sm:px-4',
               'font-display text-[10px] font-bold uppercase sm:text-[11px] tracking-[0.08em] transition-colors duration-[var(--motion-micro)]',
               fill && 'flex-1',
               selected

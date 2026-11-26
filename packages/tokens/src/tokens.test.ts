@@ -131,35 +131,72 @@ describe('tokens.json typography matches the Blocks type system', () => {
   it('app type scale stays readable', () => {
     expect(tokens.typography.scale).toEqual({
       display: {
-        size: 40,
-        line: 40,
+        size: 32,
+        line: 34,
         weight: 900,
         face: 'display',
         tracking: '-0.02em',
       },
-      h1: { size: 32, line: 35, weight: 800, face: 'display', tracking: '-0.01em' },
-      h2: { size: 24, line: 29, weight: 800, face: 'display' },
-      h3: { size: 18, line: 23, weight: 700, face: 'display' },
-      body: { size: 14, line: 21, weight: 500, face: 'body' },
-      bodySm: { size: 13, line: 19, weight: 500, face: 'body' },
-      caption: { size: 12, line: 17, weight: 500, face: 'body' },
+      h1: {
+        size: 26,
+        line: 30,
+        weight: 800,
+        face: 'display',
+        tracking: '-0.01em',
+      },
+      h2: {
+        size: 20,
+        line: 24,
+        weight: 800,
+        face: 'display',
+      },
+      h3: {
+        size: 16,
+        line: 20,
+        weight: 700,
+        face: 'display',
+      },
+      body: {
+        size: 14,
+        line: 21,
+        weight: 500,
+        face: 'body',
+      },
+      bodySm: {
+        size: 13,
+        line: 19,
+        weight: 500,
+        face: 'body',
+      },
+      caption: {
+        size: 12,
+        line: 17,
+        weight: 500,
+        face: 'body',
+      },
       label: {
-        size: 11,
-        line: 11,
+        size: 10,
+        line: 10,
         weight: 600,
         face: 'display',
         transform: 'uppercase',
         tracking: '0.1em',
       },
       statLg: {
-        size: 40,
-        line: 40,
+        size: 32,
+        line: 32,
         weight: 900,
         face: 'display',
         tabular: true,
         tracking: '-0.02em',
       },
-      statMd: { size: 24, line: 26, weight: 800, face: 'display', tabular: true },
+      statMd: {
+        size: 20,
+        line: 22,
+        weight: 800,
+        face: 'display',
+        tabular: true,
+      },
     });
   });
   it('marketing display scale', () => {
@@ -172,7 +209,7 @@ describe('tokens.json typography matches the Blocks type system', () => {
       tracking: '-0.02em',
     });
     expect(tokens.typography.marketingScale.h2).toMatchObject({
-      size: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+      size: 'clamp(1.5rem, 2.8vw, 2rem)',
       weight: 900,
       transform: 'uppercase',
     });

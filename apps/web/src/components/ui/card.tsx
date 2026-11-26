@@ -8,7 +8,7 @@ export interface CardProps extends HTMLAttributes<HTMLElement> {
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-const paddings = { none: '', sm: 'p-3', md: 'p-4 md:p-5', lg: 'p-6 md:p-8' } as const;
+const paddings = { none: '', sm: 'p-3', md: 'p-4', lg: 'p-5 md:p-6' } as const;
 
 /** Blocks.fun §5.3 card: gradient surface, hairline border, inset highlight, no drop shadow. */
 export function Card({
