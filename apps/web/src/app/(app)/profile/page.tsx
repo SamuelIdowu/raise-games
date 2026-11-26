@@ -73,9 +73,11 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <EmptyState
-        icon="gamepad-2"
+        pixel="gamepad"
+        eyebrow="Set up your profile"
         title="No games yet"
         description="Pick the games you play and add your in-game IDs so opponents can find you."
+        steps={['Pick your games', 'Add your in-game IDs', 'Accept your first challenge']}
         action={
           <ButtonLink href="/onboarding/games" arrow>
             Add a game
@@ -268,7 +270,8 @@ export default function ProfilePage() {
           </ul>
         ) : (
           <EmptyState
-            icon="trophy"
+            pixel="crown"
+            compact
             title="No matches yet"
             description={`Play your first ${profile.gameName} match to start your record.`}
             action={

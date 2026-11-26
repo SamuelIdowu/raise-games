@@ -56,9 +56,11 @@ export default function BlockedPage() {
       {!rows && !error ? <SkeletonCard /> : null}
       {rows && rows.length === 0 ? (
         <EmptyState
-          icon="check-circle"
+          pixel="shield"
+          tone="brand"
+          eyebrow="All clear"
           title="Nobody blocked"
-          description="Your block list is empty."
+          description="Blocked players can't challenge or message you. Block someone from their profile or a chat if you need to."
         />
       ) : null}
       {rows && rows.length > 0 ? (

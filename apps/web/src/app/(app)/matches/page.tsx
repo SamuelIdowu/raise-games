@@ -166,7 +166,9 @@ export default function MatchesPage() {
           </div>
         ) : list.length === 0 ? (
           <EmptyState
-            icon="trophy"
+            pixel={current === 'action' ? 'star' : current === 'active' ? 'gamepad' : 'crown'}
+            tone={current === 'action' ? 'brand' : 'accent'}
+            eyebrow={current === 'action' ? 'All clear' : 'Nothing here yet'}
             title={
               current === 'action'
                 ? 'Nothing needs you'
@@ -175,14 +177,32 @@ export default function MatchesPage() {
                   : 'No finished matches yet'
             }
             description={
-              current === 'history'
-                ? 'Confirmed results, with your rating change, are listed here.'
-                : 'Accept a challenge or post your own to start playing.'
+              current === 'action'
+                ? 'No results to submit or confirm. When a match needs your report, it shows up here first.'
+                : current === 'active'
+                  ? 'Accept an open challenge or post your own. The match room opens the moment someone accepts.'
+                  : 'Every confirmed result lands here with the score and how your rating moved.'
+            }
+            steps={
+              current === 'action'
+                ? undefined
+                : [
+                    'Pick a challenge or post one',
+                    'Play at the agreed time',
+                    'Both report with a screenshot',
+                  ]
             }
             action={
               <ButtonLink href="/play" arrow>
                 Find a challenge
               </ButtonLink>
+            }
+            secondaryAction={
+              current === 'action' ? undefined : (
+                <ButtonLink href="/play?create=1" variant="secondary">
+                  Post a challenge
+                </ButtonLink>
+              )
             }
           />
         ) : (

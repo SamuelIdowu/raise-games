@@ -193,12 +193,18 @@ export default function LeaderboardPage() {
 
         {page && rows.length === 0 ? (
           <EmptyState
-            icon="trophy"
+            pixel="crown"
+            eyebrow="Ladder open"
             title={`No ranked players${gameName ? ` in ${gameName}` : ''} yet`}
-            description="Players appear here after their first confirmed match."
+            description="The ladder fills as matches are confirmed. Play one now and take the top spot."
             action={
               <ButtonLink href="/play" arrow>
                 Find a challenge
+              </ButtonLink>
+            }
+            secondaryAction={
+              <ButtonLink href="/play?create=1" variant="secondary">
+                Post a challenge
               </ButtonLink>
             }
           />

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Banner, EmptyState, Icon, SkeletonCard, StatusChip } from '@/components/ui';
+import { Banner, ButtonLink, EmptyState, Icon, SkeletonCard, StatusChip } from '@/components/ui';
 import { MatchChat } from '@/components/match/match-chat';
 import { MatchTimeline } from '@/components/match/match-timeline';
 import { OpponentCard } from '@/components/match/opponent-card';
@@ -41,13 +41,15 @@ function MatchRoom({ id }: { id: string }) {
     if (loadError) {
       return (
         <EmptyState
-          icon="alert-triangle"
+          pixel="bolt"
+          tone="magenta"
+          eyebrow="Error 404"
           title="Match not found"
           description="It may have been removed, or you are not one of its players."
           action={
-            <Link href="/matches" className="text-accent hover:underline">
+            <ButtonLink href="/matches" arrow>
               Back to matches
-            </Link>
+            </ButtonLink>
           }
         />
       );

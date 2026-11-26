@@ -16,6 +16,7 @@ import {
 import {
   Banner,
   Button,
+  ButtonLink,
   EmptyState,
   Icon,
   PageHeader,
@@ -168,13 +169,20 @@ function Notifications() {
   if (items.length === 0) {
     return (
       <EmptyState
-        icon="mail"
+        pixel="chat"
+        tone="magenta"
+        eyebrow="Inbox zero"
         title="No notifications yet"
-        description="Challenges, results and disputes show up here."
+        description="When someone challenges you, accepts your challenge, reports a result or opens a dispute, you hear about it here."
         action={
-          <Link href="/play" className="text-accent hover:underline">
+          <ButtonLink href="/play" arrow>
             Find a match
-          </Link>
+          </ButtonLink>
+        }
+        secondaryAction={
+          <ButtonLink href="/inbox?tab=preferences" variant="ghost">
+            Notification settings
+          </ButtonLink>
         }
       />
     );
@@ -451,9 +459,16 @@ function MatchChats() {
   if (items.length === 0) {
     return (
       <EmptyState
-        icon="mail"
+        pixel="chat"
+        tone="brand"
+        eyebrow="No chats yet"
         title="No conversations yet"
-        description="Each match has its own chat. It appears here once a challenge is accepted."
+        description="Every match gets its own chat for agreeing the time and room. It appears here once a challenge is accepted."
+        action={
+          <ButtonLink href="/play" arrow>
+            Find a challenge
+          </ButtonLink>
+        }
       />
     );
   }
