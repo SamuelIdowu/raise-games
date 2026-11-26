@@ -10,8 +10,8 @@ export default function OGImage() {
         justifyContent: 'center',
         width: '1200px',
         height: '630px',
-        background: '#0A0C0D',
-        color: '#F1EEE8',
+        background: '#07080F',
+        color: '#E9F6FF',
         fontFamily: 'system-ui, sans-serif',
         padding: '60px',
       }}
@@ -32,7 +32,7 @@ export default function OGImage() {
         style={{
           fontSize: '28px',
           fontWeight: '400',
-          color: '#B8BCC0',
+          color: '#B6BEDA',
           textAlign: 'center',
           marginBottom: '40px',
           maxWidth: '800px',
@@ -50,9 +50,9 @@ export default function OGImage() {
       >
         <span
           style={{
-            background: 'rgba(255,79,0,0.15)',
-            border: '1px solid #FF4F00',
-            color: '#FF4F00',
+            background: 'rgba(0,229,255,0.12)',
+            border: '1px solid #00E5FF',
+            color: '#00E5FF',
             padding: '8px 24px',
             borderRadius: '9999px',
             fontSize: '16px',
@@ -63,9 +63,9 @@ export default function OGImage() {
         </span>
         <span
           style={{
-            background: 'rgba(255,79,0,0.15)',
-            border: '1px solid #FF4F00',
-            color: '#FF4F00',
+            background: 'rgba(0,229,255,0.12)',
+            border: '1px solid #00E5FF',
+            color: '#00E5FF',
             padding: '8px 24px',
             borderRadius: '9999px',
             fontSize: '16px',
@@ -76,9 +76,9 @@ export default function OGImage() {
         </span>
         <span
           style={{
-            background: 'rgba(255,79,0,0.15)',
-            border: '1px solid #FF4F00',
-            color: '#FF4F00',
+            background: 'rgba(0,229,255,0.12)',
+            border: '1px solid #00E5FF',
+            color: '#00E5FF',
             padding: '8px 24px',
             borderRadius: '9999px',
             fontSize: '16px',
@@ -93,7 +93,7 @@ export default function OGImage() {
           position: 'absolute',
           bottom: '40px',
           fontSize: '14px',
-          color: '#7C8186',
+          color: '#7A84A6',
         }}
       >
         raise.ng · Verified results · No wallet required

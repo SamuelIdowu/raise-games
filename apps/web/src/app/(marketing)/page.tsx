@@ -116,7 +116,7 @@ const FLOATERS: Array<{
   },
   {
     icon: 'star',
-    tile: 'bg-brand text-white',
+    tile: 'bg-brand text-on-brand',
     className: 'left-[16%] top-[52%]',
     rot: '12deg',
     delay: '-2s',
@@ -130,7 +130,7 @@ const FLOATERS: Array<{
   },
   {
     icon: 'bolt',
-    tile: 'bg-cream text-brand',
+    tile: 'bg-cream text-magenta-500',
     className: 'right-[5%] top-[4%]',
     rot: '18deg',
     delay: '-1s',
