@@ -23,10 +23,10 @@ export function NeedsActionBanner() {
   const first = visible[0]!;
 
   return (
-    <div className="px-4 pt-4 lg:px-8">
+    <div className="px-4 pt-4 lg:px-5">
       <Banner
         variant="needs-action"
-        className="mx-auto max-w-[1216px]"
+        className="max-w-[1400px]"
         action={
           <button
             type="button"

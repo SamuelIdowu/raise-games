@@ -9,6 +9,7 @@ import { useMyProfiles } from '@/lib/app-data';
 import { GameSwitcher } from './GameSwitcher';
 import { PlayerCard, SidebarNav } from './Sidebar';
 import { Logo } from './TopNav';
+import { useSidebarCollapsed } from './sidebar-state';
 
 /**
  * Dashboard top bar. Desktop: game switcher on the left; Create challenge, inbox bell and
@@ -17,13 +18,14 @@ import { Logo } from './TopNav';
  */
 export function AppTopBar() {
   const [open, setOpen] = useState(false);
+  const [collapsed, toggleSidebar] = useSidebarCollapsed();
   const { unread } = useBadges();
   const { data } = useMyProfiles();
   const name = data?.[0]?.displayName ?? 'Player';
 
   return (
     <header className="sticky top-0 z-nav border-b border-line bg-bg">
-      <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
+      <div className="flex h-14 items-center gap-3 px-4 lg:px-5">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -36,6 +38,16 @@ export function AppTopBar() {
           <Logo />
         </div>
 
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="-ml-1 hidden size-9 items-center justify-center rounded-control border border-line text-fg-subtle transition-colors hover:border-line-strong hover:text-fg lg:inline-flex"
+        >
+          <Icon name={collapsed ? 'chevron-right' : 'chevron-left'} size={16} />
+        </button>
         <div className="hidden lg:block">
           <GameSwitcher />
         </div>

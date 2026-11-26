@@ -66,7 +66,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <NeedsActionBanner />
           </Suspense>
 
-          <main className="mx-auto w-full min-w-0 max-w-[1240px] flex-1 px-4 pt-5 lg:px-6 lg:pt-6">
+          <main className="w-full min-w-0 max-w-[1400px] flex-1 px-4 pt-5 lg:px-5 lg:pt-6">
             {children}
           </main>
 
