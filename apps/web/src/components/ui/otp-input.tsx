@@ -67,8 +67,8 @@ export function OtpInput({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div role="group" aria-label={label} className="flex gap-2">
+    <div className="flex flex-col items-center gap-3">
+      <div role="group" aria-label={label} className="flex justify-center gap-2">
         {chars.map((char, index) => (
           <input
             key={index}
@@ -94,21 +94,19 @@ export function OtpInput({
           />
         ))}
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center gap-2 text-center">
         {error ? (
           <p className="flex items-center gap-1 text-caption text-loss">
             <Icon name="alert-triangle" size={16} />
             {error}
           </p>
-        ) : (
-          <span />
-        )}
+        ) : null}
         {onResend ? (
           <button
             type="button"
             onClick={onResend}
             disabled={resendSeconds > 0}
-            className="text-caption text-accent disabled:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="text-caption text-accent disabled:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent text-center transition-colors duration-[var(--motion-micro)] ease-standard"
           >
             {resendSeconds > 0 ? `Resend code in ${resendSeconds}s` : 'Resend code'}
           </button>
