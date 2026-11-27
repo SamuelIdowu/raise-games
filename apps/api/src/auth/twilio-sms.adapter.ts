@@ -1,4 +1,4 @@
-import type { SmsOtpPort } from './sms-otp.port';
+import { SMS_TIMEOUT_MS, type SmsOtpPort } from './sms-otp.port';
 
 interface TwilioConfig {
   /** `SMS_API_KEY` must be `ACCOUNT_SID:AUTH_TOKEN` until a dedicated config lands. */
@@ -28,6 +28,8 @@ export class TwilioSmsAdapter implements SmsOtpPort {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body,
+        // A slow provider must not hold the sign-in request open; the caller answers 503.
+        signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
       },
     );
     if (!res.ok) {

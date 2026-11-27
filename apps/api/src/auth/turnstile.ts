@@ -12,6 +12,8 @@ export async function verifyTurnstileToken(
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ secret, response: token }),
+    // Cloudflare normally answers in well under a second; never hold sign-up open longer.
+    signal: AbortSignal.timeout(5_000),
   });
   const data = (await res.json()) as TurnstileResponse;
   return data.success === true;

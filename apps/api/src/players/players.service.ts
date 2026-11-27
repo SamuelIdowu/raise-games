@@ -1,15 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, ilike, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
 import { rankTierForRating, rankTierLabel, rankTierRange } from '../shared/ranks';
 import type { PlayerSearchQuery } from './players.schemas';
-
-interface PlayerCursor {
-  rating: number;
-  id: string;
-}
 
 export interface PlayerCardDto {
   userId: string;
@@ -38,7 +33,7 @@ export interface PlayerSearchResult {
 @Injectable()
 export class PlayersService {
   async search(viewerId: string, query: PlayerSearchQuery): Promise<PlayerSearchResult> {
-    const cursor = decodeCursor<PlayerCursor>(query.cursor);
+    const cursor = decodeCursor(query.cursor, cursorSchemas.ratingId);
     const conditions = [
       isNull(schema.users.deletedAt),
       ne(schema.users.id, viewerId),

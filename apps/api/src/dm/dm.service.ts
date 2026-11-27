@@ -13,7 +13,7 @@ import { db, schema } from '../db/client';
 import type { AuthedUser } from '../auth/jwt-auth.guard';
 import { RealtimePublisher } from '../realtime/realtime.publisher';
 import { ServerEvents, userRoom } from '../realtime/realtime.events';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { validateBody } from '../chat/chat.rules';
 import { FILTER_VERSION, runKeywordFilter } from '../chat/keyword-filter';
 import { allowChatSend, allowWindows } from '../chat/chat.rate-limit';
@@ -445,8 +445,8 @@ export class DmService {
     const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
     const m = schema.messages;
     const conditions = [eq(m.conversationId, conversationId)];
-    const before = decodeCursor<{ t: string; id: string }>(opts.before);
-    const after = decodeCursor<{ t: string; id: string }>(opts.after);
+    const before = decodeCursor(opts.before, cursorSchemas.timeId);
+    const after = decodeCursor(opts.after, cursorSchemas.timeId);
     if (before) {
       const t = new Date(before.t);
       conditions.push(or(lt(m.createdAt, t), and(eq(m.createdAt, t), lt(m.id, before.id)))!);
