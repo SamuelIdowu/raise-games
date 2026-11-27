@@ -62,7 +62,8 @@ test.describe.serial('Sprint 16 — closed beta', () => {
     await page.getByRole('button', { name: 'Send code' }).click();
     await expect(page).toHaveURL(/\/onboarding\/otp$/);
     await enterOtp(page);
-    await expect(page).toHaveURL(/\/onboarding\/username$/);
+    // OTP leads to consent first (then username); the invite is redeemed at verification.
+    await expect(page).toHaveURL(/\/onboarding\/consent/);
 
     const [row] = await query<{ cohort: string; uses: number }>(
       `SELECT r.cohort, c.uses FROM invite_redemptions r

@@ -64,9 +64,9 @@ test.describe.serial('Sprint 14 — restricted DMs', () => {
     await expect(page.getByRole('link', { name: 'Blocked players' })).toHaveCount(0);
 
     await page.goto(`/messages/${crypto.randomUUID()}`);
-    await expect(page.getByText(/could not be found/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /page not found/i })).toBeVisible();
     await page.goto('/messages/blocked');
-    await expect(page.getByText(/could not be found/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /page not found/i })).toBeVisible();
 
     await expect(api('/dm/status', { token: a.accessToken })).rejects.toThrow(/404/);
     await expect(
@@ -122,7 +122,7 @@ test.describe.serial('Sprint 14 — restricted DMs', () => {
     await expect(pageS.getByRole('button', { name: 'Add friend' })).toBeVisible();
     await expect(pageS.getByRole('button', { name: 'Message' })).toHaveCount(0);
     await pageS.goto(url);
-    await expect(pageS.getByText(/could not be found/i)).toBeVisible();
+    await expect(pageS.getByRole('heading', { name: /page not found/i })).toBeVisible();
 
     // B blocks A from the conversation header.
     await pageB.goto(url);
