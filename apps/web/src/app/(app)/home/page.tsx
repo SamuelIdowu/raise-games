@@ -199,11 +199,6 @@ export default function HomePage() {
                 settle it fair
               </>
             }
-            action={
-              <ButtonLink href="/play?create=1" variant="white" arrow>
-                Create challenge
-              </ButtonLink>
-            }
           >
             No match on right now. Pick a format and time, invite a player or open it to the board.
             Both players report, proof settles disputes.
@@ -238,12 +233,7 @@ export default function HomePage() {
           <EmptyState
             icon="trophy"
             title={`No open ${gameName} challenges`}
-            description="Be the first: post one and it shows on the board straight away."
-            action={
-              <ButtonLink href="/play?create=1" arrow>
-                Create challenge
-              </ButtonLink>
-            }
+            description="Be the first: post one with Create challenge at the top and it shows on the board straight away."
           />
         )}
       </section>

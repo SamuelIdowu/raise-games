@@ -56,11 +56,11 @@ export function AppTopBar() {
           <div className="lg:hidden">
             <GameSwitcher compact />
           </div>
-          <div className="hidden sm:block">
-            <ButtonLink href="/play?create=1" arrow>
-              Create challenge
-            </ButtonLink>
-          </div>
+          {/* The app's one Create challenge button; pages don't repeat it. */}
+          <ButtonLink href="/play?create=1" arrow aria-label="Create challenge">
+            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">Create challenge</span>
+          </ButtonLink>
           <Link
             href="/inbox"
             aria-label={unread > 0 ? `Inbox, ${unread} unread` : 'Inbox'}
@@ -87,9 +87,6 @@ export function AppTopBar() {
         <div className="flex flex-col gap-4">
           <PlayerCard />
           <SidebarNav onNavigate={() => setOpen(false)} />
-          <ButtonLink href="/play?create=1" fullWidth arrow onClick={() => setOpen(false)}>
-            Create challenge
-          </ButtonLink>
           <button
             type="button"
             onClick={() => void signOut()}

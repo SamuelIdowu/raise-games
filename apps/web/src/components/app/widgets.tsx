@@ -280,9 +280,6 @@ export function MyChallengesRail() {
           None open. Post one and it shows on the board straight away.
         </p>
       )}
-      <ButtonLink href="/play?create=1" variant="secondary" fullWidth arrow>
-        Create challenge
-      </ButtonLink>
     </RailCard>
   );
 }

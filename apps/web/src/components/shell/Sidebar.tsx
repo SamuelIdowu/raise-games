@@ -158,10 +158,10 @@ export function Sidebar() {
   const [collapsed, toggle] = useSidebarCollapsed();
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-nav hidden w-[var(--sidebar-w)] flex-col border-r border-line bg-bg-subtle transition-[width] duration-[var(--motion-default)] ease-standard lg:flex"
+      className="fixed inset-y-0 left-0 z-nav hidden w-[var(--sidebar-w)] flex-col overflow-hidden border-r border-line bg-bg-subtle transition-[width] duration-[var(--motion-default)] ease-standard lg:flex"
       aria-label="Sidebar"
     >
-      <div
+      {/* <div
         className={cn(
           'flex h-14 shrink-0 items-center border-b border-line',
           collapsed ? 'justify-center' : 'justify-between pl-4 pr-2',
@@ -184,8 +184,20 @@ export function Sidebar() {
             </button>
           </>
         )}
-      </div>
+      </div> */}
       <div className={cn('flex-1 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-2.5')}>
+        {/* {collapsed ? (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Expand sidebar"
+            aria-expanded={false}
+            title="Expand sidebar"
+            className="mb-2 flex h-9 w-full items-center justify-center rounded-control border border-line text-fg-subtle transition-colors hover:border-accent hover:text-fg"
+          >
+            <Icon name="chevron-right" size={16} />
+          </button>
+        ) : null} */}
         <SidebarNav collapsed={collapsed} />
       </div>
       <div className={cn('space-y-0.5 border-t border-line', collapsed ? 'p-2' : 'p-2.5')}>
@@ -204,18 +216,6 @@ export function Sidebar() {
           <Icon name="log-out" size={16} />
           {collapsed ? null : 'Sign out'}
         </button>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Expand sidebar"
-            aria-expanded={false}
-            title="Expand sidebar"
-            className="flex h-9 w-full items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface hover:text-fg"
-          >
-            <Icon name="chevron-right" size={16} />
-          </button>
-        ) : null}
       </div>
     </aside>
   );

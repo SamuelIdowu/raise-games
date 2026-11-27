@@ -241,16 +241,16 @@ export default function PlayPage() {
           eyebrow="Open challenges"
           title="Play"
           subtitle="Accept an open challenge and the match room opens straight away, or post your own."
-          action={
-            <Button
-              variant="brand"
-              arrow
-              onClick={() => setCreateOpen({})}
-              disabled={games.length === 0}
-            >
-              Create challenge
-            </Button>
-          }
+          // action={
+          //   <Button
+          //     variant="brand"
+          //     arrow
+          //     onClick={() => setCreateOpen({})}
+          //     disabled={games.length === 0}
+          //   >
+          //     Create challenge
+          //   </Button>
+          // }
         />
       }
     >
@@ -276,7 +276,7 @@ export default function PlayPage() {
         <div
           role="tablist"
           aria-label="Play views"
-          className="inline-flex h-11 rounded-control border border-line bg-surface p-1 lg:h-10"
+          className="inline-flex h-10 rounded-control border border-line bg-surface p-1 lg:h-9"
         >
           {(['board', 'players'] as const).map((v) => (
             <button
@@ -354,7 +354,6 @@ export default function PlayPage() {
                     ? 'Be the first: post a challenge and someone will pick it up.'
                     : 'Nobody has posted for this game yet. Post the first one.'
                 }
-                action={<Button onClick={() => setCreateOpen({})}>Create challenge</Button>}
               />
             ) : (
               <>
