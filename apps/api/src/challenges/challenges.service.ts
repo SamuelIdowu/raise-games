@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
 import { toChallengeCard, type ChallengeCardDto, type GroupMember } from './challenges.mapper';
 import { canonicalPair, ratingGapBetween } from './pairing';
@@ -16,11 +16,6 @@ import type { BoardQuery, CreateChallengeRequest } from './challenges.schemas';
 import { v7 as uuidv7 } from 'uuid';
 import { assertCanPlay } from '../moderation/standing';
 import { WalletService } from '../wallet/wallet.service';
-
-interface BoardCursor {
-  createdAt: string;
-  id: string;
-}
 
 export interface BoardResult {
   items: ChallengeCardDto[];
@@ -81,7 +76,7 @@ export class ChallengesService {
   async listBoard(viewerId: string, query: BoardQuery): Promise<BoardResult> {
     const now = new Date();
     const mine = query.mine === 'true';
-    const cursor = decodeCursor<BoardCursor>(query.cursor);
+    const cursor = decodeCursor(query.cursor, cursorSchemas.createdAtId);
     const conditions = [];
 
     if (query.game) conditions.push(eq(schema.games.key, query.game));

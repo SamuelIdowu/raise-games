@@ -15,7 +15,7 @@ import type { RulingOutcome } from '../disputes/disputes.rules';
 import { FILE_STORAGE, type FileStoragePort } from '../storage/file-storage.port';
 import { ReputationService } from '../ratings/reputation.service';
 import { rankTierForRating, rankTierLabel } from '../shared/ranks';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
 import { SanctionsService } from './sanctions.service';
 import { getStanding } from './standing';
@@ -191,7 +191,7 @@ export class AdminService {
     if (q.state === 'awaiting_info') conds.push(eq(d.status, 'awaiting_info'));
     if (q.state === 'resolved') conds.push(inArray(d.status, ['ruled', 'final']));
     if (q.mine) conds.push(eq(d.assignedToId, me.sub));
-    const cursor = decodeCursor<{ t: string; id: string }>(q.cursor);
+    const cursor = decodeCursor(q.cursor, cursorSchemas.timeId);
     if (cursor) conds.push(sql`(${d.createdAt}, ${d.id}) > (${new Date(cursor.t)}, ${cursor.id})`);
 
     const rows = await db
@@ -540,7 +540,7 @@ export class AdminService {
       // Usernames by substring; phones only by the full number (no partial phone probing).
       conds.push(or(ilike(u.displayName, `%${escapeLike(term)}%`), eq(u.phone, term))!);
     }
-    const cursor = decodeCursor<{ id: string }>(q.cursor);
+    const cursor = decodeCursor(q.cursor, cursorSchemas.id);
     if (cursor) conds.push(sql`${u.id} > ${cursor.id}`);
     const rows = await db
       .select({
@@ -944,7 +944,7 @@ export class AdminService {
     if (q.action) conds.push(ilike(a.action, `${escapeLike(q.action)}%`));
     if (q.actorId) conds.push(eq(a.actorId, q.actorId));
     if (q.objectId) conds.push(eq(a.objectId, q.objectId));
-    const cursor = decodeCursor<{ t: string; id: string }>(q.cursor);
+    const cursor = decodeCursor(q.cursor, cursorSchemas.timeId);
     if (cursor) conds.push(sql`(${a.createdAt}, ${a.id}) < (${new Date(cursor.t)}, ${cursor.id})`);
     const rows = await db
       .select({

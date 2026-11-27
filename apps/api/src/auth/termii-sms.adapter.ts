@@ -1,4 +1,4 @@
-import type { SmsOtpPort } from './sms-otp.port';
+import { SMS_TIMEOUT_MS, type SmsOtpPort } from './sms-otp.port';
 
 interface TermiiConfig {
   apiKey: string;
@@ -22,6 +22,8 @@ export class TermiiSmsAdapter implements SmsOtpPort {
         channel: 'dnd',
         api_key: this.config.apiKey,
       }),
+      // A slow provider must not hold the sign-in request open; the caller answers 503.
+      signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new Error(`Termii SMS failed with status ${res.status}`);

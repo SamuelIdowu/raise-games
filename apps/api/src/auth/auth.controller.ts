@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   Req,
+  ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -57,7 +58,13 @@ export class AuthController {
       throw new BadRequestException('Complete the security check');
     }
     if (turnstileRequired && body.turnstileToken) {
-      const valid = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY!, body.turnstileToken);
+      const valid = await verifyTurnstileToken(
+        env.TURNSTILE_SECRET_KEY!,
+        body.turnstileToken,
+      ).catch(() => {
+        // Cloudflare unreachable or slow: say so instead of a bare 500.
+        throw new ServiceUnavailableException('Security check unavailable. Try again shortly.');
+      });
       if (!valid) throw new UnauthorizedException('Turnstile verification failed');
     }
     const ua = Array.isArray(req.headers['user-agent'])

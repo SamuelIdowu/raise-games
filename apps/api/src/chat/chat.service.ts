@@ -20,7 +20,7 @@ import {
   type ChatMessageDto,
   type NotificationEvent,
 } from '../realtime/realtime.events';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { isChatLocked, validateBody, type MatchStatus } from './chat.rules';
 import { FILTER_VERSION, runKeywordFilter } from './keyword-filter';
 import { allowChatSend } from './chat.rate-limit';
@@ -41,11 +41,6 @@ export interface SendResult {
 }
 
 export type ReportReason = 'harassment' | 'hate' | 'spam' | 'cheating' | 'off_platform' | 'other';
-
-interface MessageCursor {
-  t: string;
-  id: string;
-}
 
 function toDto(row: MessageRow, matchId: string): ChatMessageDto {
   return {
@@ -134,8 +129,8 @@ export class ChatService {
     const m = schema.messages;
     const conditions = [eq(m.conversationId, conversationId)];
 
-    const before = decodeCursor<MessageCursor>(opts.before);
-    const after = decodeCursor<MessageCursor>(opts.after);
+    const before = decodeCursor(opts.before, cursorSchemas.timeId);
+    const after = decodeCursor(opts.after, cursorSchemas.timeId);
     if (before) {
       const t = new Date(before.t);
       conditions.push(or(lt(m.createdAt, t), and(eq(m.createdAt, t), lt(m.id, before.id)))!);

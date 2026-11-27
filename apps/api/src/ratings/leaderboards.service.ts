@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { eq, sql, type SQL } from 'drizzle-orm';
 import { db, schema } from '../db/client';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { rankTierForRating, rankTierLabel } from '../shared/ranks';
 import { ReputationService } from './reputation.service';
 import type { ReputationLevel } from './reputation';
@@ -87,7 +87,7 @@ export class LeaderboardsService {
         WHERE gp.game_id = ${game.id} AND gp.rated_matches > 0 AND u.deleted_at IS NULL${extra}
       )`;
 
-    const after = decodeCursor<{ p: number }>(query.cursor)?.p ?? 0;
+    const after = decodeCursor(query.cursor, cursorSchemas.position)?.p ?? 0;
     const pageRows = (
       await db.execute<BoardRow>(sql`${board}
         SELECT * FROM board WHERE pos > ${after} ORDER BY pos LIMIT ${query.limit + 1}`)

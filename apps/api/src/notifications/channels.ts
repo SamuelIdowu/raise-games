@@ -75,6 +75,8 @@ export class ResendEmailChannel implements EmailChannel {
         subject: message.title,
         text: `${message.body}\n\nOpen RAISE: ${message.url}\n\nYou can change which emails you get in Inbox → Preferences.`,
       }),
+      // A timeout throws like a 5xx, so the delivery is retried rather than lost.
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status >= 500 || res.status === 429) throw new Error(`resend ${res.status}`);
     if (!res.ok) return { status: 'skipped', reason: `resend rejected (${res.status})` };

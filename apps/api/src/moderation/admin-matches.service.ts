@@ -4,7 +4,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { db, schema } from '../db/client';
 import type { AuthedUser } from '../auth/jwt-auth.guard';
 import { postSystemMessage } from '../matches/match-chat';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
 
 /**
@@ -50,7 +50,7 @@ export class AdminMatchesService {
         SELECT 1 FROM match_sides s2 JOIN users u2 ON u2.id = s2.user_id
         WHERE s2.match_id = m.id AND u2.display_name ILIKE ${`%${escapeLike(q.q.trim())}%`})`);
     }
-    const cursor = decodeCursor<{ t: string; id: string }>(q.cursor);
+    const cursor = decodeCursor(q.cursor, cursorSchemas.timeId);
     if (cursor) conds.push(sql`(m.created_at, m.id) < (${new Date(cursor.t)}, ${cursor.id})`);
 
     const rows = (

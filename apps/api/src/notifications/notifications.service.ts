@@ -21,7 +21,7 @@ import type { AuthedUser } from '../auth/jwt-auth.guard';
 import { OutboxRelay, type OutboxEvent } from '../realtime/outbox-relay';
 import { RealtimePublisher } from '../realtime/realtime.publisher';
 import { ServerEvents, userRoom } from '../realtime/realtime.events';
-import { decodeCursor, encodeCursor } from '../shared/cursor';
+import { cursorSchemas, decodeCursor, encodeCursor } from '../shared/cursor';
 import {
   CATALOG,
   NOTIFICATION_TYPES,
@@ -590,7 +590,7 @@ export class NotificationsService implements OnModuleInit {
 
   async list(viewer: AuthedUser, opts: { before?: string; limit?: number } = {}) {
     const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
-    const cursor = decodeCursor<{ t: string; id: string }>(opts.before);
+    const cursor = decodeCursor(opts.before, cursorSchemas.timeId);
     const n = schema.notifications;
     const rows = await db
       .select()
