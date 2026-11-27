@@ -1,0 +1,39 @@
+# Render Blueprint: free staging (decision 0008, docs/runbooks/staging-free.md).
+# Render runs the web app and Redis. The API runs on Koyeb and Postgres on Supabase, because
+# Render's 750 free hours a month cover only one always-on service.
+services:
+  - type: web
+    name: raise-web-staging
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      # Compiled into the bundle and the CSP at build time. The Dockerfile refuses to build
+      # unless each URL is public https. Fill these in on the dashboard (sync: false).
+      - key: NEXT_PUBLIC_API_URL
+        sync: false # https://<koyeb-app>.koyeb.app
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false # https://raise-web-staging.onrender.com
+      - key: NEXT_PUBLIC_STORAGE_ORIGIN
+        sync: false # https://<project-ref>.storage.supabase.co
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        sync: false
+
+  # BullMQ queues, rate limits and Socket.IO fan-out. Free: 25 MB, 50 connections, no
+  # persistence (a restart loses queued jobs; the outbox relay and expiry sweeper re-drive
+  # them from Postgres). The API connects from Koyeb over the external URL with TLS and a
+  # password (rediss://). Koyeb's free plan has no fixed outbound IPs, so the allow list is
+  # open.
+  - type: keyvalue
+    name: raise-redis-staging
+    plan: free
+    region: frankfurt
+    maxmemoryPolicy: noeviction # BullMQ requires it: evicted job keys corrupt queues
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Koyeb API (no fixed outbound IPs); password and TLS required
