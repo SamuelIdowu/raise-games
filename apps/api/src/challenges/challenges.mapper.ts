@@ -27,6 +27,14 @@ export interface ChallengeCardRow {
   targetPlayerId?: string | null;
 }
 
+/** A player a group challenge is offered to. */
+export interface GroupMember {
+  userId: string;
+  username: string;
+  /** They declined; the challenge stays open for the rest. */
+  declined: boolean;
+}
+
 export interface ChallengeCardDto {
   id: string;
   status: string;
@@ -56,8 +64,12 @@ export interface ChallengeCardDto {
   };
   ratingGap: null;
   isMine: boolean;
-  /** A direct challenge addressed to the viewer: they can accept or decline it. */
+  /** Addressed to the viewer (direct, or a group they are in): they can accept or decline. */
   isForMe: boolean;
+  /** Who can accept: anyone on the board, one player, or a group (first to accept plays). */
+  audience: 'open' | 'direct' | 'group';
+  /** Group challenges only: the invited players. */
+  group?: GroupMember[];
   /** Present in the detail view. */
   rules?: string;
   /** Present in detail view for direct challenges. */
@@ -81,7 +93,9 @@ export function toChallengeCard(
   row: ChallengeCardRow,
   viewerId: string,
   now: Date = new Date(),
+  group?: GroupMember[],
 ): ChallengeCardDto {
+  const inGroup = !!group?.some((m) => m.userId === viewerId && !m.declined);
   const rankTier = rankTierForRating(row.rating);
 
   return {
@@ -117,6 +131,8 @@ export function toChallengeCard(
     },
     ratingGap: null,
     isMine: row.posterId === viewerId,
-    isForMe: Boolean(row.targetPlayerId) && row.targetPlayerId === viewerId,
+    isForMe: (Boolean(row.targetPlayerId) && row.targetPlayerId === viewerId) || inGroup,
+    audience: group && group.length > 0 ? 'group' : row.targetPlayerId ? 'direct' : 'open',
+    ...(group && group.length > 0 ? { group } : {}),
   };
 }

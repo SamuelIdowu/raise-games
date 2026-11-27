@@ -157,17 +157,20 @@ export class NotificationsService implements OnModuleInit {
 
     switch (event.type) {
       case 'challenge.created': {
-        const target = str('targetPlayerId');
-        if (!target) return [];
+        // Direct: the one target. Group: every invited player.
+        const group = Array.isArray(p.targetPlayerIds)
+          ? (p.targetPlayerIds as unknown[]).filter((x): x is string => typeof x === 'string')
+          : [];
+        const targets = group.length > 0 ? group : [str('targetPlayerId')].filter(Boolean);
+        if (targets.length === 0) return [];
         const ctx = await this.challengeContext(str('challengeId')!);
-        return [
-          {
-            userId: target,
-            type: 'challenge_received',
-            sourceKey: key,
-            params: { from: await this.nameOf(ctx.posterId), game: ctx.game },
-          },
-        ];
+        const from = await this.nameOf(ctx.posterId);
+        return targets.map((userId) => ({
+          userId: userId as string,
+          type: 'challenge_received' as const,
+          sourceKey: key,
+          params: { from, game: ctx.game },
+        }));
       }
       case 'challenge.accepted': {
         const ctx = await this.challengeContext(str('challengeId')!);

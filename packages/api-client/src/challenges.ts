@@ -29,8 +29,12 @@ export interface ChallengeCard {
   };
   ratingGap: null;
   isMine: boolean;
-  /** A direct challenge addressed to the viewer. */
+  /** Addressed to the viewer: a direct challenge, or a group they are in. */
   isForMe: boolean;
+  /** Who can accept: anyone on the board, one player, or a group (first to accept plays). */
+  audience: 'open' | 'direct' | 'group';
+  /** Group challenges: the invited players (declined ones are marked). */
+  group?: Array<{ userId: string; username: string; declined: boolean }>;
   /** Detail view only. */
   rules?: string;
   /** Detail view, direct challenges only. */
@@ -70,6 +74,8 @@ export interface CreateChallengeRequest {
   startsAt: string;
   endsAt: string;
   targetPlayerId?: string;
+  /** Group challenge: 2-10 players; the first to accept plays. */
+  targetPlayerIds?: string[];
   idempotencyKey?: string;
 }
 

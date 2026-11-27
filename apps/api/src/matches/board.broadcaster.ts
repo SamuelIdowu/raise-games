@@ -51,6 +51,7 @@ export class BoardBroadcaster implements OnModuleInit {
       isDirect?: boolean;
       posterId?: string;
       targetPlayerId?: string | null;
+      targetPlayerIds?: string[];
     };
     const payload: BoardChangedEvent = {
       challengeId: event.subjectId,
@@ -59,7 +60,9 @@ export class BoardBroadcaster implements OnModuleInit {
     };
     const rooms =
       event.type === 'challenge.created' && p.isDirect
-        ? [p.posterId, p.targetPlayerId].filter((u): u is string => !!u).map(userRoom)
+        ? [p.posterId, p.targetPlayerId, ...(p.targetPlayerIds ?? [])]
+            .filter((u): u is string => !!u)
+            .map(userRoom)
         : BOARD_ROOM;
     this.publisher.emit(rooms, ServerEvents.BoardChanged, payload);
   }

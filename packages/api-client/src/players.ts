@@ -21,6 +21,8 @@ export interface PlayerCard {
 
 export interface PlayerSearchQuery {
   game?: string;
+  /** Username contains (case-insensitive). */
+  q?: string;
   rank?: 'rookie' | 'challenger' | 'contender' | 'elite' | 'champion';
   campus?: string;
   city?: string;

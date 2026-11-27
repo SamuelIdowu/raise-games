@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from 'react';
 import { challengesApi, type Game } from '@raise/api-client';
 import { Banner, Button, Icon, Select, Sheet, useToast } from '@/components/ui';
 import { formatTimeWindow } from '@/lib/time';
+import { PlayerPicker, type PickedPlayer } from './player-picker';
 import { useNow } from '@/lib/use-now';
 
 export const RULES_MAX = 2000;
@@ -12,6 +13,21 @@ const DURATIONS = [
   { minutes: 60, label: '1 hour' },
   { minutes: 120, label: '2 hours' },
   { minutes: 180, label: '3 hours' },
+];
+
+/** Group challenges: 2 to this many players; the first to accept plays. */
+export const GROUP_MAX = 10;
+
+type Audience = 'open' | 'direct' | 'group';
+
+const AUDIENCES: Array<{ key: Audience; label: string; hint: string }> = [
+  { key: 'open', label: 'Anyone', hint: 'Posted on the board for every player of this game.' },
+  { key: 'direct', label: 'One player', hint: 'Only they see it and can accept.' },
+  {
+    key: 'group',
+    label: 'A group',
+    hint: `Send it to 2–${GROUP_MAX} players. The first to accept plays; it closes for the rest.`,
+  },
 ];
 
 export interface DirectTarget {
@@ -45,7 +61,8 @@ export function toStart(date: string, time: string): Date | null {
 /**
  * Create challenge sheet (Design §8, UX Flow 2): game and format pre-selected from the
  * board's game switcher, rules, time window, the stake slot locked to Free with the
- * reason, then a summary step whose button names the action ("Post challenge"). One
+ * reason, then a summary step whose button names the action ("Post challenge"). Who can
+ * accept: anyone on the board, one chosen player, or a group of 2-10 (first to accept). One
  * idempotency key per opened sheet, so a retry after a dropped response never posts twice.
  */
 export function CreateChallengeSheet({
@@ -81,6 +98,10 @@ export function CreateChallengeSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [audience, setAudience] = useState<Audience>(target ? 'direct' : 'open');
+  const [picked, setPicked] = useState<PickedPlayer[]>(
+    target ? [{ userId: target.userId, username: target.username }] : [],
+  );
 
   const now = useNow(15_000);
   const startsAt = toStart(date, time);
@@ -92,7 +113,15 @@ export function CreateChallengeSheet({
       ? 'Start at least 5 minutes from now'
       : null;
   const rulesTooLong = [...rules].length > RULES_MAX;
-  const canReview = Boolean(game && format && !startError && !rulesTooLong);
+  const audienceError =
+    audience === 'direct' && picked.length !== 1
+      ? 'Pick the player to challenge'
+      : audience === 'group' && picked.length < 2
+        ? 'Pick at least 2 players for a group'
+        : null;
+  const canReview = Boolean(game && format && !startError && !rulesTooLong && !audienceError);
+  const direct = audience === 'direct' ? picked[0] : undefined;
+  const names = picked.map((p) => p.username);
 
   const submit = async () => {
     if (!startsAt || !endsAt || !game || !format) return;
@@ -105,11 +134,16 @@ export function CreateChallengeSheet({
         rules: rules.trim() || undefined,
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),
-        targetPlayerId: target?.userId,
+        targetPlayerId: direct?.userId,
+        targetPlayerIds: audience === 'group' ? picked.map((p) => p.userId) : undefined,
         idempotencyKey,
       });
       toast({
-        title: target ? `Challenge sent to ${target.username}` : 'Challenge posted',
+        title: direct
+          ? `Challenge sent to ${direct.username}`
+          : audience === 'group'
+            ? `Challenge sent to ${picked.length} players`
+            : 'Challenge posted',
         description: 'It stays open for 48 hours.',
         variant: 'status',
       });
@@ -122,7 +156,11 @@ export function CreateChallengeSheet({
     }
   };
 
-  const title = target ? `Challenge ${target.username}` : 'Create challenge';
+  const title = direct
+    ? `Challenge ${direct.username}`
+    : audience === 'group'
+      ? 'Challenge a group'
+      : 'Create challenge';
 
   return (
     <Sheet
@@ -132,7 +170,7 @@ export function CreateChallengeSheet({
       size="lg"
       footer={
         step === 'form' ? (
-          <div className="flex gap-2">
+          <div className="gap-2">
             <Button variant="ghost" fullWidth onClick={onClose}>
               Close
             </Button>
@@ -141,7 +179,9 @@ export function CreateChallengeSheet({
               disabled={!canReview}
               hint={
                 !canReview
-                  ? (startError ?? (rulesTooLong ? 'Rules are too long' : undefined))
+                  ? (audienceError ??
+                    startError ??
+                    (rulesTooLong ? 'Rules are too long' : undefined))
                   : undefined
               }
               onClick={() => setStep('summary')}
@@ -155,7 +195,7 @@ export function CreateChallengeSheet({
               Back
             </Button>
             <Button fullWidth loading={busy} onClick={submit}>
-              {target ? 'Send challenge' : 'Post challenge'}
+              {audience === 'open' ? 'Post challenge' : 'Send challenge'}
             </Button>
           </div>
         )
@@ -179,6 +219,8 @@ export function CreateChallengeSheet({
               options={games.map((g) => ({ value: g.key, label: g.name }))}
               onChange={(v) => {
                 setGameKey(v);
+                // Picked players must play the chosen game.
+                if (v !== gameKey) setPicked([]);
                 const next = games.find((g) => g.key === v);
                 setFormatKey(next?.formats[0]?.key ?? '');
               }}
@@ -190,6 +232,50 @@ export function CreateChallengeSheet({
               onChange={setFormatKey}
             />
           </div>
+
+          <fieldset className="space-y-3">
+            <legend className="mb-1 text-body-sm text-fg">Who can accept</legend>
+            <div
+              role="radiogroup"
+              aria-label="Who can accept"
+              className="grid h-11 grid-cols-3 rounded-control border border-line bg-surface p-1 lg:h-10"
+            >
+              {AUDIENCES.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={audience === a.key}
+                  onClick={() => {
+                    setAudience(a.key);
+                    if (a.key === 'direct') setPicked((p) => p.slice(0, 1));
+                  }}
+                  className={`rounded-[calc(var(--radius-control)-2px)] font-display text-[11px] font-bold uppercase tracking-[0.04em] transition-colors ${
+                    audience === a.key ? 'bg-accent text-on-accent' : 'text-fg-subtle hover:text-fg'
+                  }`}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-caption text-fg-subtle">
+              {AUDIENCES.find((a) => a.key === audience)?.hint}
+            </p>
+            {audience !== 'open' && gameKey ? (
+              <PlayerPicker
+                gameKey={gameKey}
+                value={picked}
+                onChange={setPicked}
+                max={audience === 'direct' ? 1 : GROUP_MAX}
+                label={audience === 'direct' ? 'Player' : 'Players'}
+                helper={
+                  audience === 'group'
+                    ? 'Everyone you add gets a notification. Each can accept or decline.'
+                    : undefined
+                }
+              />
+            ) : null}
+          </fieldset>
 
           <fieldset className="grid gap-4 sm:grid-cols-3">
             <legend className="mb-1 text-body-sm text-fg">When you will play</legend>
@@ -267,8 +353,13 @@ export function CreateChallengeSheet({
         </div>
       ) : (
         <dl className="space-y-3 text-body-sm">
-          {target ? (
-            <Row label="Opponent" value={target.username} />
+          {direct ? (
+            <Row label="Opponent" value={direct.username} />
+          ) : audience === 'group' ? (
+            <Row
+              label="Who can accept"
+              value={`First of ${picked.length} to accept:\n${names.join(', ')}`}
+            />
           ) : (
             <Row label="Who can accept" value="Anyone on the board" />
           )}

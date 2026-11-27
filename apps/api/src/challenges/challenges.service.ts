@@ -9,7 +9,7 @@ import { and, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from 'drizzle-
 import { db, schema } from '../db/client';
 import { decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
-import { toChallengeCard, type ChallengeCardDto } from './challenges.mapper';
+import { toChallengeCard, type ChallengeCardDto, type GroupMember } from './challenges.mapper';
 import { canonicalPair, ratingGapBetween } from './pairing';
 import { scheduleChallengeExpiry, cancelChallengeExpiry } from './challenges.queue';
 import type { BoardQuery, CreateChallengeRequest } from './challenges.schemas';
@@ -31,6 +31,44 @@ export interface BoardResult {
 const NEEDS_ACTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ACCEPTANCE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
 
+/** Group members for these challenges, with display names, keyed by challenge id. */
+async function groupsFor(challengeIds: string[]): Promise<Map<string, GroupMember[]>> {
+  const out = new Map<string, GroupMember[]>();
+  if (challengeIds.length === 0) return out;
+  const rows = await db
+    .select({
+      challengeId: schema.challengeTargets.challengeId,
+      userId: schema.challengeTargets.userId,
+      username: schema.users.displayName,
+      declinedAt: schema.challengeTargets.declinedAt,
+    })
+    .from(schema.challengeTargets)
+    .innerJoin(schema.users, eq(schema.users.id, schema.challengeTargets.userId))
+    .where(inArray(schema.challengeTargets.challengeId, challengeIds))
+    .orderBy(schema.challengeTargets.createdAt);
+  for (const r of rows) {
+    const list = out.get(r.challengeId) ?? [];
+    list.push({
+      userId: r.userId,
+      username: r.username ?? 'Player',
+      declined: r.declinedAt !== null,
+    });
+    out.set(r.challengeId, list);
+  }
+  return out;
+}
+
+/** Group members of one challenge (empty for open and direct challenges). */
+async function groupOf(challengeId: string) {
+  return db
+    .select({
+      userId: schema.challengeTargets.userId,
+      declinedAt: schema.challengeTargets.declinedAt,
+    })
+    .from(schema.challengeTargets)
+    .where(eq(schema.challengeTargets.challengeId, challengeId));
+}
+
 function isUniqueViolation(error: unknown): boolean {
   const e = error as { code?: string; cause?: { code?: string } };
   return e?.code === '23505' || e?.cause?.code === '23505';
@@ -50,9 +88,19 @@ export class ChallengesService {
     if (mine) {
       conditions.push(eq(schema.challenges.posterId, viewerId));
     } else if (query.forMe === 'true') {
-      conditions.push(eq(schema.challenges.targetPlayerId, viewerId));
+      // Direct challenges to me, and group challenges I am in and have not declined.
+      conditions.push(
+        or(
+          eq(schema.challenges.targetPlayerId, viewerId),
+          sql`exists (select 1 from challenge_targets ct where ct.challenge_id = ${schema.challenges.id} and ct.user_id = ${viewerId} and ct.declined_at is null)`,
+        ),
+      );
     } else {
+      // The public board: neither direct nor group challenges.
       conditions.push(isNull(schema.challenges.targetPlayerId));
+      conditions.push(
+        sql`not exists (select 1 from challenge_targets ct where ct.challenge_id = ${schema.challenges.id})`,
+      );
     }
     if (query.status === 'open') {
       conditions.push(eq(schema.challenges.status, 'open'));
@@ -135,8 +183,9 @@ export class ChallengesService {
         ),
       );
 
+    const groups = await groupsFor(page.map((row) => row.id));
     return {
-      items: page.map((row) => toChallengeCard(row, viewerId, now)),
+      items: page.map((row) => toChallengeCard(row, viewerId, now, groups.get(row.id))),
       nextCursor:
         hasMore && last
           ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
@@ -191,19 +240,23 @@ export class ChallengesService {
       if (existing[0]) return { id: existing[0].id };
     }
 
-    // Check target player if direct challenge
-    let targetPlayerId: string | null = null;
-    if (input.targetPlayerId) {
-      if (input.targetPlayerId === posterId)
-        throw new BadRequestException('Cannot challenge yourself');
-      const target = await db
+    // Who can accept: one player (direct), a group (first to accept plays), or anyone.
+    // A one-player group is a direct challenge.
+    const requested = input.targetPlayerIds ?? (input.targetPlayerId ? [input.targetPlayerId] : []);
+    if (requested.includes(posterId)) throw new BadRequestException('Cannot challenge yourself');
+    if (requested.length > 0) {
+      const found = await db
         .select({ id: schema.users.id })
         .from(schema.users)
-        .where(eq(schema.users.id, input.targetPlayerId))
-        .limit(1);
-      if (!target[0]) throw new NotFoundException('Target player not found');
-      targetPlayerId = input.targetPlayerId;
+        .where(inArray(schema.users.id, requested));
+      if (found.length !== requested.length) {
+        throw new NotFoundException(
+          requested.length === 1 ? 'Target player not found' : 'Some players were not found',
+        );
+      }
     }
+    const targetPlayerId: string | null = requested.length === 1 ? requested[0]! : null;
+    const groupIds: string[] = requested.length > 1 ? requested : [];
 
     // Check poster has a game profile for this game
     const posterProfile = await db
@@ -216,20 +269,24 @@ export class ChallengesService {
     if (!posterProfile[0])
       throw new BadRequestException('Poster must have a game profile for this game');
 
-    // Check if target has game profile (for direct challenges)
-    if (targetPlayerId) {
-      const targetProfile = await db
-        .select({ id: schema.gameProfiles.id, rating: schema.gameProfiles.rating })
+    // Every invited player must play this game.
+    if (requested.length > 0) {
+      const withProfile = await db
+        .select({ userId: schema.gameProfiles.userId })
         .from(schema.gameProfiles)
         .where(
           and(
-            eq(schema.gameProfiles.userId, targetPlayerId),
+            inArray(schema.gameProfiles.userId, requested),
             eq(schema.gameProfiles.gameId, game[0].id),
           ),
-        )
-        .limit(1);
-      if (!targetProfile[0])
-        throw new BadRequestException('Target player must have a game profile for this game');
+        );
+      if (withProfile.length !== requested.length) {
+        throw new BadRequestException(
+          requested.length === 1
+            ? 'Target player must have a game profile for this game'
+            : 'Every player in the group must have a game profile for this game',
+        );
+      }
     }
 
     // Rate limit: max 5 open challenges per user
@@ -273,6 +330,11 @@ export class ChallengesService {
           createdAt: now,
           updatedAt: now,
         });
+        if (groupIds.length > 0) {
+          await tx
+            .insert(schema.challengeTargets)
+            .values(groupIds.map((userId) => ({ challengeId: id, userId, createdAt: now })));
+        }
         await tx.insert(schema.outboxEvents).values({
           id: uuidv7(),
           type: 'challenge.created',
@@ -282,8 +344,9 @@ export class ChallengesService {
             posterId,
             gameId: game[0]!.id,
             formatId: format[0]!.id,
-            isDirect: !!targetPlayerId,
+            isDirect: requested.length > 0,
             targetPlayerId,
+            targetPlayerIds: groupIds,
           },
         });
       });
@@ -397,7 +460,8 @@ export class ChallengesService {
       }
     }
 
-    const card = toChallengeCard(row, viewerId ?? '', now);
+    const group = (await groupsFor([row.id])).get(row.id);
+    const card = toChallengeCard(row, viewerId ?? '', now, group);
     return {
       ...card,
       rules: row.rules,
@@ -441,6 +505,12 @@ export class ChallengesService {
       throw new BadRequestException('Cannot accept your own challenge');
     if (c.targetPlayerId && c.targetPlayerId !== acceptorId) {
       throw new ForbiddenException('This challenge is for a specific player');
+    }
+    const group = await groupOf(challengeId);
+    if (group.length > 0) {
+      const me = group.find((g) => g.userId === acceptorId);
+      if (!me) throw new ForbiddenException('This challenge is for a group you are not in');
+      if (me.declinedAt) throw new ConflictException('You declined this challenge');
     }
     if (c.status !== 'open') throw new ConflictException('Challenge is not open');
     if (c.acceptanceDeadline <= new Date()) throw new ConflictException('Challenge has expired');
@@ -623,6 +693,50 @@ export class ChallengesService {
     if (c.posterId === userId) throw new BadRequestException('Cannot decline your own challenge');
     if (c.targetPlayerId && c.targetPlayerId !== userId)
       throw new ForbiddenException('Not authorized');
+
+    // Group: a member's decline removes only them; the last decline closes the challenge.
+    const group = await groupOf(challengeId);
+    if (group.length > 0) {
+      const me = group.find((g) => g.userId === userId);
+      if (!me) throw new ForbiddenException('Not authorized');
+      if (me.declinedAt || c.status === 'cancelled') return; // retried decline
+      if (c.status !== 'open') throw new ConflictException('Challenge is not open');
+      const lastOne = group.every((g) => g.userId === userId || g.declinedAt !== null);
+      const at = new Date();
+      await db.transaction(async (tx) => {
+        await tx
+          .update(schema.challengeTargets)
+          .set({ declinedAt: at })
+          .where(
+            and(
+              eq(schema.challengeTargets.challengeId, challengeId),
+              eq(schema.challengeTargets.userId, userId),
+            ),
+          );
+        if (lastOne) {
+          await tx
+            .update(schema.challenges)
+            .set({
+              status: 'cancelled',
+              cancelledAt: at,
+              version: sql`${schema.challenges.version} + 1`,
+              updatedAt: at,
+            })
+            .where(
+              and(eq(schema.challenges.id, challengeId), eq(schema.challenges.status, 'open')),
+            );
+        }
+        await tx.insert(schema.outboxEvents).values({
+          id: uuidv7(),
+          type: 'challenge.declined',
+          subjectId: challengeId,
+          payload: { challengeId, declinedBy: userId, closed: lastOne, group: true },
+        });
+      });
+      if (lastOne) await cancelChallengeExpiry(challengeId);
+      return;
+    }
+
     // A retried decline of a direct challenge that is already closed is a no-op.
     if (c.targetPlayerId && c.status === 'cancelled') return;
     if (c.status !== 'open') throw new ConflictException('Challenge is not open');

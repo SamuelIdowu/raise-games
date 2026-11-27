@@ -43,6 +43,8 @@ export function ChallengeCard({
   const left = formatDuration(new Date(expiresAt).getTime() - now);
 
   const isDirect = isForMe && !isMine;
+  const group = challenge.audience === 'group' ? (challenge.group ?? []) : [];
+  const stillIn = group.filter((m) => !m.declined).length;
 
   return (
     <article
@@ -63,7 +65,15 @@ export function ChallengeCard({
           <span className="font-display text-h3 font-black uppercase text-fg">{game.name}</span>
           <StatusChip label={format.name} variant="neutral" />
           {isMine ? <StatusChip label="Your challenge" variant="accent" icon="user" /> : null}
-          {isForMe ? <StatusChip label="Challenged you" variant="accent" icon="flag" /> : null}
+          {group.length > 0 ? (
+            <StatusChip
+              label={`Group · first of ${stillIn} plays`}
+              variant="accent"
+              icon="user-plus"
+            />
+          ) : isForMe ? (
+            <StatusChip label="Challenged you" variant="accent" icon="flag" />
+          ) : null}
         </div>
         <p className="shrink-0 font-display text-h3 font-black uppercase text-accent tabular">
           {stake.display}
@@ -81,6 +91,21 @@ export function ChallengeCard({
           </div>
         </div>
       </div>
+
+      {group.length > 0 ? (
+        <p className="mb-3 text-caption text-fg-muted">
+          <span className="text-fg-subtle">{isMine ? 'Sent to ' : 'Also invited: '}</span>
+          {group.map((m, i) => (
+            <span
+              key={m.userId}
+              className={m.declined ? 'text-fg-disabled line-through' : 'text-fg'}
+            >
+              {m.username}
+              {i < group.length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </p>
+      ) : null}
 
       {/* Reserved for the Stage 2 rating-gap indicator; collapsed in Stage 1 (Design §8). */}
       <div data-slot="rating-gap" hidden />

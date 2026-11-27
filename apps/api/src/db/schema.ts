@@ -402,6 +402,30 @@ export const challenges = pgTable(
   ],
 );
 
+/**
+ * Group challenges: the 2-10 players a challenge is offered to. Only they see it ("for
+ * me"), only they can accept, and the first to accept plays (the existing atomic accept).
+ * A member's decline only removes them; the challenge closes when every member declined.
+ * One-player challenges keep using challenges.target_player_id.
+ */
+export const challengeTargets = pgTable(
+  'challenge_targets',
+  {
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    declinedAt: timestamp('declined_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.challengeId, t.userId] }),
+    index('challenge_targets_user_idx').on(t.userId, t.declinedAt),
+  ],
+);
+
 export const pairingCounters = pgTable(
   'pairing_counters',
   {

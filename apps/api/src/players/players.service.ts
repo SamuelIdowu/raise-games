@@ -42,6 +42,7 @@ export class PlayersService {
     const conditions = [isNull(schema.users.deletedAt), ne(schema.users.id, viewerId)];
 
     if (query.game) conditions.push(eq(schema.games.key, query.game));
+    if (query.q) conditions.push(ilike(schema.users.displayName, `%${escapeLike(query.q)}%`));
     if (query.rank) {
       const { min, max } = rankTierRange(query.rank);
       conditions.push(gte(schema.gameProfiles.rating, min));

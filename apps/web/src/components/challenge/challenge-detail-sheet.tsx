@@ -244,6 +244,23 @@ export function ChallengeDetailSheet({
                 <dd className="text-right text-fg">{c.target.username}</dd>
               </div>
             ) : null}
+            {c.audience === 'group' && c.group?.length ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-fg-muted">Who can accept</dt>
+                <dd className="text-right text-fg">
+                  First of {c.group.filter((m) => !m.declined).length} to accept:{' '}
+                  {c.group.map((m, i) => (
+                    <span
+                      key={m.userId}
+                      className={m.declined ? 'text-fg-disabled line-through' : undefined}
+                    >
+                      {m.username}
+                      {i < c.group!.length - 1 ? ', ' : ''}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            ) : null}
           </dl>
 
           <section aria-label="Rules">
