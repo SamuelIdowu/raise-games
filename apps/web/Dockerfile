@@ -22,8 +22,30 @@ COPY packages/api-client/package.json ./packages/api-client/package.json
 COPY packages/game-configs/package.json ./packages/game-configs/package.json
 RUN pnpm install --frozen-lockfile
 COPY . .
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001
-ARG NEXT_PUBLIC_STORAGE_ORIGIN=http://localhost:9000
+ARG NEXT_PUBLIC_API_URL=
+ARG NEXT_PUBLIC_STORAGE_ORIGIN=
+ARG NEXT_PUBLIC_SITE_URL=
+# The URLs above are compiled into the bundle and the CSP, so a missing or local value ships
+# an image that starts and passes its healthcheck but cannot reach the API. Images are
+# refused unless every URL is public https. CI's unpublished smoke build passes
+# WEB_BUILD_STRICT=false to build against localhost.
+ARG WEB_BUILD_STRICT=true
+RUN if [ "$WEB_BUILD_STRICT" = "true" ]; then \
+      for pair in "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" \
+                  "NEXT_PUBLIC_STORAGE_ORIGIN=$NEXT_PUBLIC_STORAGE_ORIGIN" \
+                  "NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL"; do \
+        name="${pair%%=*}"; value="${pair#*=}"; \
+        case "$value" in \
+          https://localhost*|https://127.0.0.1*) ok=no ;; \
+          https://?*) ok=yes ;; \
+          *) ok=no ;; \
+        esac; \
+        if [ "$ok" != yes ]; then \
+          echo "$name must be a public https URL (got '${value}'). Pass --build-arg $name=https://..., or WEB_BUILD_STRICT=false for a local-only image." >&2; \
+          exit 1; \
+        fi; \
+      done; \
+    fi
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 ARG NEXT_PUBLIC_POSTHOG_KEY=
 ARG NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
@@ -31,6 +53,7 @@ ARG NEXT_PUBLIC_RELEASE_SHA=
 ARG NEXT_PUBLIC_APP_VERSION=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_STORAGE_ORIGIN=$NEXT_PUBLIC_STORAGE_ORIGIN \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY \
     NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
     NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST \

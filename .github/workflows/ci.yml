@@ -576,6 +576,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.STAGING_NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
             NEXT_PUBLIC_STORAGE_ORIGIN=${{ vars.STAGING_NEXT_PUBLIC_STORAGE_ORIGIN || 'http://localhost:9000' }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.STAGING_NEXT_PUBLIC_SITE_URL || 'http://localhost:3000' }}
+            WEB_BUILD_STRICT=${{ env.PUBLISH }}
             NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.STAGING_NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
             NEXT_PUBLIC_POSTHOG_KEY=${{ vars.STAGING_NEXT_PUBLIC_POSTHOG_KEY }}
             NEXT_PUBLIC_RELEASE_SHA=${{ github.sha }}

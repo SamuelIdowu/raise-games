@@ -245,10 +245,18 @@ export class ChallengesService {
     const requested = input.targetPlayerIds ?? (input.targetPlayerId ? [input.targetPlayerId] : []);
     if (requested.includes(posterId)) throw new BadRequestException('Cannot challenge yourself');
     if (requested.length > 0) {
+      // Deleted accounts and players with a block either way cannot be challenged. They get
+      // the same "not found" answer, so the poster cannot tell they have been blocked.
       const found = await db
         .select({ id: schema.users.id })
         .from(schema.users)
-        .where(inArray(schema.users.id, requested));
+        .where(
+          and(
+            inArray(schema.users.id, requested),
+            isNull(schema.users.deletedAt),
+            sql`not exists (select 1 from user_blocks ub where (ub.blocker_id = ${posterId} and ub.blocked_id = ${schema.users.id}) or (ub.blocker_id = ${schema.users.id} and ub.blocked_id = ${posterId}))`,
+          ),
+        );
       if (found.length !== requested.length) {
         throw new NotFoundException(
           requested.length === 1 ? 'Target player not found' : 'Some players were not found',

@@ -34,7 +34,8 @@ export default function StatusPage() {
     async function fetchHealth() {
       try {
         const res = await fetch(`${apiBase}/health`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // 503 means the API is up but the database or Redis is not; its body has the details.
+        if (!res.ok && res.status !== 503) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setHealth(data);
         setError(null);
