@@ -93,6 +93,25 @@ describe('env schema', () => {
     expect(message).toContain('R2_SECRET_ACCESS_KEY');
   });
 
+  it('accepts managed-host URL forms: postgresql:// and TLS rediss://', () => {
+    const env = loadEnv({
+      ...deployed,
+      NODE_ENV: 'staging',
+      DATABASE_URL: 'postgresql://u:p@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+      REDIS_URL: 'rediss://red-abc:secret@frankfurt-keyvalue.render.com:6379',
+    });
+    expect(env.REDIS_URL.startsWith('rediss://')).toBe(true);
+  });
+
+  it('rejects URLs for the wrong service', () => {
+    expect(() => loadEnv({ ...deployed, NODE_ENV: 'staging', REDIS_URL: 'http://x' })).toThrow(
+      'REDIS_URL',
+    );
+    expect(() => loadEnv({ ...deployed, NODE_ENV: 'staging', DATABASE_URL: 'mysql://x' })).toThrow(
+      'DATABASE_URL',
+    );
+  });
+
   it('refuses localhost origins in production but not in staging', () => {
     const local = { ...deployed, WEB_ORIGIN: 'http://localhost:3000' };
     expect(() => loadEnv({ ...local, NODE_ENV: 'production' })).toThrow('WEB_ORIGIN');

@@ -1,0 +1,13 @@
+# Deploy: cd infra/keepalive && npx wrangler deploy   (Cloudflare Workers free plan)
+name = "raise-staging-keepalive"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = false # cron only; no public URL
+
+[triggers]
+# Every 10 minutes: inside Render's 15-minute sleep window.
+crons = ["*/10 * * * *"]
+
+[vars]
+# Replace with the real URLs after creating the services (comma-separated).
+TARGETS = "https://REPLACE-koyeb-app.koyeb.app/health,https://raise-web-staging.onrender.com/"

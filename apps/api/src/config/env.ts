@@ -10,8 +10,15 @@ const envSchema = z.object({
    * shared/client-ip.ts.
    */
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
-  DATABASE_URL: z.string().startsWith('postgres://'),
-  REDIS_URL: z.string().startsWith('redis://').default('redis://localhost:6379'),
+  /** `postgresql://` is the form most managed hosts (Supabase, Neon, Render) hand out. */
+  DATABASE_URL: z
+    .string()
+    .regex(/^postgres(ql)?:\/\//, 'must start with postgres:// or postgresql://'),
+  /** `rediss://` is TLS, which managed Redis requires for connections from outside its network. */
+  REDIS_URL: z
+    .string()
+    .regex(/^rediss?:\/\//, 'must start with redis:// or rediss://')
+    .default('redis://localhost:6379'),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
