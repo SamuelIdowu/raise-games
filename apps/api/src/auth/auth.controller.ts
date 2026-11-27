@@ -6,6 +6,7 @@ import {
   HttpCode,
   Patch,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -23,11 +24,13 @@ import {
   refreshSchema,
   logoutSchema,
   updateMeSchema,
+  usernameQuerySchema,
   type OtpRequest,
   type OtpVerify,
   type RefreshRequest,
   type LogoutRequest,
   type UpdateMe,
+  type UsernameQuery,
 } from './auth.schemas';
 import { verifyTurnstileToken } from './turnstile';
 import { enforceRateLimit } from '../shared/rate-limit';
@@ -116,6 +119,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: AuthedUser) {
     return this.auth.me(user.sub);
+  }
+
+  /** Live check while a player types a username. Rate-limited so it can't list every name. */
+  @Get('username-available')
+  @UseGuards(JwtAuthGuard)
+  async usernameAvailable(
+    @CurrentUser() user: AuthedUser,
+    @Query(new ZodValidationPipe(usernameQuerySchema)) query: UsernameQuery,
+  ) {
+    await enforceRateLimit(`rl:username-check:${user.sub}`, 60, 60_000);
+    return this.auth.usernameAvailability(user.sub, query.username);
   }
 
   @Patch('me')

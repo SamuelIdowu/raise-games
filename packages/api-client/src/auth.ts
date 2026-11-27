@@ -20,6 +20,13 @@ export interface MeResponse {
   createdAt: string;
 }
 
+export interface UsernameAvailability {
+  username: string;
+  available: boolean;
+  /** Why it can't be used (format, reserved or taken); null when available. */
+  reason: string | null;
+}
+
 export interface UpdateMeRequest {
   displayName?: string;
   jurisdictionState?: string;
@@ -67,6 +74,13 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ confirmUsername }),
     }),
+
+  /** Live check while typing: format, reserved names and whether another player has it. */
+  usernameAvailable: (username: string, init?: { signal?: AbortSignal }) =>
+    apiFetch<UsernameAvailability>(
+      `/auth/username-available?username=${encodeURIComponent(username)}`,
+      init,
+    ),
 
   updateMe: (data: UpdateMeRequest) =>
     apiFetch<MeResponse>('/auth/me', {

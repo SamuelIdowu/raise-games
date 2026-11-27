@@ -13,6 +13,8 @@ export interface OtpInputProps {
   error?: string;
   resendSeconds?: number;
   onResend?: () => void;
+  /** Focus the first box on mount. */
+  autoFocus?: boolean;
 }
 
 export function OtpInput({
@@ -24,6 +26,7 @@ export function OtpInput({
   error,
   resendSeconds = 0,
   onResend,
+  autoFocus = false,
 }: OtpInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const chars = Array.from({ length }, (_, index) => value[index] ?? '');
@@ -82,6 +85,7 @@ export function OtpInput({
             inputMode="numeric"
             autoComplete={index === 0 ? 'one-time-code' : 'off'}
             maxLength={1}
+            autoFocus={autoFocus && index === 0}
             disabled={disabled}
             aria-label={`Digit ${index + 1} of ${length}`}
             aria-invalid={error ? true : undefined}

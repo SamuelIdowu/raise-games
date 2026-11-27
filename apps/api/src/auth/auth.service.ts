@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -7,11 +8,11 @@ import {
 } from '@nestjs/common';
 import { hash, verify } from 'argon2';
 import { v7 as uuidv7 } from 'uuid';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, ne, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { env } from '../config/env.instance';
 import { JwtService } from '@nestjs/jwt';
-import { normalizeNigerianPhone } from '@raise/schemas';
+import { normalizeNigerianPhone, usernameError } from '@raise/schemas';
 import { ensureRedis, redis } from '../cache/redis';
 import {
   buildRefreshToken,
@@ -258,11 +259,51 @@ export class AuthService {
     return revoked.length;
   }
 
+  /**
+   * Whether `raw` can be this player's username: valid format and not held by anyone else
+   * (case-insensitive; the player's own current name counts as available).
+   */
+  async usernameAvailability(
+    userId: string,
+    raw: string,
+  ): Promise<{ username: string; available: boolean; reason: string | null }> {
+    const username = raw.trim();
+    const formatError = usernameError(username);
+    if (formatError) return { username, available: false, reason: formatError };
+    const taken = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(
+        and(
+          sql`lower(${schema.users.displayName}) = ${username.toLowerCase()}`,
+          ne(schema.users.id, userId),
+        ),
+      )
+      .limit(1);
+    return taken.length
+      ? { username, available: false, reason: 'That username is taken' }
+      : { username, available: true, reason: null };
+  }
+
   async updateMe(userId: string, data: UpdateMe) {
-    await db
-      .update(schema.users)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(schema.users.id, userId));
+    if (data.displayName) {
+      const check = await this.usernameAvailability(userId, data.displayName);
+      if (!check.available) {
+        throw new ConflictException({ code: 'username_taken', message: check.reason });
+      }
+    }
+    try {
+      await db
+        .update(schema.users)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(schema.users.id, userId));
+    } catch (error) {
+      // Two players claiming the same name at once: the unique index decides.
+      if (pgCode(error) === '23505') {
+        throw new ConflictException({ code: 'username_taken', message: 'That username is taken' });
+      }
+      throw error;
+    }
     return this.me(userId);
   }
 
@@ -463,4 +504,16 @@ export class AuthService {
       HttpStatus.TOO_MANY_REQUESTS,
     );
   }
+}
+
+/** Postgres error code from a driver error, which drizzle may wrap in `cause`. */
+function pgCode(error: unknown): string | undefined {
+  for (
+    let e = error as { code?: unknown; cause?: unknown } | undefined;
+    e;
+    e = e.cause as typeof e
+  ) {
+    if (typeof e.code === 'string') return e.code;
+  }
+  return undefined;
 }

@@ -11,14 +11,17 @@ export default function OtpPage() {
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
-  const [phone, setPhone] = useState('0801 234 5678');
+  const [phone, setPhone] = useState('');
   const router = useRouter();
 
+  // The phone step saves the number in this tab. Without it (new tab, cleared storage)
+  // there is nothing to verify, so go back and ask again.
   useEffect(() => {
     const stored = sessionStorage.getItem('onboarding_phone');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setPhone(stored);
-  }, []);
+    else router.replace('/onboarding/phone');
+  }, [router]);
 
   useEffect(() => {
     if (resendSeconds > 0) {
@@ -29,7 +32,7 @@ export default function OtpPage() {
 
   const handleVerify = async () => {
     setError('');
-    if (otp.length !== 6) {
+    if (!/^\d{6}$/.test(otp)) {
       setError('Enter the full 6-digit code');
       return;
     }
@@ -95,7 +98,7 @@ export default function OtpPage() {
           Verify your phone
         </h1>
         <p className="mt-2 text-body-sm text-fg-muted">
-          We sent a 6-digit code to <strong className="text-fg">{phone}</strong>
+          We sent a 6-digit code to <strong className="text-fg">{phone || 'your phone'}</strong>
         </p>
       </div>
 
@@ -105,20 +108,21 @@ export default function OtpPage() {
         error={error}
         resendSeconds={resendSeconds}
         onResend={handleResend}
+        autoFocus
       />
 
       <div className="mt-4 space-y-3">
         <Button fullWidth loading={verifying} onClick={handleVerify} disabled={otp.length !== 6}>
           Verify code
         </Button>
-        <Button
+        {/* <Button
           variant="ghost"
           fullWidth
           onClick={handleResend}
           disabled={resendSeconds > 0 || resending}
         >
           {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : 'Resend code'}
-        </Button>
+        </Button> */}
       </div>
 
       <Banner variant="system" className="mt-4 text-sm">

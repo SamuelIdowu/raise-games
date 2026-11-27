@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { Button, Input, Banner } from '@/components/ui';
 import { ApiError, authApi, betaApi } from '@raise/api-client';
+import { normalizeNigerianPhone, phoneError } from '@raise/schemas';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
@@ -28,6 +29,7 @@ declare global {
 
 export default function PhoneEntryPage() {
   const [phone, setPhone] = useState('');
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   // Closed beta (Sprint 16): new numbers need an invite while the gate is on.
@@ -46,11 +48,14 @@ export default function PhoneEntryPage() {
 
   const joinWaitlist = async () => {
     setError('');
-    const cleaned = phone.replace(/\D/g, '');
-    if (!/^0[789]\d{9}$/.test(cleaned)) {
-      setError('Enter a valid Nigerian mobile number (e.g., 0801 234 5678)');
+    setPhoneTouched(true);
+    const problem = phoneError(phone);
+    if (problem) {
+      setError(problem);
       return;
     }
+    // Local 0XXXXXXXXXX form, whatever the player typed (+234…, 234…, spaces).
+    const cleaned = '0' + normalizeNigerianPhone(phone)!.slice(4);
     setSending(true);
     try {
       await betaApi.joinWaitlist(cleaned, place.trim() || undefined);
@@ -103,11 +108,14 @@ export default function PhoneEntryPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const cleaned = phone.replace(/\D/g, '');
-    if (!/^0[789]\d{9}$/.test(cleaned)) {
-      setError('Enter a valid Nigerian mobile number (e.g., 0801 234 5678)');
+    setPhoneTouched(true);
+    const problem = phoneError(phone);
+    if (problem) {
+      setError(problem);
       return;
     }
+    // Local 0XXXXXXXXXX form, whatever the player typed (+234…, 234…, spaces).
+    const cleaned = '0' + normalizeNigerianPhone(phone)!.slice(4);
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
       setError('Please complete the security check');
       return;
@@ -156,9 +164,17 @@ export default function PhoneEntryPage() {
           label="Phone number"
           placeholder="0801 234 5678"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          inputMode="numeric"
-          error={error}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            setError('');
+          }}
+          onBlur={() => setPhoneTouched(true)}
+          inputMode="tel"
+          type="tel"
+          maxLength={18}
+          error={
+            error || (phoneTouched && phone.trim() ? (phoneError(phone) ?? undefined) : undefined)
+          }
           helper="We'll send a 6-digit code via SMS"
           autoComplete="tel"
         />

@@ -141,6 +141,13 @@
       "when": 1795267783582,
       "tag": "0019_uploads_purged_status",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795695222736,
+      "tag": "0020_username_unique",
+      "breakpoints": true
     }
   ]
 }

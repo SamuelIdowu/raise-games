@@ -23,6 +23,7 @@ import {
   bigint,
   doublePrecision,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const roleEnum = pgEnum('role', ['player', 'moderator', 'admin']);
 export const identityTierEnum = pgEnum('identity_tier', [
@@ -66,7 +67,13 @@ export const users = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
-  (t) => [uniqueIndex('users_phone_uq').on(t.phone)],
+  (t) => [
+    uniqueIndex('users_phone_uq').on(t.phone),
+    // Usernames are unique ignoring case: "Ade" and "ade" are the same player name.
+    uniqueIndex('users_display_name_lower_uq')
+      .on(sql`lower(${t.displayName})`)
+      .where(sql`${t.displayName} IS NOT NULL`),
+  ],
 );
 
 export const sanctions = pgTable(

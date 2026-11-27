@@ -27,7 +27,7 @@ export { notificationsApi } from './notifications';
 export { dmApi } from './dm';
 export { betaApi } from './beta';
 export { ServerEvents, ClientEvents } from './realtime';
-export type { MeResponse, UpdateMeRequest } from './auth';
+export type { MeResponse, UpdateMeRequest, UsernameAvailability } from './auth';
 export type { ConsentStatus, AcceptConsentRequest } from './consent';
 export type { Game, GameFormat, IdField } from './games';
 export type { GameProfile, UpsertProfileRequest } from './profiles';
