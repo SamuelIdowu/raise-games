@@ -677,12 +677,12 @@ describe('Sprint 3/4 Integration Tests', () => {
     });
 
     it('should include displayName from user', async () => {
-      await db
-        .update(schema.users)
-        .set({ displayName: 'TestPlayer' })
-        .where(eq(schema.users.id, userId));
+      // Unique per run: usernames are unique (migration 0020) and this suite's users outlive
+      // the run, so a fixed name collides with the previous run's user.
+      const name = `TP_${userId.replace(/-/g, '').slice(-12)}`;
+      await db.update(schema.users).set({ displayName: name }).where(eq(schema.users.id, userId));
       const profiles = await profilesService.listMyProfiles(userId);
-      expect(profiles[0]!.displayName).toBe('TestPlayer');
+      expect(profiles[0]!.displayName).toBe(name);
     });
 
     it('should include reputation as "new"', async () => {
