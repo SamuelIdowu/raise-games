@@ -1,6 +1,6 @@
 # Render Blueprint: free staging (decision 0008, docs/runbooks/staging-free.md).
-# Render runs the web app and Redis. The API runs on Koyeb and Postgres on Supabase, because
-# Render's 750 free hours a month cover only one always-on service.
+# Render runs the web app and Redis. The API runs on Koyeb, Postgres on Neon and file storage
+# on Supabase, because Render's 750 free hours a month cover only one always-on service.
 services:
   - type: web
     name: raise-web-staging
