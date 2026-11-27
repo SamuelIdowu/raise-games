@@ -22,6 +22,8 @@ apps/web/src/app/tokens.css
 # tests
 coverage/
 playwright-report/
+# Playwright MCP browser-tool logs and snapshots (debug output, not project files)
+.playwright-mcp/
 test-results/
 blob-report/
 
