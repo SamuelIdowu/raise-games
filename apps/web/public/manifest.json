@@ -1,11 +1,13 @@
 {
-  "name": "RAISE",
+  "name": "RAISE — Free 1v1 Gaming Challenges",
   "short_name": "RAISE",
-  "description": "Verified 1v1 challenges, real stakes, instant settlement",
+  "description": "Free 1v1 challenges for eFootball, Call of Duty: Mobile and PUBG Mobile. Create, play and settle results with verified proof.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0b",
-  "theme_color": "#00d4aa",
+  "background_color": "#0A0C0D",
+  "theme_color": "#0A0C0D",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -21,15 +23,21 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["games", "entertainment"],
-  "screenshots": [],
+  "categories": ["games", "entertainment", "sports"],
   "shortcuts": [
     {
       "name": "Challenges",
       "short_name": "Challenges",
-      "description": "View active challenges",
-      "url": "/challenges",
-      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+      "description": "Browse and post open challenges",
+      "url": "/play",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Profile",
+      "short_name": "Profile",
+      "description": "Your rating, matches and game IDs",
+      "url": "/profile",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
     }
   ]
 }

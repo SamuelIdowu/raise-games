@@ -41,8 +41,8 @@ export function RankTierBadge({
       role="img"
       aria-label={`Rank ${tierLabel}`}
       className={cn(
-        'chamfer inline-flex items-center gap-1.5 border border-accent/50 bg-accent-subtle px-2.5 py-1 text-accent',
-        tier === 5 && 'shadow-[0_0_0_1px_var(--accent),0_0_12px_rgba(34,211,238,0.35)]',
+        'drop-hard-sm [--hard-ink:var(--accent-ink)] chamfer-tr-sm inline-flex items-center gap-1.5 bg-accent px-3 py-1.5 pr-4 text-on-accent',
+        tier === 5 && 'shadow-glow',
         className,
       )}
     >
@@ -79,7 +79,7 @@ export function ReputationBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-[2px] border border-line px-2 py-0.5 text-caption text-fg-muted',
+        'inline-flex h-6 items-center gap-1 rounded-xs bg-overlay px-2 label-caps text-fg-muted',
         className,
       )}
     >

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, ilike, isNull, lt, lte, ne, or } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { decodeCursor, encodeCursor } from '../shared/cursor';
 import { escapeLike } from '../shared/like';
@@ -39,9 +39,15 @@ export interface PlayerSearchResult {
 export class PlayersService {
   async search(viewerId: string, query: PlayerSearchQuery): Promise<PlayerSearchResult> {
     const cursor = decodeCursor<PlayerCursor>(query.cursor);
-    const conditions = [isNull(schema.users.deletedAt), ne(schema.users.id, viewerId)];
+    const conditions = [
+      isNull(schema.users.deletedAt),
+      ne(schema.users.id, viewerId),
+      // Neither side has blocked the other: blocked players are not offered as opponents.
+      sql`not exists (select 1 from user_blocks ub where (ub.blocker_id = ${viewerId} and ub.blocked_id = ${schema.users.id}) or (ub.blocker_id = ${schema.users.id} and ub.blocked_id = ${viewerId}))`,
+    ];
 
     if (query.game) conditions.push(eq(schema.games.key, query.game));
+    if (query.q) conditions.push(ilike(schema.users.displayName, `%${escapeLike(query.q)}%`));
     if (query.rank) {
       const { min, max } = rankTierRange(query.rank);
       conditions.push(gte(schema.gameProfiles.rating, min));

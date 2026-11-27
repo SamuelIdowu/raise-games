@@ -1,33 +1,90 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import Link, { type LinkProps } from 'next/link';
 import { cn } from '@/lib/cn';
+import { Icon } from './icons';
 import { Spinner } from './spinner';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+/**
+ * Blocks.fun §7.3 buttons, with a sharp offset "pixel" shadow.
+ * - primary: purple, the main action
+ * - brand: orange, the secondary highlight
+ * - secondary: cream on dark (ink on light theme)
+ * - white: on purple/orange banners
+ * - outline: quiet hairline button for tertiary actions
+ * - ghost: text-only accent, no shadow
+ * - danger: destructive outline
+ */
+export type ButtonVariant =
+  'primary' | 'brand' | 'secondary' | 'white' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
+// Shape, shadow and press motion come from .btn-chamfer (globals.css):
+// rounded corners with the top-right corner cut at 45deg, sharp drop-shadow.
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-control border font-display font-semibold leading-none transition-colors duration-[var(--motion-micro)] ease-standard disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  'btn-chamfer group/btn inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap ' +
+  'font-display text-[10px] font-bold uppercase tracking-[0.04em] leading-none ' +
+  'disabled:pointer-events-none disabled:text-fg-disabled ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-hover';
 
+// One control scale with Input and Select: mobile keeps a 44px touch target; on desktop
+// md matches a field (40px), sm sits inside rows and cards (36px), lg is a hero CTA (48px).
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px]',
-  md: 'h-11 px-4 text-h3',
-  lg: 'h-12 px-5 text-h3',
+  sm: 'h-11 px-3 [--btn-cut:7px] lg:h-7',
+  md: 'h-11 px-4 [--btn-cut:8px] lg:h-8',
+  lg: 'h-11 px-5 text-[11px] [--btn-cut:10px] lg:h-10',
 };
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'border-transparent bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-press',
-  secondary: 'border-line-strong bg-transparent text-fg hover:bg-overlay active:bg-overlay',
+    'text-on-accent [--btn-bg:var(--accent)] [--hard-ink:var(--accent-ink)] hover:[--btn-bg:var(--accent-hover)] active:[--btn-bg:var(--accent-press)]',
+  brand:
+    'text-on-brand [--btn-bg:var(--brand)] [--hard-ink:var(--brand-ink)] hover:[--btn-bg:var(--brand-hover)] active:[--btn-bg:var(--brand-press)]',
+  secondary:
+    'text-[var(--btn-secondary-fg)] [--btn-bg:var(--btn-secondary-bg)] [--hard-ink:var(--cream-ink)] hover:[--btn-bg:var(--btn-secondary-hover)]',
+  white:
+    'text-on-cream [--btn-bg:white] [--hard-ink:var(--cream-ink)] hover:[--btn-bg:var(--cream)]',
+  outline:
+    'text-fg [--btn-bg:var(--border-strong)] [--btn-fill:var(--bg-0)] [--hard-ink:var(--border-strong)] hover:[--btn-bg:var(--text-3)]',
   ghost:
-    'border-transparent bg-transparent text-accent hover:bg-accent-subtle active:bg-accent-subtle',
-  danger: 'border-loss bg-transparent text-loss hover:bg-loss/10 active:bg-loss/20',
+    'text-accent [--btn-bg:transparent] [--hard-ink:transparent] hover:[--btn-bg:var(--accent-subtle)]',
+  danger:
+    'text-loss [--btn-bg:color-mix(in_srgb,var(--loss)_60%,transparent)] [--btn-fill:var(--bg-0)] [--hard-ink:color-mix(in_srgb,var(--loss)_40%,var(--bg-0))] hover:[--btn-fill:color-mix(in_srgb,var(--loss)_12%,var(--bg-0))]',
 };
+
+export interface ButtonStyleOptions {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  className?: string;
+}
+
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  fullWidth = false,
+  className,
+}: ButtonStyleOptions = {}) {
+  return cn(base, sizes[size], variants[variant], fullWidth && 'w-full', className);
+}
+
+function Arrow() {
+  return (
+    <Icon
+      name="trend-up"
+      size={14}
+      strokeWidth={2}
+      className="transition-transform duration-[var(--motion-micro)] ease-standard group-hover/btn:-translate-y-0.5 group-hover/btn:translate-x-0.5"
+    />
+  );
+}
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
   fullWidth?: boolean;
+  /** Trailing arrow-up-right (Blocks.fun CTA style). */
+  arrow?: boolean;
   /** Explanation shown under a disabled button (Design §8: never disable silently). */
   hint?: string;
 }
@@ -37,6 +94,7 @@ export function Button({
   size = 'md',
   loading = false,
   fullWidth = false,
+  arrow = false,
   hint,
   disabled,
   className,
@@ -49,11 +107,18 @@ export function Button({
       type={type}
       aria-busy={loading || undefined}
       disabled={disabled || loading}
-      className={cn(base, sizes[size], variants[variant], fullWidth && 'w-full', className)}
+      className={buttonClasses({ variant, size, fullWidth, className })}
       {...props}
     >
-      {loading ? <Spinner /> : null}
-      <span className={cn(loading && 'invisible')}>{children}</span>
+      {loading ? (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Spinner />
+        </span>
+      ) : null}
+      <span className={cn('inline-flex items-center gap-2', loading && 'invisible')}>
+        {children}
+        {arrow ? <Arrow /> : null}
+      </span>
     </button>
   );
 
@@ -64,5 +129,31 @@ export function Button({
       {button}
       <span className="text-caption text-fg-muted">{hint}</span>
     </span>
+  );
+}
+
+export interface ButtonLinkProps extends LinkProps, ButtonStyleOptions {
+  children: ReactNode;
+  arrow?: boolean;
+  target?: string;
+  rel?: string;
+  'aria-label'?: string;
+}
+
+/** A Next.js link styled as a Button. */
+export function ButtonLink({
+  variant,
+  size,
+  fullWidth,
+  className,
+  arrow = false,
+  children,
+  ...props
+}: ButtonLinkProps) {
+  return (
+    <Link className={buttonClasses({ variant, size, fullWidth, className })} {...props}>
+      {children}
+      {arrow ? <Arrow /> : null}
+    </Link>
   );
 }

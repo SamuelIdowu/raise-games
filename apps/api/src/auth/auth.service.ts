@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -7,11 +8,11 @@ import {
 } from '@nestjs/common';
 import { hash, verify } from 'argon2';
 import { v7 as uuidv7 } from 'uuid';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, ne, sql } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { env } from '../config/env.instance';
 import { JwtService } from '@nestjs/jwt';
-import { normalizeNigerianPhone } from '@raise/schemas';
+import { normalizeNigerianPhone, usernameError } from '@raise/schemas';
 import { ensureRedis, redis } from '../cache/redis';
 import {
   buildRefreshToken,
@@ -22,12 +23,20 @@ import {
   randomCode,
   resolveFamilyId,
 } from './auth.utils';
+import { SmsNotAllowlistedError } from './sms.factory';
 import { SmsService } from './sms.service';
 import type { UpdateMe } from './auth.schemas';
+import { enforceRateLimit } from '../shared/rate-limit';
+import {
+  BAD_INVITE_LIMIT,
+  INVITE_COPY,
+  inviteOnly,
+  inviteUsable,
+  redeemInvite,
+} from '../beta/invites';
 
 interface PendingOtp {
   codeHash: string;
-  attempts: number;
 }
 
 interface SessionMeta {
@@ -45,6 +54,7 @@ const WINDOW_MS = 10 * 60 * 1000;
 
 const pendingKey = (phone: string) => `otp:pending:${phone}`;
 const resendKey = (phone: string) => `otp:resend:${phone}`;
+const attemptsKey = (phone: string) => `otp:attempts:${phone}`;
 const phoneRateKey = (phone: string) => `otp:rate:phone:${phone}`;
 const ipRateKey = (ip: string) => `otp:rate:ip:${ip}`;
 
@@ -59,6 +69,7 @@ export class AuthService {
     rawPhone: string,
     ip: string,
     userAgent?: string,
+    inviteCode?: string | null,
   ): Promise<{ resendAfterSeconds: number }> {
     const phone = this.normalize(rawPhone);
 
@@ -68,18 +79,26 @@ export class AuthService {
       await this.bumpRate(ipRateKey(ip), MAX_REQUESTS_PER_IP);
     });
 
+    // Closed beta (Sprint 16): a new number needs a usable invite before any SMS is sent.
+    if (await this.inviteRequiredFor(phone)) await this.assertInvite(inviteCode, ip);
+
     const code = env.OTP_MOCK_ENABLED ? '000000' : randomCode();
     const codeHash = await hash(code);
-    const entry: PendingOtp = { codeHash, attempts: 0 };
+    const entry: PendingOtp = { codeHash };
 
     await this.withRedis(async () => {
       await redis.set(pendingKey(phone), JSON.stringify(entry), 'PX', OTP_TTL_MS);
       await redis.set(resendKey(phone), '1', 'PX', OTP_RESEND_COOLDOWN_MS);
+      await redis.del(attemptsKey(phone)); // a new code gets a fresh attempt budget
     });
 
     try {
       await this.sms.sendOtp(phone, code);
-    } catch {
+    } catch (error) {
+      if (error instanceof SmsNotAllowlistedError) {
+        // Staging only: tell testers plainly instead of a generic outage message.
+        throw new ForbiddenException('This number is not enabled for SMS on staging');
+      }
       throw new ServiceUnavailableException('Could not send verification code');
     }
 
@@ -101,30 +120,35 @@ export class AuthService {
     rawPhone: string,
     code: string,
     meta: SessionMeta,
+    inviteCode?: string | null,
   ): Promise<{ accessToken: string; refreshToken: string } | null> {
     const phone = this.normalize(rawPhone);
     const key = pendingKey(phone);
+
+    // Closed beta: check the invite before the OTP code is spent, so a bad invite does not
+    // cost the player their code. It is redeemed atomically when the account is created.
+    const gated = await this.inviteRequiredFor(phone);
+    if (gated) await this.assertInvite(inviteCode, meta.ip);
 
     const outcome = await this.withRedis(async () => {
       const raw = await redis.get(key);
       if (!raw) return { status: 'missing' as const };
 
       const entry = JSON.parse(raw) as PendingOtp;
-      if (entry.attempts >= OTP_MAX_ATTEMPTS) {
-        await redis.del(key);
+      // Claim an attempt atomically *before* checking the code. A read-modify-write of a
+      // counter in the entry let parallel guesses all read the same count, so the cap
+      // could be bypassed by sending many guesses at once.
+      const used = await redis.incr(attemptsKey(phone));
+      if (used === 1) await redis.pexpire(attemptsKey(phone), OTP_TTL_MS);
+      if (used > OTP_MAX_ATTEMPTS) {
+        await redis.del(key, attemptsKey(phone));
         return { status: 'locked' as const };
       }
 
       const ok = env.OTP_MOCK_ENABLED ? code === '000000' : await verify(entry.codeHash, code);
-      if (!ok) {
-        entry.attempts += 1;
-        const ttl = await redis.pttl(key);
-        if (ttl > 0) await redis.set(key, JSON.stringify(entry), 'PX', ttl);
-        else await redis.del(key);
-        return { status: 'invalid' as const };
-      }
+      if (!ok) return { status: 'invalid' as const };
 
-      await redis.del(key);
+      await redis.del(key, attemptsKey(phone));
       return { status: 'ok' as const };
     });
 
@@ -141,7 +165,7 @@ export class AuthService {
       return null;
     }
 
-    const user = await this.findOrCreateUser(phone, meta);
+    const user = await this.findOrCreateUser(phone, meta, gated ? (inviteCode ?? null) : undefined);
     if (!user) return null;
 
     await this.audit('identity.login', {
@@ -235,11 +259,51 @@ export class AuthService {
     return revoked.length;
   }
 
+  /**
+   * Whether `raw` can be this player's username: valid format and not held by anyone else
+   * (case-insensitive; the player's own current name counts as available).
+   */
+  async usernameAvailability(
+    userId: string,
+    raw: string,
+  ): Promise<{ username: string; available: boolean; reason: string | null }> {
+    const username = raw.trim();
+    const formatError = usernameError(username);
+    if (formatError) return { username, available: false, reason: formatError };
+    const taken = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(
+        and(
+          sql`lower(${schema.users.displayName}) = ${username.toLowerCase()}`,
+          ne(schema.users.id, userId),
+        ),
+      )
+      .limit(1);
+    return taken.length
+      ? { username, available: false, reason: 'That username is taken' }
+      : { username, available: true, reason: null };
+  }
+
   async updateMe(userId: string, data: UpdateMe) {
-    await db
-      .update(schema.users)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(schema.users.id, userId));
+    if (data.displayName) {
+      const check = await this.usernameAvailability(userId, data.displayName);
+      if (!check.available) {
+        throw new ConflictException({ code: 'username_taken', message: check.reason });
+      }
+    }
+    try {
+      await db
+        .update(schema.users)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(schema.users.id, userId));
+    } catch (error) {
+      // Two players claiming the same name at once: the unique index decides.
+      if (pgCode(error) === '23505') {
+        throw new ConflictException({ code: 'username_taken', message: 'That username is taken' });
+      }
+      throw error;
+    }
     return this.me(userId);
   }
 
@@ -302,7 +366,49 @@ export class AuthService {
       .where(and(eq(schema.sessions.familyId, familyId), isNull(schema.sessions.revokedAt)));
   }
 
-  private async findOrCreateUser(phone: string, meta: SessionMeta) {
+  /**
+   * The `beta.invite_only` flag. A method (not a direct call) so an integration test can
+   * turn the gate on for its own module instance without flipping the shared flag row
+   * under test files that run in parallel.
+   */
+  gate(): Promise<boolean> {
+    return inviteOnly();
+  }
+
+  /** True when the beta gate is on and this number has no account yet. */
+  private async inviteRequiredFor(phone: string): Promise<boolean> {
+    if (!(await this.gate())) return false;
+    const [existing] = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.phone, phone))
+      .limit(1);
+    // Existing accounts always sign in; the gate never locks anyone out.
+    return !existing;
+  }
+
+  /**
+   * Missing → "invite_required"; unusable → "invite_invalid" (never says whether the code
+   * exists but is full or expired). Wrong codes are rate-limited per IP.
+   */
+  private async assertInvite(inviteCode: string | null | undefined, ip?: string) {
+    if (!inviteCode?.trim())
+      throw new ForbiddenException({ code: 'invite_required', message: INVITE_COPY.required });
+    if (!(await inviteUsable(inviteCode))) {
+      await enforceRateLimit(
+        `beta:invite:bad:${ip ?? 'unknown'}`,
+        BAD_INVITE_LIMIT.max,
+        BAD_INVITE_LIMIT.windowMs,
+      );
+      throw new ForbiddenException({ code: 'invite_invalid', message: INVITE_COPY.invalid });
+    }
+  }
+
+  /**
+   * `invite` is undefined when the beta gate does not apply; otherwise the code must be
+   * redeemed in the same transaction that creates the account.
+   */
+  private async findOrCreateUser(phone: string, meta: SessionMeta, invite?: string | null) {
     const found = await db
       .select()
       .from(schema.users)
@@ -313,7 +419,28 @@ export class AuthService {
     if (existing?.deletedAt) return null; // banned/removed accounts cannot log in
 
     const id = uuidv7();
-    await db.insert(schema.users).values({ id, phone });
+    // Two verifications for the same new phone can race here. The unique phone index
+    // picks one winner; the loser reads the winner's row instead of failing with a 500.
+    // Under the beta gate the invite is redeemed in the same transaction: a code that ran
+    // out in the meantime rolls the account back.
+    const inserted = await db.transaction(async (tx) => {
+      const rows = await tx
+        .insert(schema.users)
+        .values({ id, phone })
+        .onConflictDoNothing({ target: schema.users.phone })
+        .returning({ id: schema.users.id });
+      if (rows.length > 0 && invite !== undefined && !(await redeemInvite(tx, invite, id)))
+        throw new ForbiddenException({ code: 'invite_invalid', message: INVITE_COPY.invalid });
+      return rows;
+    });
+    if (inserted.length === 0) {
+      const [winner] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.phone, phone))
+        .limit(1);
+      return winner && !winner.deletedAt ? winner : null;
+    }
     await this.audit('identity.user_created', {
       actorId: id,
       objectId: id,
@@ -377,4 +504,16 @@ export class AuthService {
       HttpStatus.TOO_MANY_REQUESTS,
     );
   }
+}
+
+/** Postgres error code from a driver error, which drizzle may wrap in `cause`. */
+function pgCode(error: unknown): string | undefined {
+  for (
+    let e = error as { code?: unknown; cause?: unknown } | undefined;
+    e;
+    e = e.cause as typeof e
+  ) {
+    if (typeof e.code === 'string') return e.code;
+  }
+  return undefined;
 }

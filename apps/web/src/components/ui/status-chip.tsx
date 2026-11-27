@@ -4,12 +4,12 @@ import { Icon, type IconName } from './icons';
 export type StatusChipVariant = 'neutral' | 'accent' | 'dispute' | 'win' | 'loss' | 'muted';
 
 const variants: Record<StatusChipVariant, string> = {
-  neutral: 'border-line bg-transparent text-fg-muted',
-  accent: 'border-accent/40 bg-accent-subtle text-accent',
-  dispute: 'border-dispute/40 bg-dispute/10 text-dispute',
-  win: 'border-win/40 bg-win/10 text-win',
-  loss: 'border-loss/40 bg-loss/10 text-loss',
-  muted: 'border-line bg-transparent text-fg-subtle',
+  neutral: 'bg-overlay text-fg-muted',
+  accent: 'bg-accent-subtle text-accent',
+  dispute: 'bg-warning/15 text-warning',
+  win: 'bg-success/15 text-success',
+  loss: 'bg-danger/15 text-danger',
+  muted: 'bg-transparent text-fg-subtle',
 };
 
 export interface StatusChipProps {
@@ -23,7 +23,7 @@ export function StatusChip({ label, variant = 'neutral', icon, className }: Stat
   return (
     <span
       className={cn(
-        'inline-flex h-6 items-center gap-1 rounded-[2px] border px-2 label-caps',
+        'inline-flex h-6 items-center gap-1 rounded-xs px-2 label-caps',
         variants[variant],
         className,
       )}

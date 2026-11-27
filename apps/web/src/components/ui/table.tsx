@@ -56,7 +56,7 @@ export function TableRow({
     <tr
       aria-selected={selected || undefined}
       className={cn(
-        'h-10 border-b border-line hover:bg-overlay',
+        'h-11 border-b border-line hover:bg-overlay',
         selected && 'shadow-[inset_2px_0_0_0_var(--accent)]',
         className,
       )}

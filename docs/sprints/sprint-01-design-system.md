@@ -118,12 +118,17 @@ This entire sprint IS the design doc. Fidelity requirement: a reviewer comparing
 
 - [x] F1.1 tokens.json complete per doc §2–§5; CSS + TS emit working; drift test green
 - [x] F1.2 Fonts self-hosted (Latin + Latin-Ext); Yoruba glyphs render; preload budget ≤ ~40 KB; tabular decision recorded
-- [x] F1.3 Theme wired dark default + light + system; radius scale 2/4/6; no pills/round avatars; theme choice persists
+- [x] F1.3 Theme wired dark default + light + system; radius scale 2/4/6; no pills/round avatars; theme choice persists (localStorage only; not saved to the profile, A5)
 - [x] F1.4 Button/Input/OTP/Chip/Banner/Toast/Sheet+Modal/Empty/Avatar/Badges/Table all built with doc variants+states
 - [x] F1.5 Icons: Lucide 16/20/24 square caps; status icon mapping implemented; publisher-logo + casino-imagery bans enforced
 - [x] F1.6 Motion tokens enforced; transform/opacity only; count-up stub with reduced-motion switch exists
-- [x] F1.7 Storybook + a11y addon up; every component's stories cover states×themes×widths; visual regression in CI; token changelog process documented
-- [x] Testing block all green; screenshots archived
+- [x] F1.7 Storybook + a11y addon up; every component's stories cover states×themes×widths; visual regression in CI; token changelog process documented (**in CI since 2026-11-21**: Visual job with committed Linux baselines, strict, run 44901950310; was audit #4)
+- [x] Testing block all green; screenshots archived (visual, a11y and behaviour specs in CI since 2026-11-21; snapshots uploaded as a CI artifact)
 - [x] Audit block done: accessibility, design-review, animation reviews passed or findings filed and fixed
 - [x] `[owner decision]` items surfaced: tabular numerals outcome, chamfer treatment after first on-screen review (doc §14), violet-fallback confirm
-- [ ] Sprint closed via `ship`: PR merged, CHANGELOG entry, checklist ticks committed
+- [x] Sprint closed via `ship`: PR merged, CHANGELOG entry, checklist ticks committed (shipped to `main` in the bootstrap history before the PR workflow; CHANGELOG "Sprints 0–2")
+
+## Re-audit (2026-11-16)
+
+- Dependency and asset bans re-checked: no icon fonts, no Orbitron, no blur packages.
+- Drift found in later code and fixed: the app shell header used `backdrop-blur` (Design §11 bans backdrop filters); it now uses a solid `bg-raised`. The Sprint 7 timeline used a pill progress bar and round 24px step markers (Design §4: no pills; only status dots are circles); both are now 2px radius.

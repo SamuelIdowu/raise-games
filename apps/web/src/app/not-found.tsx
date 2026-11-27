@@ -1,0 +1,27 @@
+'use client';
+
+import { ButtonLink } from '@/components/ui';
+
+export default function NotFound() {
+  return (
+    <main className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center gap-6 px-4">
+      <div className="text-center">
+        <span className="font-display text-[72px] font-bold text-accent">404</span>
+        <h1 className="mt-4 font-display text-mk-h1 uppercase text-fg text-balance">
+          Page not found
+        </h1>
+        <p className="mt-2 text-body-sm text-fg-muted">
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        </p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+        <ButtonLink href="/" fullWidth arrow>
+          Go home
+        </ButtonLink>
+        <ButtonLink href="/play" variant="secondary" fullWidth>
+          Browse challenges
+        </ButtonLink>
+      </div>
+    </main>
+  );
+}

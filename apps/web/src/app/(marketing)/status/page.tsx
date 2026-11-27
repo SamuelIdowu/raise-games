@@ -1,0 +1,140 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Banner, StatusChip } from '@/components/ui';
+
+interface HealthResponse {
+  status: 'ok' | 'degraded';
+  checks: {
+    api: boolean;
+    database: boolean;
+    redis: boolean;
+  };
+  env: string;
+  otpMock: boolean;
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between border-b border-line py-2 last:border-b-0">
+      <dt className="text-body-sm text-fg-muted">{label}</dt>
+      <dd className="font-display text-body-sm text-fg">{value}</dd>
+    </div>
+  );
+}
+
+export default function StatusPage() {
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+    async function fetchHealth() {
+      try {
+        const res = await fetch(`${apiBase}/health`, { cache: 'no-store' });
+        // 503 means the API is up but the database or Redis is not; its body has the details.
+        if (!res.ok && res.status !== 503) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setHealth(data);
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to connect');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center gap-6 p-6">
+        <div className="text-center">
+          <span className="font-display text-display font-bold uppercase tracking-tight text-accent">
+            Raise
+          </span>
+          <p className="mt-1 text-body-sm text-fg-muted">Checking connection…</p>
+        </div>
+        <div className="surface-card rounded-card p-5">
+          <div className="animate-pulse space-y-3">
+            <div className="h-5 w-2/5 bg-overlay rounded-sm mx-auto" />
+            <div className="h-8 w-full bg-overlay rounded-sm" />
+            <div className="h-8 w-full bg-overlay rounded-sm" />
+            <div className="h-8 w-full bg-overlay rounded-sm" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const healthy = health?.status === 'ok';
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center gap-6 p-6">
+      <header className="text-center">
+        <h1 className="font-display text-display font-bold uppercase tracking-tight text-fg">
+          Raise
+        </h1>
+        <p className="mt-1 text-body-sm text-fg-muted">System status</p>
+        <p className="label-caps mt-2 text-fg-subtle">
+          eFootball · Call of Duty: Mobile · PUBG Mobile
+        </p>
+      </header>
+
+      <section className="animate-in surface-card rounded-card p-5">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-display text-h2 font-black uppercase text-fg">API health</h2>
+          <StatusChip
+            label={healthy ? 'Healthy' : 'Degraded'}
+            variant={healthy ? 'win' : 'dispute'}
+            icon={healthy ? 'check-circle' : 'alert-triangle'}
+          />
+        </div>
+
+        <dl>
+          <Row
+            label="API"
+            value={
+              <span className={health?.checks.api ? 'text-success' : 'text-danger'}>
+                {health?.checks.api ? 'Online' : 'Offline'}
+              </span>
+            }
+          />
+          <Row
+            label="Database"
+            value={
+              <span className={health?.checks.database ? 'text-success' : 'text-danger'}>
+                {health?.checks.database ? 'Connected' : 'Disconnected'}
+              </span>
+            }
+          />
+          <Row
+            label="Redis"
+            value={
+              <span className={health?.checks.redis ? 'text-success' : 'text-fg-subtle'}>
+                {health?.checks.redis ? 'Connected' : 'Unavailable'}
+              </span>
+            }
+          />
+          <Row label="Environment" value={<span className="label-caps">{health?.env}</span>} />
+          <Row label="OTP mock" value={health?.otpMock ? 'Enabled (dev)' : 'Disabled'} />
+        </dl>
+
+        {error ? (
+          <Banner variant="offline" className="mt-3">
+            Can&apos;t reach the API — {error}
+          </Banner>
+        ) : null}
+      </section>
+
+      <footer className="text-center text-caption text-fg-subtle">
+        Next.js 16 · NestJS 11 · Drizzle · Postgres 17 · Redis
+      </footer>
+    </main>
+  );
+}

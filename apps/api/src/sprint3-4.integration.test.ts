@@ -41,16 +41,19 @@ describe('Sprint 3/4 Integration Tests', () => {
     await pool.end();
   }, 15000);
 
+  // Unique per run: users are not deleted between runs, so a counter that restarts at 0
+  // would hand later runs phones that already have users and sessions (flaky failures).
+  const runNonce = Date.now().toString().slice(-4);
   let phoneCounter = 0;
   function uniquePhone(): string {
-    const suffix = `${(phoneCounter++).toString().padStart(8, '0')}`;
+    const suffix = `${runNonce}${(phoneCounter++).toString().padStart(4, '0')}`;
     return `${basePhone}${suffix}`;
   }
 
   async function clearRedisForPhone(phone: string) {
     try {
       await ensureRedis();
-      const keys = [`otp:pending:${phone}`, `otp:resend:${phone}`];
+      const keys = [`otp:pending:${phone}`, `otp:resend:${phone}`, `otp:attempts:${phone}`];
       if (keys.length > 0) {
         await redis.del(...keys);
       }
@@ -159,8 +162,8 @@ describe('Sprint 3/4 Integration Tests', () => {
         .where(eq(schema.users.phone, phone))
         .limit(1);
       expect(user).toBeDefined();
-      expect(user.identityTier).toBe('tier1_phone_verified');
-      expect(user.role).toBe('player');
+      expect(user!.identityTier).toBe('tier1_phone_verified');
+      expect(user!.role).toBe('player');
     });
 
     it('should reject invalid OTP code', async () => {
@@ -189,6 +192,24 @@ describe('Sprint 3/4 Integration Tests', () => {
       for (let i = 0; i < 5; i++) {
         await authService.verifyOtp(phone, '111111', { userAgent: 'test', ip });
       }
+      const result = await authService.verifyOtp(phone, '000000', { userAgent: 'test', ip });
+      expect(result).toBeNull();
+    });
+
+    it('parallel wrong guesses cannot exceed the 5-attempt budget', async () => {
+      const phone = uniquePhone();
+      const ip = '127.0.0.1';
+      await clearRedisForPhone(phone);
+      await clearPhoneRateLimit(phone);
+      await clearIpRateLimit(ip);
+
+      await authService.requestOtp(phone, ip, 'test-agent');
+      // All fired at once: a non-atomic counter would let every one read "0 attempts".
+      await Promise.all(
+        Array.from({ length: 20 }, () =>
+          authService.verifyOtp(phone, '111111', { userAgent: 'test', ip }),
+        ),
+      );
       const result = await authService.verifyOtp(phone, '000000', { userAgent: 'test', ip });
       expect(result).toBeNull();
     });
@@ -221,7 +242,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      userId = user.id;
+      userId = user!.id;
     });
 
     it('should decode access token payload', async () => {
@@ -296,7 +317,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .where(eq(schema.sessions.userId, userId))
         .orderBy(schema.sessions.createdAt)
         .limit(1);
-      expect(session.deviceId).toBe('device-1');
+      expect(session!.deviceId).toBe('device-1');
     });
   });
 
@@ -324,7 +345,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      userId = user.id;
+      userId = user!.id;
     });
 
     it('should have player role by default', async () => {
@@ -386,7 +407,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      userId = user.id;
+      userId = user!.id;
     });
 
     it('should have default jurisdiction state null', async () => {
@@ -395,7 +416,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.id, userId))
         .limit(1);
-      expect(user.jurisdictionState).toBeNull();
+      expect(user!.jurisdictionState).toBeNull();
     });
 
     it('should have default identity tier tier1_phone_verified', async () => {
@@ -404,7 +425,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.id, userId))
         .limit(1);
-      expect(user.identityTier).toBe('tier1_phone_verified');
+      expect(user!.identityTier).toBe('tier1_phone_verified');
     });
 
     it('should have default KYC status none', async () => {
@@ -413,7 +434,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.id, userId))
         .limit(1);
-      expect(user.kycStatus).toBe('none');
+      expect(user!.kycStatus).toBe('none');
     });
 
     it('should have default age verification status pending', async () => {
@@ -422,7 +443,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.id, userId))
         .limit(1);
-      expect(user.ageVerificationStatus).toBe('pending');
+      expect(user!.ageVerificationStatus).toBe('pending');
     });
   });
 
@@ -448,7 +469,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      userId = user.id;
+      userId = user!.id;
     });
 
     it('should return consent status with both unaccepted', async () => {
@@ -493,7 +514,7 @@ describe('Sprint 3/4 Integration Tests', () => {
           ),
         )
         .limit(1);
-      expect(record.ip).toBe('192.168.1.1');
+      expect(record!.ip).toBe('192.168.1.1');
     });
   });
 
@@ -562,7 +583,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      userId = user.id;
+      userId = user!.id;
     });
 
     it('should create profile with in-game ID', async () => {
@@ -647,7 +668,7 @@ describe('Sprint 3/4 Integration Tests', () => {
         .from(schema.users)
         .where(eq(schema.users.phone, phone))
         .limit(1);
-      userId = user.id;
+      userId = user!.id;
       await profilesService.upsertProfile(userId, {
         gameKey: 'efootball',
         inGameId: 'Konami123',
@@ -661,12 +682,12 @@ describe('Sprint 3/4 Integration Tests', () => {
         .set({ displayName: 'TestPlayer' })
         .where(eq(schema.users.id, userId));
       const profiles = await profilesService.listMyProfiles(userId);
-      expect(profiles[0].displayName).toBe('TestPlayer');
+      expect(profiles[0]!.displayName).toBe('TestPlayer');
     });
 
     it('should include reputation as "new"', async () => {
       const profiles = await profilesService.listMyProfiles(userId);
-      expect(profiles[0].reputation).toBe('new');
+      expect(profiles[0]!.reputation).toBe('new');
     });
   });
 
@@ -774,7 +795,6 @@ describe('Sprint 3/4 Integration Tests', () => {
         const users = await db.select().from(schema.users).where(eq(schema.users.phone, phone));
         expect(users.length).toBe(1);
       },
-      15000,
     );
   });
 });

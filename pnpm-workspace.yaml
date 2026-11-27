@@ -10,3 +10,11 @@ allowBuilds:
   '@tailwindcss/oxide': true
   simple-git-hooks: true
   '@scarf/scarf': true
+  msgpackr-extract: true
+  # Pulled in by OpenTelemetry (Sprint 15). Its postinstall only prints a version notice.
+  protobufjs: false
+
+# Security: @nestjs/platform-fastify pins fastify 5.11.3, which has auth/validation-bypass
+# advisories (GHSA, fixed in 5.12.2–5.12.5). Force the patched line until Nest bumps its pin.
+overrides:
+  fastify: ^5.12.8

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db, schema } from '../db/client';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export interface GameFormatDto {
   id: string;
@@ -39,7 +39,7 @@ export class GamesService {
     const formats = await db
       .select()
       .from(schema.gameFormats)
-      .where(eq(schema.gameFormats.gameId, row.id));
+      .where(and(eq(schema.gameFormats.gameId, row.id), eq(schema.gameFormats.status, 'enabled')));
 
     return {
       id: row.id,

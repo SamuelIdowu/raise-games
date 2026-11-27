@@ -20,22 +20,30 @@ export interface MeResponse {
   createdAt: string;
 }
 
+export interface UsernameAvailability {
+  username: string;
+  available: boolean;
+  /** Why it can't be used (format, reserved or taken); null when available. */
+  reason: string | null;
+}
+
 export interface UpdateMeRequest {
   displayName?: string;
   jurisdictionState?: string;
 }
 
 export const authApi = {
-  requestOtp: (phone: string, turnstileToken?: string) =>
+  /** `inviteCode` is needed for new numbers while the closed beta is invite-only (Sprint 16). */
+  requestOtp: (phone: string, turnstileToken?: string, inviteCode?: string) =>
     apiFetch<OtpRequestResponse>('/auth/otp/request', {
       method: 'POST',
-      body: JSON.stringify({ phone, turnstileToken }),
+      body: JSON.stringify({ phone, turnstileToken, inviteCode: inviteCode || undefined }),
     }),
 
-  verifyOtp: (phone: string, code: string) =>
+  verifyOtp: (phone: string, code: string, inviteCode?: string) =>
     apiFetch<OtpVerifyResponse>('/auth/otp/verify', {
       method: 'POST',
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({ phone, code, inviteCode: inviteCode || undefined }),
     }),
 
   refresh: (refreshToken: string) =>
@@ -56,6 +64,23 @@ export const authApi = {
     }),
 
   me: () => apiFetch<MeResponse>('/auth/me'),
+
+  /** Audit B28: everything held about the player (right of access). */
+  exportMe: () => apiFetch<Record<string, unknown>>('/auth/me/export'),
+
+  /** Audit B28: delete the account; the username must be typed to confirm. */
+  deleteMe: (confirmUsername: string) =>
+    apiFetch<{ deleted: true }>('/auth/me/delete', {
+      method: 'POST',
+      body: JSON.stringify({ confirmUsername }),
+    }),
+
+  /** Live check while typing: format, reserved names and whether another player has it. */
+  usernameAvailable: (username: string, init?: { signal?: AbortSignal }) =>
+    apiFetch<UsernameAvailability>(
+      `/auth/username-available?username=${encodeURIComponent(username)}`,
+      init,
+    ),
 
   updateMe: (data: UpdateMeRequest) =>
     apiFetch<MeResponse>('/auth/me', {

@@ -22,7 +22,25 @@ function clearTokens() {
   localStorage.removeItem('refresh_token');
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+/**
+ * One refresh at a time. Refresh tokens rotate, so when several requests hit 401 together
+ * (a page plus its rail, or Promise.all), only the first may spend the token; the rest
+ * wait for that result. Without this, the losers got 401 from /auth/refresh, cleared the
+ * tokens and signed the player out.
+ */
+let inflightRefresh: Promise<boolean> | null = null;
+
+/** Rotates the refresh token. Exported so the WebSocket can re-auth after expiry. */
+export function refreshAccessToken(): Promise<boolean> {
+  if (!inflightRefresh) {
+    inflightRefresh = rotateRefreshToken().finally(() => {
+      inflightRefresh = null;
+    });
+  }
+  return inflightRefresh;
+}
+
+async function rotateRefreshToken(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
 
@@ -41,6 +59,16 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
+/**
+ * Called once the session is gone (refresh token expired, revoked, or from a reset
+ * database) and the tokens are cleared. The web app registers a redirect to sign-in on
+ * its signed-in pages; the client itself knows no page routes.
+ */
+let sessionExpiredHandler: (() => void) | null = null;
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  sessionExpiredHandler = handler;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -48,7 +76,11 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const accessToken = getAccessToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // Only declare JSON when there is a body: Fastify rejects an empty body sent
+    // as application/json, which broke body-less PATCH/POST calls (accept, decline, …).
+    ...(options.body !== undefined && options.body !== null
+      ? { 'Content-Type': 'application/json' }
+      : {}),
     ...(options.headers as Record<string, string>),
   };
   if (accessToken) {
@@ -62,18 +94,35 @@ export async function apiFetch<T>(
 
   if (res.status === 401 && retry) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) {
+    // Another tab may have rotated the tokens first: a newer access token is as good.
+    const rotatedElsewhere = !!getAccessToken() && getAccessToken() !== accessToken;
+    if (refreshed || rotatedElsewhere) {
       return apiFetch<T>(path, options, false);
     } else {
       clearTokens();
-      throw new Error('Authentication expired');
+      sessionExpiredHandler?.();
+      throw new ApiError('Your session ended. Sign in again.', 401, 'session_expired');
     }
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(
-      (error as { message?: string }).message ?? `Request failed with status ${res.status}`,
+    const error = (await res.json().catch(() => ({ message: res.statusText }))) as {
+      message?: string;
+      data?: { reason?: string } | null;
+    };
+    const reason = error.data?.reason ?? null;
+    // Play gate (audit #2): the terms changed or were never accepted. Send the player to
+    // re-accept and bring them back to this page afterwards.
+    if (reason === 'consent_required' && typeof window !== 'undefined') {
+      const here = window.location.pathname + window.location.search;
+      if (!window.location.pathname.startsWith('/onboarding/consent')) {
+        window.location.assign('/onboarding/consent?next=' + encodeURIComponent(here));
+      }
+    }
+    throw new ApiError(
+      error.message ?? `Request failed with status ${res.status}`,
+      res.status,
+      reason,
     );
   }
 
@@ -86,3 +135,15 @@ export function isAuthenticated(): boolean {
 }
 
 export { getAccessToken, getRefreshToken, setTokens, clearTokens };
+
+/** Failed API call. `reason` is a machine-readable code when the API sends one (e.g. 'mfa_required'). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly reason: string | null,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}

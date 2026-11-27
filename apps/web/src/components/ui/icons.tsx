@@ -1,6 +1,10 @@
 import {
   AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
   Ban,
+  BellOff,
+  Camera,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -12,20 +16,30 @@ import {
   Flag,
   Gamepad2,
   Home,
+  ImageIcon,
   Hourglass,
   Info,
   Loader2,
   Lock,
+  MapPin,
+  Bell,
+  Medal,
+  LogOut,
+  Settings,
   Mail,
   Menu,
+  Minus,
   Play,
   Plus,
+  RefreshCw,
   ShieldCheck,
   Star,
+  Trash2,
   Trophy,
   Undo2,
   Upload,
   User,
+  UserPlus,
   WifiOff,
   X,
   type LucideIcon,
@@ -59,9 +73,23 @@ export type IconName =
   | 'trophy'
   | 'mail'
   | 'user'
+  | 'user-plus'
+  | 'bell-off'
   | 'star'
   | 'upload'
-  | 'lock';
+  | 'lock'
+  | 'log-out'
+  | 'settings'
+  | 'minus'
+  | 'map-pin'
+  | 'bell'
+  | 'medal'
+  | 'camera'
+  | 'image'
+  | 'refresh'
+  | 'trash'
+  | 'trend-up'
+  | 'trend-down';
 
 const ICONS: Record<IconName, LucideIcon> = {
   circle: Circle,
@@ -90,9 +118,23 @@ const ICONS: Record<IconName, LucideIcon> = {
   trophy: Trophy,
   mail: Mail,
   user: User,
+  'user-plus': UserPlus,
+  'bell-off': BellOff,
   star: Star,
   upload: Upload,
   lock: Lock,
+  'map-pin': MapPin,
+  bell: Bell,
+  medal: Medal,
+  'log-out': LogOut,
+  settings: Settings,
+  minus: Minus,
+  camera: Camera,
+  image: ImageIcon,
+  refresh: RefreshCw,
+  trash: Trash2,
+  'trend-up': ArrowUpRight,
+  'trend-down': ArrowDownRight,
 };
 
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {

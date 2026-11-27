@@ -9,17 +9,17 @@ const variants: Record<
   { className: string; icon: IconName; iconClassName: string }
 > = {
   'needs-action': {
-    className: 'border-accent/40 bg-accent-subtle text-fg',
+    className: 'border-transparent border-l-accent bg-accent-subtle text-fg',
     icon: 'info',
     iconClassName: 'text-accent',
   },
   offline: {
-    className: 'border-line bg-raised text-fg-muted',
+    className: 'border-line border-l-line-strong bg-surface text-fg-muted',
     icon: 'wifi-off',
     iconClassName: 'text-fg-muted',
   },
   system: {
-    className: 'border-line bg-surface text-fg',
+    className: 'border-line border-l-brand bg-surface text-fg',
     icon: 'info',
     iconClassName: 'text-fg-muted',
   },
@@ -38,7 +38,7 @@ export function Banner({ variant = 'system', children, action, className }: Bann
     <div
       role="status"
       className={cn(
-        'flex items-start gap-2 rounded-card border p-3 text-body-sm',
+        'flex items-start gap-3 rounded-card border border-l-4 p-3 text-body-sm',
         config.className,
         className,
       )}

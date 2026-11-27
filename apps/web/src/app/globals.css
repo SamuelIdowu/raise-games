@@ -1,17 +1,27 @@
-@import "tailwindcss";
-@import "./tokens.css";
+@import 'tailwindcss';
+@import './tokens.css';
 
 @theme inline {
+  /* Layers: Tailwind v4 builds z-* classes from --z-index-*, so z-nav etc. need these. */
+  --z-index-base: var(--z-base);
+  --z-index-sticky: var(--z-sticky);
+  --z-index-nav: var(--z-nav);
+  --z-index-sheet: var(--z-sheet);
+  --z-index-toast: var(--z-toast);
+
   /* Surfaces + text */
   --color-bg: var(--bg-0);
-  --color-surface: var(--bg-1);
-  --color-raised: var(--bg-2);
-  --color-overlay: var(--bg-3);
+  --color-bg-subtle: var(--bg-1);
+  --color-surface: var(--bg-2);
+  --color-raised: var(--bg-3);
+  --color-overlay: var(--overlay);
   --color-line: var(--border);
   --color-line-strong: var(--border-strong);
+  --color-control: var(--control-border);
   --color-fg: var(--text-1);
   --color-fg-muted: var(--text-2);
   --color-fg-subtle: var(--text-3);
+  --color-fg-disabled: var(--fg-disabled);
 
   /* Interactive */
   --color-accent: var(--accent);
@@ -19,64 +29,174 @@
   --color-accent-press: var(--accent-press);
   --color-accent-subtle: var(--accent-subtle);
   --color-on-accent: var(--on-accent);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-press: var(--brand-press);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-on-brand: var(--on-brand);
+  --color-cream: var(--cream);
+  --color-on-cream: var(--on-cream);
+  --color-on-cyan: var(--on-cyan);
+  --color-cyan-300: var(--cyan-300);
+  --color-cyan-400: var(--cyan-400);
+  --color-cyan-500: var(--cyan-500);
+  --color-cyan-600: var(--cyan-600);
+  --color-cyan-700: var(--cyan-700);
+  --color-magenta-300: var(--magenta-300);
+  --color-magenta-500: var(--magenta-500);
+  --color-magenta-700: var(--magenta-700);
+  --color-purple-300: var(--purple-300);
+  --color-purple-400: var(--purple-400);
+  --color-purple-500: var(--purple-500);
+  --color-purple-600: var(--purple-600);
+  --color-purple-700: var(--purple-700);
+  --color-purple-900: var(--purple-900);
+  --color-shadow-ink: var(--shadow-ink);
+  --color-accent-ink: var(--accent-ink);
+  --color-brand-ink: var(--brand-ink);
+  --color-cream-ink: var(--cream-ink);
 
   /* Status (semantic only) */
   --color-win: var(--win);
+  --color-success: var(--win);
   --color-loss: var(--loss);
+  --color-danger: var(--loss);
   --color-dispute: var(--dispute);
+  --color-warning: var(--dispute);
+  --color-info: var(--brand);
   --color-scrim: var(--scrim);
 
-  /* shadcn variable mapping (Design §12) */
+  /* shadcn variable mapping */
   --color-background: var(--bg-0);
   --color-foreground: var(--text-1);
-  --color-card: var(--bg-1);
-  --color-popover: var(--bg-2);
+  --color-card: var(--bg-2);
+  --color-popover: var(--bg-3);
   --color-primary: var(--accent);
   --color-primary-foreground: var(--on-accent);
-  --color-muted: var(--bg-2);
+  --color-secondary: var(--bg-3);
+  --color-secondary-foreground: var(--text-1);
+  --color-muted: var(--bg-3);
   --color-muted-foreground: var(--text-2);
+  --color-accent-foreground: var(--on-accent);
   --color-destructive: var(--loss);
+  --color-destructive-foreground: var(--on-accent);
   --color-ring: var(--accent);
-  --color-input: var(--border);
+  --color-input: var(--control-border);
 
   /* Type */
-  --font-display: var(--font-chakra), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-chakra-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  --font-display: var(--font-unbounded, 'Unbounded'), var(--font-stack-display);
+  --font-body: var(--font-space-grotesk, 'Space Grotesk'), var(--font-stack-body);
+  --font-mono: var(--font-stack-mono);
+  --font-sans: var(--font-body);
 
-  --text-display: 32px;
-  --text-display--line-height: 36px;
-  --text-h1: 24px;
-  --text-h1--line-height: 28px;
-  --text-h2: 20px;
-  --text-h2--line-height: 24px;
-  --text-h3: 16px;
-  --text-h3--line-height: 20px;
-  --text-body: 16px;
-  --text-body--line-height: 24px;
-  --text-body-sm: 14px;
-  --text-body-sm--line-height: 20px;
-  --text-caption: 12px;
-  --text-caption--line-height: 16px;
-  --text-label: 12px;
-  --text-label--line-height: 16px;
-  --text-stat-lg: 28px;
-  --text-stat-lg--line-height: 32px;
-  --text-stat-md: 18px;
-  --text-stat-md--line-height: 24px;
+  --text-display: var(--type-display-size);
+  --text-display--line-height: var(--type-display-line);
+  --text-display--font-weight: var(--type-display-weight);
+  --text-display--letter-spacing: var(--type-display-tracking);
+  --text-h1: var(--type-h1-size);
+  --text-h1--line-height: var(--type-h1-line);
+  --text-h1--font-weight: var(--type-h1-weight);
+  --text-h1--letter-spacing: var(--type-h1-tracking);
+  --text-h2: var(--type-h2-size);
+  --text-h2--line-height: var(--type-h2-line);
+  --text-h2--font-weight: var(--type-h2-weight);
+  --text-h3: var(--type-h3-size);
+  --text-h3--line-height: var(--type-h3-line);
+  --text-h3--font-weight: var(--type-h3-weight);
+  --text-body: var(--type-body-size);
+  --text-body--line-height: var(--type-body-line);
+  --text-body--font-weight: var(--type-body-weight);
+  --text-body-sm: var(--type-body-sm-size);
+  --text-body-sm--line-height: var(--type-body-sm-line);
+  --text-body-sm--font-weight: var(--type-body-sm-weight);
+  --text-caption: var(--type-caption-size);
+  --text-caption--line-height: var(--type-caption-line);
+  --text-caption--font-weight: var(--type-caption-weight);
+  --text-label: var(--type-label-size);
+  --text-label--line-height: var(--type-label-line);
+  --text-label--font-weight: var(--type-label-weight);
+  --text-label--letter-spacing: var(--type-label-tracking);
+  --text-stat-lg: var(--type-stat-lg-size);
+  --text-stat-lg--line-height: var(--type-stat-lg-line);
+  --text-stat-lg--font-weight: var(--type-stat-lg-weight);
+  --text-stat-lg--letter-spacing: var(--type-stat-lg-tracking);
+  --text-stat-md: var(--type-stat-md-size);
+  --text-stat-md--line-height: var(--type-stat-md-line);
+  --text-stat-md--font-weight: var(--type-stat-md-weight);
 
-  /* Radius scale 0/2/4/6 (Design §4) */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-control: 2px;
-  --radius-card: 4px;
-  --radius-modal: 6px;
+  /* Marketing type */
+  --text-mk-display-xl: var(--type-mk-display-xl-size);
+  --text-mk-display-xl--line-height: var(--type-mk-display-xl-line);
+  --text-mk-display-xl--font-weight: var(--type-mk-display-xl-weight);
+  --text-mk-display-xl--letter-spacing: var(--type-mk-display-xl-tracking);
+  --text-mk-display-lg: var(--type-mk-display-lg-size);
+  --text-mk-display-lg--line-height: var(--type-mk-display-lg-line);
+  --text-mk-display-lg--font-weight: var(--type-mk-display-lg-weight);
+  --text-mk-display-lg--letter-spacing: var(--type-mk-display-lg-tracking);
+  --text-mk-h1: var(--type-mk-h1-size);
+  --text-mk-h1--line-height: var(--type-mk-h1-line);
+  --text-mk-h1--font-weight: var(--type-mk-h1-weight);
+  --text-mk-h1--letter-spacing: var(--type-mk-h1-tracking);
+  --text-mk-h2: var(--type-mk-h2-size);
+  --text-mk-h2--line-height: var(--type-mk-h2-line);
+  --text-mk-h2--font-weight: var(--type-mk-h2-weight);
+  --text-mk-h2-mixed: var(--type-mk-h2-mixed-size);
+  --text-mk-h2-mixed--line-height: var(--type-mk-h2-mixed-line);
+  --text-mk-h2-mixed--font-weight: var(--type-mk-h2-mixed-weight);
+  --text-mk-h3: var(--type-mk-h3-size);
+  --text-mk-h3--line-height: var(--type-mk-h3-line);
+  --text-mk-h3--font-weight: var(--type-mk-h3-weight);
+  --text-mk-h3--letter-spacing: var(--type-mk-h3-tracking);
+  --text-mk-metric: var(--type-mk-metric-size);
+  --text-mk-metric--line-height: var(--type-mk-metric-line);
+  --text-mk-metric--font-weight: var(--type-mk-metric-weight);
+  --text-mk-body-lg: var(--type-mk-body-lg-size);
+  --text-mk-body-lg--line-height: var(--type-mk-body-lg-line);
+  --text-mk-body-lg--font-weight: var(--type-mk-body-lg-weight);
+  --text-mk-body: var(--type-mk-body-size);
+  --text-mk-body--line-height: var(--type-mk-body-line);
+  --text-mk-body--font-weight: var(--type-mk-body-weight);
+  --text-mk-caption: var(--type-mk-caption-size);
+  --text-mk-caption--line-height: var(--type-mk-caption-line);
+  --text-mk-caption--font-weight: var(--type-mk-caption-weight);
+  --text-mk-caption--letter-spacing: var(--type-mk-caption-tracking);
+  --text-mk-label: var(--type-mk-label-size);
+  --text-mk-label--line-height: var(--type-mk-label-line);
+  --text-mk-label--font-weight: var(--type-mk-label-weight);
+  --text-mk-label--letter-spacing: var(--type-mk-label-tracking);
+  --text-mk-button: var(--type-mk-button-size);
+  --text-mk-button--line-height: var(--type-mk-button-line);
+  --text-mk-button--font-weight: var(--type-mk-button-weight);
+  --text-mk-button--letter-spacing: var(--type-mk-button-tracking);
+  --text-mk-legal: var(--type-mk-legal-size);
+  --text-mk-legal--line-height: var(--type-mk-legal-line);
+  --text-mk-legal--font-weight: var(--type-mk-legal-weight);
+
+  /* Radius */
+  --radius-xs: var(--radius-token-xs);
+  --radius-sm: var(--radius-token-sm);
+  --radius-md: var(--radius-token-md);
+  --radius-lg: var(--radius-token-lg);
+  --radius-control: var(--radius-token-control);
+  --radius-card: var(--radius-token-card);
+  --radius-modal: var(--radius-token-modal);
+  --radius-pill: var(--radius-token-pill);
+
+  /* Elevation (hard shadows, no soft drop shadows) */
+  --shadow-card: var(--elevation-card);
+  --shadow-hard: var(--elevation-hard);
+  --shadow-toast: var(--elevation-toast);
+  --shadow-glow: var(--elevation-glow);
 
   /* Motion */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: var(--motion-ease-standard);
+  --ease-enter: var(--motion-ease-enter);
+  --ease-exit: var(--motion-ease-exit);
 
-  /* Breakpoints */
+  /* Layout */
+  --container-content: var(--layout-max-content);
+  --container-marketing: var(--layout-marketing);
+  --container-reading: var(--layout-reading);
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
@@ -88,11 +208,29 @@
     border-color: var(--border);
   }
 
+  :root {
+    /* Legacy aliases until the remaining Chakra-era screens are migrated. */
+    --font-chakra: var(--font-unbounded, 'Unbounded');
+    --font-chakra-body: var(--font-space-grotesk, 'Space Grotesk');
+
+    /* Blocks.fun §7.3 secondary: cream on dark, ink on light. */
+    --btn-secondary-bg: var(--cream);
+    --btn-secondary-fg: var(--on-cream);
+    --btn-secondary-hover: var(--text-1);
+  }
+
+  [data-theme='light'] {
+    --btn-secondary-bg: var(--text-1);
+    --btn-secondary-fg: var(--bg-2);
+    --btn-secondary-hover: var(--text-2);
+  }
+
   html {
+    background-color: var(--bg-0);
     color-scheme: dark;
   }
 
-  html[data-theme="light"] {
+  html[data-theme='light'] {
     color-scheme: light;
   }
 
@@ -102,11 +240,22 @@
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  ::placeholder {
+    color: var(--text-3);
+    opacity: 1;
   }
 
   :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: var(--border-focus-offset);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -132,36 +281,295 @@
 
   .label-caps {
     font-family: var(--font-display);
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: var(--type-label-size);
+    line-height: var(--type-label-line);
+    font-weight: var(--type-label-weight);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--type-label-tracking);
   }
 
   .chamfer {
     clip-path: polygon(
-      6px 0,
+      var(--chamfer-md) 0,
       100% 0,
-      100% calc(100% - 6px),
-      calc(100% - 6px) 100%,
+      100% calc(100% - var(--chamfer-md)),
+      calc(100% - var(--chamfer-md)) 100%,
       0 100%,
-      0 6px
+      0 var(--chamfer-md)
     );
   }
 
+  .chamfer-sm {
+    clip-path: polygon(
+      var(--chamfer-sm) 0,
+      100% 0,
+      100% calc(100% - var(--chamfer-sm)),
+      calc(100% - var(--chamfer-sm)) 100%,
+      0 100%,
+      0 var(--chamfer-sm)
+    );
+  }
+
+  .chamfer-lg {
+    clip-path: polygon(
+      var(--chamfer-lg) 0,
+      100% 0,
+      100% calc(100% - var(--chamfer-lg)),
+      calc(100% - var(--chamfer-lg)) 100%,
+      0 100%,
+      0 var(--chamfer-lg)
+    );
+  }
+
+  /* Blocks.fun §5.2: single top-right notch (stat cards, banners). */
+  .chamfer-tr {
+    clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%);
+  }
+
+  .chamfer-tr-sm {
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  }
+
+  /* Blocks.fun §5.3: gradient card surface, hairline border, inset top highlight. */
+  .surface-card {
+    background: linear-gradient(180deg, var(--bg-3) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border);
+    box-shadow: var(--elevation-card);
+  }
+
+  [data-theme='light'] .surface-card {
+    background: var(--bg-2);
+  }
+
+  /* Blocks.fun §7.4: 6x6 accent pixel marker before an eyebrow label. */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: var(--type-mk-label-tracking);
+    text-transform: uppercase;
+    color: var(--text-1);
+  }
+
+  .eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    background: var(--accent);
+  }
+
+  /* Blocks.fun §2.2: purple spotlight for hero / create cards. */
+  .spotlight-purple {
+    background: radial-gradient(
+      60% 55% at 50% 0%,
+      var(--purple-600) 0%,
+      var(--purple-900) 45%,
+      var(--bg-2) 100%
+    );
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background-image: linear-gradient(90deg, var(--bg-3) 0%, var(--overlay) 50%, var(--bg-3) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  .pixel-bite {
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--pixel-bite)) 0,
+      100% var(--pixel-bite),
+      100% 100%,
+      var(--pixel-bite) 100%,
+      0 calc(100% - var(--pixel-bite))
+    );
+  }
+
+  /* Blocks.fun §4.5: full-bleed 24px pixel checker band between product area and footer. */
+  .checker-band {
+    height: 24px;
+    background-image: repeating-conic-gradient(
+      from 0deg,
+      var(--bg-3) 0deg 90deg,
+      var(--bg-0) 90deg 180deg
+    );
+    background-size: 12px 12px;
+  }
+
+  /* Sharp offset shadows, like the pixel icons. Ink colour per surface. */
+  /*
+   * Blocks.fun button shape: rounded corners with the top-right corner cut at 45deg.
+   * The fill lives on ::before (clipped); the button itself carries the sharp
+   * drop-shadow, which follows the clipped shape. Outline variants paint the
+   * border colour on ::before and the inner fill on ::after.
+   *   --btn-bg    fill (or border colour for outline variants)
+   *   --btn-fill  inner fill for outline variants (default: none)
+   *   --btn-cut   size of the corner cut
+   *   --hard-ink  shadow colour
+   */
+  .btn-chamfer {
+    position: relative;
+    isolation: isolate;
+    border: 0;
+    background: transparent;
+    filter: drop-shadow(3px 3px 0 var(--hard-ink, transparent));
+    transition:
+      transform var(--motion-micro) var(--motion-ease-standard),
+      filter var(--motion-micro) var(--motion-ease-standard),
+      color var(--motion-micro);
+  }
+
+  .btn-chamfer::before,
+  .btn-chamfer::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: var(--radius-token-control);
+    transition: background-color var(--motion-micro);
+  }
+
+  .btn-chamfer::before {
+    inset: 0;
+    background: var(--btn-bg, transparent);
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--btn-cut, 9px)) 0,
+      100% var(--btn-cut, 9px),
+      100% 100%,
+      0 100%
+    );
+  }
+
+  .btn-chamfer::after {
+    inset: 1px;
+    border-radius: calc(var(--radius-token-control) - 1px);
+    background: var(--btn-fill, transparent);
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--btn-cut, 9px) + 0.4px) 0,
+      100% calc(var(--btn-cut, 9px) - 0.4px),
+      100% 100%,
+      0 100%
+    );
+  }
+
+  .btn-chamfer:hover {
+    transform: translate(-1px, -1px);
+    filter: drop-shadow(4px 4px 0 var(--hard-ink, transparent));
+  }
+
+  .btn-chamfer:active {
+    transform: translate(2px, 2px);
+    filter: drop-shadow(1px 1px 0 var(--hard-ink, transparent));
+  }
+
+  .btn-chamfer:disabled {
+    --btn-bg: var(--bg-3);
+    --btn-fill: transparent;
+    --hard-ink: transparent;
+    transform: none;
+  }
+
+  .shadow-hard {
+    box-shadow: 4px 4px 0 0 var(--hard-ink, var(--shadow-ink));
+  }
+
+  .shadow-hard-sm {
+    box-shadow: 3px 3px 0 0 var(--hard-ink, var(--shadow-ink));
+  }
+
+  /* For clip-path shapes (chamfers), where box-shadow is clipped away. */
+  .drop-hard {
+    filter: drop-shadow(4px 4px 0 var(--hard-ink, var(--shadow-ink)));
+  }
+
+  .drop-hard-sm {
+    filter: drop-shadow(2px 2px 0 var(--hard-ink, var(--shadow-ink)));
+  }
+
+  /* Tiny pixel crosses scattered on dark backgrounds (hero decoration, §7.5). */
+  .pixel-field {
+    background-image:
+      linear-gradient(var(--accent) 0 0), linear-gradient(var(--accent) 0 0),
+      linear-gradient(var(--brand) 0 0), linear-gradient(var(--brand) 0 0);
+    background-size:
+      6px 2px,
+      2px 6px,
+      6px 2px,
+      2px 6px;
+    background-position:
+      12% 22%,
+      calc(12% + 2px) calc(22% - 2px),
+      86% 64%,
+      calc(86% + 2px) calc(64% - 2px);
+    background-repeat: no-repeat;
+  }
+
+  @keyframes float {
+    from {
+      transform: translateY(0) rotate(var(--float-rot, 0deg));
+    }
+    to {
+      transform: translateY(-10px) rotate(calc(var(--float-rot, 0deg) + 4deg));
+    }
+  }
+
+  .animate-float {
+    animation: float 7s var(--motion-ease-standard) infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float {
+      animation: none;
+    }
+  }
+
   .animate-in {
-    animation: animate-in var(--motion-default) var(--ease-standard);
+    animation: animate-in var(--motion-default) var(--ease-enter);
   }
 
   @keyframes animate-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 30s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee {
+      animation: none;
     }
   }
 }

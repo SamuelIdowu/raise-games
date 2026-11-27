@@ -22,6 +22,139 @@
       "when": 1794479693575,
       "tag": "0002_huge_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794479694575,
+      "tag": "0003_pretty_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794691999809,
+      "tag": "0004_sprint6_matches",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794744508546,
+      "tag": "0005_state_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794745921795,
+      "tag": "0006_sprint7_messaging",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794746977314,
+      "tag": "0007_sprint8_results",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794831756867,
+      "tag": "0008_sprint9_disputes",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794851036976,
+      "tag": "0009_audit_fixes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794851502186,
+      "tag": "0010_sprint10_ratings",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794871781656,
+      "tag": "0011_sprint11_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794919043666,
+      "tag": "0012_sprint12_trust_ops",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794952109286,
+      "tag": "0013_sprint13_ledger_prep",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794952307324,
+      "tag": "0014_sprint13_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794956062745,
+      "tag": "0015_sprint14_dm",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795007363250,
+      "tag": "0016_sprint16_beta",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795169308880,
+      "tag": "0017_hardening_idempotency_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795263091350,
+      "tag": "0018_email_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795267783582,
+      "tag": "0019_uploads_purged_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795695222736,
+      "tag": "0020_username_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795721582992,
+      "tag": "0021_group_challenge_targets",
+      "breakpoints": true
     }
   ]
 }

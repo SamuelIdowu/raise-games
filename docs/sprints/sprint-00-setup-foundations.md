@@ -165,9 +165,16 @@ Per Setup Guide §8/§10.3:
 - [x] F0.6 Five packages each `build` via Turbo; tokens/schemas/types importable from web and api
 - [x] F0.7 Sign-in endpoint creates user + session via mock OTP; refresh rotation works
 - [x] F0.8 First migration created + applied; all 11 day-one tables exist with UUIDv7/timestamptz/minor-units conventions
-- [x] F0.9 CI green on `main`; branch protection enforced (github MCP screenshot/dashboard proof)
+- [~] F0.9 CI green on `main`; branch protection enforced (github MCP screenshot/dashboard proof). **Audit 2026-11-20:** protection requires 0 approvals (spec: 1); E2E, perf, load and gitleaks are not required checks; no OpenAPI client regeneration job (A6, B17, B18; see `audit-deployability-2026-11-20.md`)
 - [ ] F0.10 Region latency numbers recorded; hosting provider chosen `[owner decision]` issue closed
 - [ ] F0.11 Staging deployed; Turnstile/Sentry/PostHog/ToS stub live; secrets from manager; OTP mock asserted off
 - [ ] F0.12 M0 exit proof recorded (staging login walkthrough) → **Delivery Plan M0 exit met**
 - [ ] Sprint audit pass: cso + differential-review findings fixed or filed
 - [ ] `learn` run: setup learnings persisted for future sprints
+
+## Re-audit note (2026-11-16)
+
+Checklist items above stay open (staging, hosting, M0 exit proof, and the full Sprint 0 audit pass are owner and infrastructure work). Two Sprint 0 audit checks were done in the all-sprints audit:
+
+- No `.env` file has ever been committed (`git log --all` on every `.env` path), and no real secrets are in tracked files.
+- The web shell had no security headers. It now sends a CSP (the Next.js "without nonces" policy, because Cache Components rule out nonces), `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Permissions-Policy`, COOP, and HSTS in production. The API keeps helmet with CSP off, which is fine for a JSON API.

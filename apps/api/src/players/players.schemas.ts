@@ -3,6 +3,8 @@ import { RANK_TIERS } from '@raise/types';
 
 export const playerSearchSchema = z.object({
   game: z.string().min(1).max(64).optional(),
+  /** Username contains (case-insensitive), for picking players to challenge. */
+  q: z.string().trim().min(1).max(32).optional(),
   rank: z.enum(RANK_TIERS).optional(),
   campus: z.string().min(1).max(64).optional(),
   city: z.string().min(1).max(64).optional(),

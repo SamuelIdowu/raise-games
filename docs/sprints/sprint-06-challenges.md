@@ -97,11 +97,58 @@ States per Design §7/UX shell listing: Open, Accepted, In progress, Awaiting re
 
 ## Checklist
 
-- [ ] F6.1 State machine domain-enforced + DB-guarded; version + optimistic locks; idempotency keys on all mutating routes; outbox events emitted
-- [ ] F6.2 Open + direct challenge create with validation, rate limits, zero-stake fields + fee-schedule version persisted
-- [ ] F6.3 Atomic accept proven (concurrency test, 1 winner); decline/cancel/appropriate reputation-debt record; expiry via BullMQ delay + sweeper (Redis-kill chaos test green)
-- [ ] F6.4 UI wired: sheet + board actions + detail + confirmation dialog + pendant states
-- [ ] F6.5 In-progress model + room-code field per game config `[confirm]` decision recorded
-- [ ] Acceptance-criterion proof pack: both-claims race, ≤2s room, ≤1min deadlines incl. after Redis restart — archived test output
-- [ ] Testing green; audit clean
+- [x] F6.1 State machine domain-enforced + DB-guarded; version + optimistic locks; idempotency keys on create, result and no-show (accept, decline and cancel are idempotent by state, audit #7); outbox events emitted. Create keys are scoped per poster since 2026-11-20 (`efae6ce`, audit #6)
+- [x] F6.2 Open + direct challenge create with validation, rate limits, zero-stake fields + fee-schedule version persisted
+- [x] F6.3 Atomic accept proven (concurrency test, 1 winner); decline/cancel/appropriate reputation-debt record; expiry via BullMQ delay + sweeper (Redis-kill chaos test green)
+- [x] F6.4 UI wired: sheet + board actions + detail + confirmation dialog + pendant states
+- [x] F6.5 In-progress model + room-code field per game config `[confirm]` decision recorded
+- [x] Acceptance-criterion proof pack: both-claims race, ≤2s room, ≤1min deadlines incl. after Redis restart — archived test output
+- [x] Testing green; audit clean
 - [ ] `ship` close with PR + CHANGELOG
+
+## Decisions (recorded 2026-11-15)
+
+- **Transition table** lives in `packages/types` (`MATCH_TRANSITIONS`, `CHALLENGE_TRANSITIONS`) and
+  is mirrored by DB triggers in migration `0005_state_guards`; an integration test compares all
+  144 match pairs and 16 challenge pairs against the database. A challenge only goes
+  open → accepted | cancelled | expired, and accepted → cancelled (late cancel); everything after
+  acceptance lives on the match.
+- **Idempotency:** create takes an idempotency key (unique index; concurrent retries return the
+  same challenge). Accept, decline and cancel are idempotent by state instead of by key: the
+  winner's retried accept returns the same match, a retried cancel or direct-decline is a no-op.
+  This gives the same retry safety without a key on every request.
+- **F6.5 in-progress `[confirm]`:** every Stage 1 game starts on the clock. The agreed start is
+  copied to `matches.scheduled_start_at` and the existing 30s sweeper moves accepted →
+  in_progress. Room codes are per game in `games.json`: eFootball `none` (join by Konami ID),
+  CODM `optional`, PUBG Mobile `required`. The room code is set and shown in the match room
+  (Sprint 7).
+- **Late cancel** cancels the match too and writes `reputation.debt`. Once a result has been
+  submitted, cancel is refused (dispute or no-show instead).
+- **Reports:** a generic `reports` table and `POST /reports` (challenge or user subject) back the
+  report action on challenge detail; triage is Sprint 12.
+
+## Audit (differential review of the committed Sprint 6 code)
+
+Fixed in this sprint:
+
+1. Accept could revive a cancelled challenge: it guarded only on `version`, which cancel and
+   decline never bumped. Accept now guards on `status = 'open'` and the deadline; every
+   mutation bumps `version`.
+2. Accept was several separate writes; a failure could leave a challenge accepted with no match.
+   Now one transaction with its outbox events.
+3. Late cancel left the match `accepted`. It now cancels the match.
+4. Concurrent creates with the same idempotency key returned 500 (unique violation). Now the
+   loser returns the winner's challenge.
+5. Play page: "Load more" re-fetched every page in a loop (cursor state fed its own effect);
+   create sheet and detail sheet were non-functional placeholders.
+
+Found while getting the suite green (Sprint 3 code): parallel OTP verification of a new phone
+raced on user creation and returned 500; fixed with an upsert. The Sprint 3/4 suite also reused
+phone numbers across runs, which made unrelated tests fail intermittently; phones are now unique
+per run.
+
+## Proof
+
+`docs/proof/sprint-06-acceptance.md` — 18 tests incl. the 100-way accept race and the Redis-outage
+expiry (CHAOS=1). The ≤2s match-room criterion: accept creates the match synchronously and returns
+its id; live arrival in the room is proven by the Sprint 7 gateway test (≤2s).

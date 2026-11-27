@@ -30,6 +30,28 @@ services:
       timeout: 3s
       retries: 10
 
+  # S3-compatible stand-in for Cloudflare R2 (Sprint 8 result screenshots).
+  # SeaweedFS verifies SigV4 signatures, so presigned-URL expiry and signing are exercised locally.
+  # The API creates the private bucket on boot when STORAGE_AUTO_CREATE_BUCKET=true (dev/test only).
+  storage:
+    image: chrislusf/seaweedfs:3.85
+    container_name: raise-storage
+    command:
+      [
+        'server',
+        '-dir=/data',
+        '-s3',
+        '-s3.port=9000',
+        '-s3.config=/etc/seaweedfs/s3.json',
+        '-s3.allowedOrigins=http://localhost:3000,http://localhost:3100',
+      ]
+    ports:
+      - '9000:9000'
+    volumes:
+      - storagedata:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+
 volumes:
   pgdata:
   redisdata:
+  storagedata:

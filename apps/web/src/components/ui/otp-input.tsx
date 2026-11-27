@@ -13,6 +13,8 @@ export interface OtpInputProps {
   error?: string;
   resendSeconds?: number;
   onResend?: () => void;
+  /** Focus the first box on mount. */
+  autoFocus?: boolean;
 }
 
 export function OtpInput({
@@ -24,6 +26,7 @@ export function OtpInput({
   error,
   resendSeconds = 0,
   onResend,
+  autoFocus = false,
 }: OtpInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const chars = Array.from({ length }, (_, index) => value[index] ?? '');
@@ -67,8 +70,8 @@ export function OtpInput({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div role="group" aria-label={label} className="flex gap-2">
+    <div className="flex flex-col items-center gap-3">
+      <div role="group" aria-label={label} className="flex justify-center gap-2">
         {chars.map((char, index) => (
           <input
             key={index}
@@ -82,31 +85,32 @@ export function OtpInput({
             inputMode="numeric"
             autoComplete={index === 0 ? 'one-time-code' : 'off'}
             maxLength={1}
+            autoFocus={autoFocus && index === 0}
             disabled={disabled}
             aria-label={`Digit ${index + 1} of ${length}`}
             aria-invalid={error ? true : undefined}
             className={cn(
-              'h-[52px] w-11 rounded-control border bg-raised text-center font-display text-[20px] text-fg tabular focus:border-accent focus:outline-none disabled:opacity-40',
-              error ? 'border-loss' : 'border-line',
+              'h-11 w-11 rounded-control border bg-raised text-center font-display text-h3 font-black uppercase text-fg tabular ' +
+                'focus:border-accent focus:outline-none disabled:opacity-40 ' +
+                'transition-colors duration-[var(--motion-micro)] ease-standard',
+              error ? 'border-loss' : 'border-control',
             )}
           />
         ))}
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center gap-2 text-center">
         {error ? (
           <p className="flex items-center gap-1 text-caption text-loss">
             <Icon name="alert-triangle" size={16} />
             {error}
           </p>
-        ) : (
-          <span />
-        )}
+        ) : null}
         {onResend ? (
           <button
             type="button"
             onClick={onResend}
             disabled={resendSeconds > 0}
-            className="text-caption text-accent disabled:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="text-caption text-accent disabled:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent text-center transition-colors duration-[var(--motion-micro)] ease-standard"
           >
             {resendSeconds > 0 ? `Resend code in ${resendSeconds}s` : 'Resend code'}
           </button>

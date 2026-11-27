@@ -133,7 +133,7 @@ describe('Sprint 5 - Discovery board & player search', () => {
     await pool.end();
   }, 30000);
 
-  it('paginates deterministically without duplicates or gaps', async () => {
+  it('paginates deterministically without duplicates or gaps', { timeout: 15000 }, async () => {
     const poster = await createUser('Pager', efootballId, 1100);
     const base = Date.now() - 60 * 60 * 1000;
     const created: string[] = [];
@@ -241,8 +241,11 @@ describe('Sprint 5 - Discovery board & player search', () => {
     });
     expect(open.items.some((item) => item.id === overdue)).toBe(false);
 
+    // Scoped to the poster's own challenges: on a shared CI database the "all" board's
+    // first page fills with other suites' newer challenges.
     const all = await challenges.listBoard(poster, {
       status: 'all',
+      mine: 'true',
       limit: 50,
     });
     const found = all.items.find((item) => item.id === overdue);

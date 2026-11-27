@@ -29,12 +29,31 @@ export interface ChallengeCard {
   };
   ratingGap: null;
   isMine: boolean;
+  /** Addressed to the viewer: a direct challenge, or a group they are in. */
+  isForMe: boolean;
+  /** Who can accept: anyone on the board, one player, or a group (first to accept plays). */
+  audience: 'open' | 'direct' | 'group';
+  /** Group challenges: the invited players (declined ones are marked). */
+  group?: Array<{ userId: string; username: string; declined: boolean }>;
+  /** Detail view only. */
+  rules?: string;
+  /** Detail view, direct challenges only. */
+  target?: {
+    userId: string;
+    username: string;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    provisional: boolean;
+  } | null;
 }
 
 export interface BoardQuery {
   game?: string;
   status?: 'open' | 'all';
   mine?: 'true' | 'false';
+  forMe?: 'true' | 'false';
   campus?: string;
   city?: string;
   cursor?: string;
@@ -48,6 +67,18 @@ export interface BoardResponse {
   needsActionCount: number;
 }
 
+export interface CreateChallengeRequest {
+  gameKey: string;
+  formatKey: string;
+  rules?: string;
+  startsAt: string;
+  endsAt: string;
+  targetPlayerId?: string;
+  /** Group challenge: 2-10 players; the first to accept plays. */
+  targetPlayerIds?: string[];
+  idempotencyKey?: string;
+}
+
 export const challengesApi = {
   list: (query: BoardQuery = {}) => {
     const params = new URLSearchParams();
@@ -58,4 +89,27 @@ export const challengesApi = {
     });
     return apiFetch<BoardResponse>(`/challenges?${params.toString()}`);
   },
+
+  get: (id: string) => apiFetch<ChallengeCard>(`/challenges/${id}`),
+
+  create: (data: CreateChallengeRequest) =>
+    apiFetch<{ id: string }>('/challenges', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  accept: (id: string) =>
+    apiFetch<{ matchId: string }>(`/challenges/${id}/accept`, {
+      method: 'PATCH',
+    }),
+
+  decline: (id: string) =>
+    apiFetch<{ success: boolean }>(`/challenges/${id}/decline`, {
+      method: 'PATCH',
+    }),
+
+  cancel: (id: string) =>
+    apiFetch<{ success: boolean }>(`/challenges/${id}/cancel`, {
+      method: 'PATCH',
+    }),
 };

@@ -57,10 +57,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role={item.variant === 'error' ? 'alert' : 'status'}
             className={cn(
-              'pointer-events-auto w-full max-w-md rounded-card border p-3 text-body-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)]',
-              item.variant === 'error'
-                ? 'border-loss/50 bg-surface text-fg'
-                : 'border-line bg-raised text-fg',
+              'pointer-events-auto w-full max-w-md rounded-sm border border-line border-l-4 bg-raised p-3 text-body-sm shadow-hard',
+              item.variant === 'error' ? 'border-l-loss text-fg' : 'border-l-accent text-fg',
             )}
           >
             <div className="flex items-start gap-2">

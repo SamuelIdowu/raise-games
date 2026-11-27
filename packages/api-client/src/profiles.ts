@@ -1,4 +1,5 @@
 import { apiFetch } from './fetch';
+import type { ReputationLevel } from './leaderboards';
 
 export interface GameProfile {
   id: string;
@@ -16,7 +17,10 @@ export interface GameProfile {
   draws: number;
   streak: number;
   provisional: boolean;
-  reputation: 'new';
+  ratedMatches: number;
+  rankTier: string;
+  rankLabel: string;
+  reputation: ReputationLevel;
   createdAt: string;
   updatedAt: string;
 }
