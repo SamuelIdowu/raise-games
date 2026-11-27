@@ -9,24 +9,24 @@ Owner: engineer. Decision: `docs/decisions/0008-hosting.md`. **Staging only.** N
 | Web        | Render free web service (`render.yaml`)     | Frankfurt    | Sleeps after 15 min idle; 750 h/month per workspace (enough for one service) |
 | API        | Koyeb free instance (`apps/api/Dockerfile`) | Frankfurt    | 512 MB RAM, 0.1 vCPU, one per organisation; sleeps after 1 h idle            |
 | Redis      | Render free Key Value (`render.yaml`)       | Frankfurt    | 25 MB, 50 connections, no persistence                                        |
-| Postgres   | Supabase free                               | eu-central-1 | 500 MB; paused after 1 week idle (the API's constant queries prevent it)     |
-| Files      | Supabase Storage, S3-compatible endpoint    | same project | 1 GB; R2 is the production choice but needs a card even on its free tier     |
+| Postgres   | Neon free                                   | eu-central-1 | 100 compute-hours/month, 1 GB storage; see "Neon runs out mid-month"         |
+| Files      | Supabase Storage, S3-compatible endpoint    | eu-central-1 | 1 GB; R2 is the production choice but needs a card even on its free tier     |
 | SMS        | Twilio trial                                | n/a          | Trial credit; sends only to verified numbers (matches `SMS_ALLOWLIST`)       |
 | Bot check  | Cloudflare Turnstile                        | n/a          | Free                                                                         |
 | Keep-awake | Cloudflare Worker cron (`infra/keepalive`)  | n/a          | Free plan; pings both services every 10 min                                  |
 
-Why these: Neon's free plan has 100 compute-hours a month and the API queries Postgres every 30 s (expiry sweeper), so it would be suspended around day 16. Aiven's free plan powers off when idle. Vercel's free plan forbids commercial use. Cloudflare Workers cannot run the API (Socket.IO, BullMQ, argon2 and sharp need Node).
+Why these: Neon is the owner's choice for Postgres (2026-11-27), accepting its compute-hour cap (below). Aiven's free plan powers off when idle. Vercel's free plan forbids commercial use. Cloudflare Workers cannot run the API (Socket.IO, BullMQ, argon2 and sharp need Node).
 
 ## Setup, in order
 
 Each step gives a value that a later step needs. Keep them in a password manager, not in the repo.
 
-### 1. Supabase (Postgres and file storage)
+### 1. Neon (Postgres) and Supabase (file storage)
 
-1. Create a project in **eu-central-1 (Frankfurt)**. Save the database password.
-2. **Database URL:** Connect → **Session pooler** (IPv4; the direct host is IPv6-only and transaction mode breaks the migration's advisory lock). Use it as `DATABASE_URL` with `?sslmode=no-verify` appended (the pooler certificate is not publicly signed; staging only):
-   `postgresql://postgres.<ref>:<password>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=no-verify`
-3. **Storage:** create a **private** bucket `raise-proof-screenshots`. Settings → Storage → S3 connection: enable it and create an access key. Note the endpoint (`https://<ref>.storage.supabase.co/storage/v1/s3`) and region (`eu-central-1`).
+1. **Neon:** create a project in **AWS eu-central-1 (Frankfurt)**, Postgres 17. Copy the **direct** connection string (Connection details → turn _Connection pooling_ off). The pooled endpoint runs PgBouncer in transaction mode, which breaks the migration's advisory lock; the API's own pool (10 connections) is well inside Neon's limit. Use it as `DATABASE_URL`, keeping `sslmode=require` (Neon's certificate is publicly signed):
+   `postgresql://<user>:<password>@ep-<name>.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+2. **Supabase (storage only):** create a project in **eu-central-1 (Frankfurt)**. Its database goes unused.
+3. **Storage:** in that Supabase project, create a **private** bucket `raise-proof-screenshots`. Settings → Storage → S3 connection: enable it and create an access key. Note the endpoint (`https://<ref>.storage.supabase.co/storage/v1/s3`) and region (`eu-central-1`).
 
 ### 2. Render (web and Redis)
 
@@ -58,7 +58,7 @@ Create a Web Service from this GitHub repo:
 | `NODE_OPTIONS`                                 | `--max-old-space-size=384` (512 MB instance)                      |
 | `PORT`                                         | `3001`                                                            |
 | `TRUST_PROXY`                                  | `1` (Koyeb's edge)                                                |
-| `DATABASE_URL`                                 | step 1.2                                                          |
+| `DATABASE_URL`                                 | step 1.1                                                          |
 | `REDIS_URL`                                    | step 2.2 (`rediss://…`)                                           |
 | `JWT_ACCESS_SECRET`                            | `openssl rand -base64 48`                                         |
 | `MFA_ENCRYPTION_KEY`                           | `openssl rand -base64 32`                                         |
@@ -93,7 +93,7 @@ Check Workers → `raise-staging-keepalive` → Logs after 10 minutes: both URLs
 
 ## Smoke test
 
-1. `https://<koyeb-app>.koyeb.app/health` returns 200 (503 means Postgres or Redis is unreachable: check the URLs from steps 1–2).
+1. `https://<koyeb-app>.koyeb.app/health` returns 200 (503 means Postgres or Redis is unreachable: check the URLs from steps 1–2; if Postgres, check Neon's compute-hour usage first).
 2. Open the web URL and sign up with a verified tester phone. The OTP arrives by SMS.
 3. Two testers on two devices: create a challenge, accept it, chat in the match room (WebSockets through Koyeb), submit a result with a screenshot (Supabase Storage).
 4. `/docs` on the API shows the route map (staging only; production returns 404).
@@ -102,6 +102,7 @@ The screenshot upload is the least certain part of this setup: the browser PUTs 
 
 ## Known limits
 
+- **Neon runs out mid-month.** The free plan has 100 compute-hours a month per project, and a compute only stops counting after 5 minutes without queries. The API queries Postgres every 30 s (expiry sweeper, `apps/api/src/challenges/challenges.expiry.worker.ts`), so the smallest compute (0.25 CU) never suspends: about 180 CU-hours a month, so the database stops around day 16 and `/health` returns 503 until the monthly reset. Watch usage on Neon's dashboard. Options when it bites: create a fresh Neon project and re-run migrations (staging data is disposable), or move Postgres to Supabase's free database (no compute-hour cap).
 - The first request after a deploy, or after the keep-awake Worker misses a run, can take up to a minute (Render) or a few seconds (Koyeb).
 - 0.1 vCPU makes password and OTP hashing (argon2) slow. Fine for testers, not a performance measurement: Sprint 15 load and latency runs need real staging on paid hosting.
 - Keeping free services awake on purpose may conflict with the providers' fair-use terms. If a provider objects, stop the Worker.

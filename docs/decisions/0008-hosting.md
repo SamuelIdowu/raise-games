@@ -58,11 +58,12 @@ Reading: the African regions are the slowest from Lagos (traffic reaches Europe 
 
 ### Staging: free hosting, $0 (owner, 2026-11-27)
 
-Web on Render free, API on Koyeb free, Redis on Render free Key Value, Postgres and file storage on Supabase free, all in Frankfurt; a Cloudflare cron Worker keeps the sleeping services awake. Setup and limits: `docs/runbooks/staging-free.md`.
+Web on Render free, API on Koyeb free, Redis on Render free Key Value, Postgres on Neon free, file storage on Supabase free, all in Frankfurt; a Cloudflare cron Worker keeps the sleeping services awake. Setup and limits: `docs/runbooks/staging-free.md`.
+
+**Postgres on Neon, with a known limit (owner's choice, 2026-11-27).** Neon's free plan has 100 compute-hours a month, and the API queries Postgres every 30 s (expiry sweeper), so the compute never suspends and the database stops around day 16 until the monthly reset. Accepted for staging; the runbook lists the workarounds. Supabase's free Postgres (no compute-hour cap) is the fallback.
 
 Ruled out for free staging, against current free-tier limits and the code:
 
-- **Neon free:** 100 compute-hours a month, and the API queries Postgres every 30 s (expiry sweeper), so the database would be suspended around day 16.
 - **Aiven free:** powers off after inactivity.
 - **Vercel Hobby:** non-commercial use only.
 - **Cloudflare Workers for the API:** not Node; Socket.IO, BullMQ, argon2 and sharp would all need replacing (a rewrite). For the web, the free plan's 3 MiB Worker size and 10 ms CPU per request are too small for server-rendered Next.js.
